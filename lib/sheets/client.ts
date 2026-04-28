@@ -7,7 +7,7 @@ import { google } from "googleapis";
  *  2. GOOGLE_SERVICE_ACCOUNT_EMAIL + PRIVATE_KEY: 2 biến riêng
  */
 function getAuthClient() {
-  const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
+  const base64 = process.env.GSA_B64;
 
   if (base64) {
     // Decode base64 → JSON object
