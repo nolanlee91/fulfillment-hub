@@ -2,19 +2,35 @@ import { google } from "googleapis";
 
 /**
  * Tạo authenticated Google Sheets API client.
- * Dùng Service Account để auth, không cần OAuth user-level.
+ * Hỗ trợ 2 cách auth:
+ *  1. GOOGLE_SERVICE_ACCOUNT_KEY_BASE64: cả file JSON encoded base64 (khuyên dùng)
+ *  2. GOOGLE_SERVICE_ACCOUNT_EMAIL + PRIVATE_KEY: 2 biến riêng
  */
 function getAuthClient() {
+  const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
+
+  if (base64) {
+    // Decode base64 → JSON object
+    const jsonStr = Buffer.from(base64, "base64").toString("utf-8");
+    const credentials = JSON.parse(jsonStr);
+    return new google.auth.JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
+  }
+
+  // Fallback: 2 biến riêng (cho local dev)
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
 
   if (!email || !privateKey) {
     throw new Error(
-      "Missing Google Service Account credentials in .env (GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY)",
+      "Missing Google credentials. Set either GOOGLE_SERVICE_ACCOUNT_KEY_BASE64, or GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
     );
   }
 
-  // Replace literal \n with actual newlines (env var lưu \n dưới dạng escaped)
+  // Replace literal \n with actual newlines
   const formattedKey = privateKey.replace(/\\n/g, "\n");
 
   return new google.auth.JWT({
@@ -42,7 +58,7 @@ export async function readSheet(
   sheetName: string,
 ): Promise<string[][]> {
   const sheets = getSheets();
-  const range = `'${sheetName}'`; // dấu nháy đơn cho tên có dấu cách / tiếng Việt
+  const range = `'${sheetName}'`;
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -86,7 +102,7 @@ export async function appendRows(
 }
 
 /**
- * Lấy metadata của spreadsheet (list các tabs, etc.)
+ * Lấy metadata của spreadsheet.
  */
 export async function getSpreadsheetMeta(spreadsheetId: string) {
   const sheets = getSheets();
