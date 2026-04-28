@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fulfillment Hub
 
-## Getting Started
+Web app quản lý đóng gói fulfillment, đồng bộ từ Google Sheets, xuất file Excel cho ClickShip.
 
-First, run the development server:
+## Tech stack
+
+- **Frontend**: Next.js 15 (App Router), React, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API Routes
+- **Database**: PostgreSQL (Drizzle ORM)
+- **Hosting**: Railway
+- **Auth**: NextAuth.js + Google OAuth
+- **Data fetching**: TanStack Query
+
+## Setup local
+
+### 1. Cài dependencies
+
+```bash
+npm install
+```
+
+### 2. Tạo `.env.local`
+
+Copy `.env.example` thành `.env.local` và điền các giá trị.
+
+Để chạy local, bạn có thể dùng Postgres trên Railway (lấy DATABASE_URL từ tab Variables) hoặc cài Postgres local.
+
+### 3. Migrate database
+
+```bash
+npm run db:push   # tạo bảng theo schema
+```
+
+### 4. Chạy dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mở http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy lên Railway
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push code lên GitHub repo
+2. Vào railway.app → New Project → Deploy from GitHub
+3. Chọn repo này
+4. Add service: PostgreSQL
+5. Vào tab Variables của service Next.js, copy `DATABASE_URL` từ Postgres service
+6. Add các env var khác (Google credentials, NextAuth)
+7. Railway auto build & deploy
 
-## Learn More
+## Cấu trúc thư mục
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                 # Next.js App Router
+│   ├── api/             # API endpoints
+│   ├── dashboard/       # Trang Dashboard
+│   ├── orders/          # Trang Orders
+│   ├── errors/          # Trang Errors
+│   ├── batches/         # Trang Batches
+│   └── export/          # Trang Export
+├── components/          # React components dùng chung
+├── lib/
+│   ├── db/              # Drizzle ORM (schema + connection)
+│   ├── sheets/          # Google Sheets API helper
+│   └── sync/            # Logic sync, validate, batch
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `customers`: khách hàng (Venatureco, Skylane, ...)
+- `products`: sản phẩm + unit weight
+- `source_sheets`: cấu hình 13 sheet nguồn
+- `boxes`: 4 loại thùng + dimension
+- `box_rules`: ma trận product × box → max_qty
+- `orders`: đơn hàng (table chính)
+- `batches`: gom đơn để xuất CSV
+- `sync_logs`: audit trail
