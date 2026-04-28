@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --bg-primary: #0a1424;        /* nền chính tối nhất */
+  --bg-secondary: #0f1c33;      /* nền cards */
+  --bg-tertiary: #152744;       /* hover/active */
+  --border: #1e3556;            /* viền */
+  --text-primary: #e4ecf7;      /* text chính */
+  --text-secondary: #8da4c4;    /* text phụ */
+  --text-muted: #5a7396;        /* text mờ */
+  --accent: #10b981;            /* xanh lá emerald */
+  --accent-hover: #059669;
+  --accent-bg: rgba(16, 185, 129, 0.1);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* Status badges */
+.status-READY {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.status-ERROR {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.status-NEW {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.status-EXPORTED {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Section label trong sidebar */
+.sidebar-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 0 1.25rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* Input/select với theme dark */
+input, select, textarea {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
 }
