@@ -19,7 +19,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
 
   function showMessage(text: string, type: "success" | "error" | "info" = "info") {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 5000);
+    setTimeout(() => setMessage(null), 6000);
   }
 
   async function runSync() {
@@ -44,10 +44,26 @@ export function Topbar({ title, subtitle }: TopbarProps) {
     }
   }
 
-  function runValidate() {
+  async function runValidate() {
     setValidating(true);
-    showMessage("Chức năng đang phát triển (Phase 4.5)", "info");
-    setTimeout(() => setValidating(false), 1500);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/validate", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        showMessage(
+          `Validate xong: ${data.ready} READY, ${data.errors} ERROR (${data.validated}/${data.total} đơn)`,
+          "success",
+        );
+        router.refresh();
+      } else {
+        showMessage(`Lỗi: ${data.error}`, "error");
+      }
+    } catch (e) {
+      showMessage(`Lỗi kết nối: ${(e as Error).message}`, "error");
+    } finally {
+      setValidating(false);
+    }
   }
 
   const messageColor =
@@ -75,7 +91,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
       <div className="flex items-center gap-3">
         {message && (
           <div
-            className="px-3 py-1.5 text-xs font-semibold rounded"
+            className="px-3 py-1.5 text-xs font-semibold rounded max-w-md"
             style={messageColor}
           >
             {message.text}
@@ -84,7 +100,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
 
         <button
           onClick={runSync}
-          disabled={syncing}
+          disabled={syncing || validating}
           className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded transition-colors disabled:opacity-50"
           style={{
             backgroundColor: "var(--bg-tertiary)",
@@ -103,15 +119,20 @@ export function Topbar({ title, subtitle }: TopbarProps) {
 
         <button
           onClick={runValidate}
-          disabled={validating}
+          disabled={syncing || validating}
           className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded transition-colors disabled:opacity-50"
           style={{
             backgroundColor: "var(--accent)",
             color: "var(--bg-primary)",
           }}
         >
-          <span className="material-symbols-outlined text-[18px]">verified</span>
-          Validate &amp; Gán thùng
+          <span
+            className="material-symbols-outlined text-[18px]"
+            style={{ animation: validating ? "spin 1s linear infinite" : "none" }}
+          >
+            verified
+          </span>
+          {validating ? "Đang xử lý..." : "Validate & Gán thùng"}
         </button>
       </div>
 
