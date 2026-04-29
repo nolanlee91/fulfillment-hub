@@ -55,7 +55,7 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
   const ordersToProcess = await db
     .select()
     .from(orders)
-    .where(or(eq(orders.status, "NEW"), eq(orders.status, "READY"), eq(orders.status, "ERROR")));
+    .where(or(eq(orders.status, "NEW"), eq(orders.status, "READY"), eq(orders.status, "ERROR"), eq(orders.status, "ERROR_UPDATED")));
 
   const result: ValidateResult = {
     total: ordersToProcess.length,

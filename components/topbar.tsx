@@ -30,7 +30,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
       const data = await res.json();
       if (data.success) {
         showMessage(
-          `Sync xong: +${data.totalAdded} đơn (ERROR: ${data.totalErrors})`,
+          `Sync xong: +${data.totalAdded} mới, ${data.totalUpdated ?? 0} cập nhật (ERROR: ${data.totalErrors})`,
           "success",
         );
         router.refresh();

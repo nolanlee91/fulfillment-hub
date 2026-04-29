@@ -35,6 +35,11 @@ body {
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+.status-ERROR_UPDATED {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
 .status-NEW {
   background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;

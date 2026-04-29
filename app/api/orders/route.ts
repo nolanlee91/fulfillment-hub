@@ -12,7 +12,14 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
 
     const conditions = [];
-    if (status) conditions.push(eq(orders.status, status as "READY" | "ERROR" | "NEW" | "EXPORTED"));
+    if (status) {
+      const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED">;
+      if (statusList.length === 1) {
+        conditions.push(eq(orders.status, statusList[0]));
+      } else {
+        conditions.push(or(...statusList.map((s) => eq(orders.status, s)))!);
+      }
+    }
     if (customerId) conditions.push(eq(orders.customerId, customerId));
     if (productId) conditions.push(eq(orders.productId, productId));
     if (search) {

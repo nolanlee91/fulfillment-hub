@@ -1,16 +1,19 @@
 import { db } from "../db";
-import { sourceSheets, orders, syncLogs, customers, products } from "../db/schema";
-import { eq, sql } from "drizzle-orm";
+import { sourceSheets, orders, syncLogs } from "../db/schema";
+import { eq } from "drizzle-orm";
 import { parseSheet } from "./parser";
+import type { ParsedOrder } from "./parser";
 
 export interface SyncResult {
   totalAdded: number;
+  totalUpdated: number;
   totalErrors: number;
   perSheet: Array<{
     customerId: string;
     productId: string;
     sheetName: string;
     added: number;
+    updated: number;
     errors: number;
     warnings: string[];
   }>;
@@ -18,19 +21,44 @@ export interface SyncResult {
 }
 
 /**
- * Sync all 13 sheet nguồn vào Postgres orders table.
+ * So sánh data từ sheet với data trong DB.
+ * Trả về true nếu có ÍT NHẤT 1 field thay đổi.
+ */
+function hasChanges(
+  parsed: ParsedOrder,
+  existing: typeof orders.$inferSelect,
+): boolean {
+  const fields: Array<[string, string]> = [
+    [parsed.name || "", existing.name || ""],
+    [parsed.addressLine1 || "", existing.addressLine1 || ""],
+    [parsed.addressLine2 || "", existing.addressLine2 || ""],
+    [parsed.city || "", existing.city || ""],
+    [parsed.province || "", existing.province || ""],
+    [parsed.zipcode || "", existing.zipcode || ""],
+    [parsed.country || "", existing.country || ""],
+    [parsed.phone || "", existing.phone || ""],
+  ];
+  for (const [a, b] of fields) {
+    if (String(a).trim() !== String(b).trim()) return true;
+  }
+  if (parsed.quantity !== existing.quantity) return true;
+  return false;
+}
+
+/**
+ * Sync all sheet nguồn vào Postgres.
  *
- * Flow:
- *  1. Đọc bảng source_sheets từ DB → list 13 sheet
- *  2. Parallel parse 13 sheet
- *  3. Build orders array, skip dòng đã có unique_key trong DB
- *  4. Insert vào orders
- *  5. Ghi sync_logs
+ * Logic:
+ *  - Đơn CHƯA có trong DB → INSERT mới
+ *  - Đơn ĐÃ có và status = ERROR/ERROR_UPDATED → so sánh data:
+ *      - Có thay đổi → UPDATE + status = ERROR_UPDATED
+ *      - Không đổi → SKIP
+ *  - Đơn ĐÃ có và status khác (NEW/READY/EXPORTED) → SKIP (không touch)
  */
 export async function syncAllSheets(triggeredBy: string = "manual"): Promise<SyncResult> {
   const startedAt = new Date();
 
-  // 1. Đọc cấu hình sources từ DB
+  // 1. Cấu hình sources
   const sources = await db
     .select()
     .from(sourceSheets)
@@ -40,27 +68,28 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
     throw new Error("No active source sheets configured. Run `npm run seed` first.");
   }
 
-  // 2. Parallel parse
+  // 2. Parallel parse 13 sheet
   const parseResults = await Promise.allSettled(
     sources.map(async (source) => {
       const result = await parseSheet(source.spreadsheetId, source.sheetName);
-      return {
-        source,
-        ...result,
-      };
+      return { source, ...result };
     }),
   );
 
-  // 3. Đọc các unique_key đã tồn tại trong DB
-  const existingKeys = new Set(
-    (await db.select({ uniqueKey: orders.uniqueKey }).from(orders)).map(
-      (r) => r.uniqueKey,
-    ),
-  );
+  // 3. Đọc tất cả đơn hiện có để check tồn tại + status
+  const existingOrders = await db.select().from(orders);
+  const existingMap: Record<string, typeof orders.$inferSelect> = {};
+  for (const o of existingOrders) {
+    existingMap[o.uniqueKey] = o;
+  }
 
-  // 4. Build rows + insert
+  // 4. Build INSERT + UPDATE lists
   const perSheet: SyncResult["perSheet"] = [];
-  const allRowsToInsert: typeof orders.$inferInsert[] = [];
+  const rowsToInsert: typeof orders.$inferInsert[] = [];
+  const rowsToUpdate: Array<{
+    uniqueKey: string;
+    parsed: ParsedOrder;
+  }> = [];
 
   for (const r of parseResults) {
     if (r.status === "rejected") {
@@ -69,6 +98,7 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
         productId: "?",
         sheetName: "?",
         added: 0,
+        updated: 0,
         errors: 0,
         warnings: [`Failed: ${r.reason?.message ?? r.reason}`],
       });
@@ -77,41 +107,55 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
 
     const { source, orders: parsed, warnings } = r.value;
     let added = 0;
+    let updated = 0;
     let errors = 0;
 
     for (const order of parsed) {
       const uniqueKey = `${source.customerId}_${source.productId}_${order.orderId}`;
-      if (existingKeys.has(uniqueKey)) continue;
+      const existing = existingMap[uniqueKey];
 
-      allRowsToInsert.push({
-        uniqueKey,
-        orderId: order.orderId,
-        customerId: source.customerId,
-        productId: source.productId,
-        orderDate: order.orderDate,
-        titleName: order.titleName,
-        name: order.name,
-        lastName: order.lastName,
-        titleDept: order.titleDept,
-        companyName: order.companyName,
-        additionalAddressInfo: order.additionalAddressInfo,
-        addressLine1: order.addressLine1,
-        addressLine2: order.addressLine2,
-        city: order.city,
-        province: order.province,
-        zipcode: order.zipcode,
-        country: order.country,
-        phone: order.phone,
-        quantity: order.quantity,
-        status: order.status,
-        errorNote: order.errorNote,
-        syncedAt: startedAt,
-        updatedAt: startedAt,
-      });
+      if (!existing) {
+        // INSERT new
+        rowsToInsert.push({
+          uniqueKey,
+          orderId: order.orderId,
+          customerId: source.customerId,
+          productId: source.productId,
+          orderDate: order.orderDate,
+          titleName: order.titleName,
+          name: order.name,
+          lastName: order.lastName,
+          titleDept: order.titleDept,
+          companyName: order.companyName,
+          additionalAddressInfo: order.additionalAddressInfo,
+          addressLine1: order.addressLine1,
+          addressLine2: order.addressLine2,
+          city: order.city,
+          province: order.province,
+          zipcode: order.zipcode,
+          country: order.country,
+          phone: order.phone,
+          quantity: order.quantity,
+          status: order.status,
+          errorNote: order.errorNote,
+          syncedAt: startedAt,
+          updatedAt: startedAt,
+        });
+        added++;
+        if (order.status === "ERROR") errors++;
+      } else {
+        // ĐÃ có trong DB
+        const isErrorState =
+          existing.status === "ERROR" || existing.status === "ERROR_UPDATED";
+        if (!isErrorState) continue; // skip READY/NEW/EXPORTED
 
-      existingKeys.add(uniqueKey);
-      added++;
-      if (order.status === "ERROR") errors++;
+        // Check có data thay đổi không
+        if (!hasChanges(order, existing)) continue;
+
+        // Có thay đổi → UPDATE
+        rowsToUpdate.push({ uniqueKey, parsed: order });
+        updated++;
+      }
     }
 
     perSheet.push({
@@ -119,21 +163,57 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
       productId: source.productId,
       sheetName: source.sheetName,
       added,
+      updated,
       errors,
       warnings,
     });
   }
 
-  // 5. Bulk insert (chunk 500 để tránh quá tải)
-  const totalAdded = allRowsToInsert.length;
-  const totalErrors = allRowsToInsert.filter((r) => r.status === "ERROR").length;
-
-  for (let i = 0; i < allRowsToInsert.length; i += 500) {
-    const chunk = allRowsToInsert.slice(i, i + 500);
+  // 5. Bulk INSERT (chunk 500)
+  for (let i = 0; i < rowsToInsert.length; i += 500) {
+    const chunk = rowsToInsert.slice(i, i + 500);
     await db.insert(orders).values(chunk).onConflictDoNothing();
   }
 
-  // 6. Sync log
+  // 6. UPDATE đơn ERROR có data mới → ERROR_UPDATED
+  for (const u of rowsToUpdate) {
+    await db
+      .update(orders)
+      .set({
+        name: u.parsed.name,
+        addressLine1: u.parsed.addressLine1,
+        addressLine2: u.parsed.addressLine2,
+        city: u.parsed.city,
+        province: u.parsed.province,
+        zipcode: u.parsed.zipcode,
+        country: u.parsed.country,
+        phone: u.parsed.phone,
+        quantity: u.parsed.quantity,
+        // Cập nhật thông tin phụ
+        titleName: u.parsed.titleName,
+        lastName: u.parsed.lastName,
+        titleDept: u.parsed.titleDept,
+        companyName: u.parsed.companyName,
+        additionalAddressInfo: u.parsed.additionalAddressInfo,
+        // State change
+        status: "ERROR_UPDATED",
+        errorNote: "Đã cập nhật thông tin từ sheet, cần Validate lại",
+        // Reset tracking metadata cũ (vì đơn này coi như mới, sẽ tạo batch mới)
+        batchId: null,
+        trackingNumber: null,
+        trackingUrl: null,
+        shippingCarrier: null,
+        shipDate: null,
+        updatedAt: startedAt,
+      })
+      .where(eq(orders.uniqueKey, u.uniqueKey));
+  }
+
+  const totalAdded = rowsToInsert.length;
+  const totalUpdated = rowsToUpdate.length;
+  const totalErrors = rowsToInsert.filter((r) => r.status === "ERROR").length;
+
+  // 7. Sync log
   const completedAt = new Date();
   const durationMs = completedAt.getTime() - startedAt.getTime();
 
@@ -143,12 +223,13 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
     completedAt,
     totalAdded,
     totalErrors,
-    details: JSON.stringify(perSheet),
+    details: JSON.stringify({ perSheet, totalUpdated }),
     triggeredBy,
   });
 
   return {
     totalAdded,
+    totalUpdated,
     totalErrors,
     perSheet,
     durationMs,
