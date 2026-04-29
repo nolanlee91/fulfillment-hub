@@ -160,6 +160,9 @@ export const orders = pgTable(
     errorNote: text("error_note"),
     batchId: text("batch_id").references(() => batches.id),
     trackingNumber: text("tracking_number"),
+    trackingUrl: text("tracking_url"),
+    shippingCarrier: text("shipping_carrier"),
+    shipDate: timestamp("ship_date"),
 
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

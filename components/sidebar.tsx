@@ -20,6 +20,7 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: "/orders", icon: "inventory_2", label: "Đơn hàng" },
       { href: "/errors", icon: "report_problem", label: "Đơn lỗi" },
       { href: "/batches", icon: "package_2", label: "Lô đóng gói" },
+      { href: "/import-tracking", icon: "upload_file", label: "Đối soát ClickShip" },
     ],
   },
   {
@@ -39,7 +40,6 @@ export function Sidebar() {
         borderColor: "var(--border)",
       }}
     >
-      {/* Brand */}
       <div className="px-5 py-5 border-b" style={{ borderColor: "var(--border)" }}>
         <h1 className="text-base font-black text-white leading-tight">
           Fulfillment <span style={{ color: "var(--accent)" }}>Hub</span>
@@ -52,7 +52,6 @@ export function Sidebar() {
         </p>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto pb-4">
         {sections.map((section) => (
           <div key={section.label}>
@@ -86,7 +85,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* User footer */}
       <div className="px-4 py-3 border-t" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
           <div
