@@ -1,26 +1,467 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
 import { Topbar } from "@/components/topbar";
 
+interface Order {
+  uniqueKey: string;
+  orderId: string;
+  customerId: string;
+  productId: string;
+  productName: string;
+  name: string;
+  city: string;
+  zipcode: string;
+  phone: string;
+  quantity: number;
+  status: "NEW" | "READY" | "ERROR" | "EXPORTED";
+  boxCode: string | null;
+  errorNote: string | null;
+  batchId: string | null;
+}
+
+interface FilterOption {
+  id: string;
+  name: string;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "Mới",
+  READY: "Sẵn sàng",
+  ERROR: "Lỗi",
+  EXPORTED: "Đã xuất",
+};
+
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<FilterOption[]>([]);
+  const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  // Filters
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterCustomer, setFilterCustomer] = useState("");
+  const [filterProduct, setFilterProduct] = useState("");
+  const [search, setSearch] = useState("");
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterStatus) params.set("status", filterStatus);
+    if (filterCustomer) params.set("customer", filterCustomer);
+    if (filterProduct) params.set("product", filterProduct);
+    if (search) params.set("search", search);
+
+    const res = await fetch(`/api/orders?${params.toString()}`);
+    const data = await res.json();
+    if (data.success) setOrders(data.data);
+    setLoading(false);
+  }, [filterStatus, filterCustomer, filterProduct, search]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  useEffect(() => {
+    // Load filter options once
+    fetch("/api/orders", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setCustomers(data.data.customers);
+          setProductOpts(data.data.products);
+        }
+      });
+  }, []);
+
+  function toggleSelect(uniqueKey: string) {
+    const next = new Set(selectedKeys);
+    if (next.has(uniqueKey)) next.delete(uniqueKey);
+    else next.add(uniqueKey);
+    setSelectedKeys(next);
+  }
+
+  function selectAllReady() {
+    const next = new Set<string>();
+    for (const o of orders) {
+      if (o.status === "READY") next.add(o.uniqueKey);
+    }
+    setSelectedKeys(next);
+  }
+
+  function clearSelection() {
+    setSelectedKeys(new Set());
+  }
+
+  async function createBatch() {
+    if (selectedKeys.size === 0) return;
+    if (!confirm(`Tạo batch cho ${selectedKeys.size} đơn?`)) return;
+
+    setCreating(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/batches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uniqueKeys: Array.from(selectedKeys),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(data.message);
+        setSelectedKeys(new Set());
+        await loadOrders();
+      } else {
+        setMessage("Lỗi: " + data.error);
+      }
+    } finally {
+      setCreating(false);
+      setTimeout(() => setMessage(null), 6000);
+    }
+  }
+
+  const readyCount = orders.filter((o) => o.status === "READY").length;
+  const filteredProducts = filterCustomer
+    ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
+    : productOpts;
+
   return (
     <>
       <Topbar title="Đơn hàng" subtitle="Quản lý" />
+
+      {/* Filters */}
       <div
-        className="rounded-xl p-12 text-center border"
+        className="rounded-xl p-4 mb-4 border grid grid-cols-5 gap-3"
         style={{
           backgroundColor: "var(--bg-secondary)",
           borderColor: "var(--border)",
         }}
       >
-        <span
-          className="material-symbols-outlined text-6xl"
-          style={{ color: "var(--text-muted)" }}
-        >
-          inventory_2
-        </span>
-        <h3 className="font-bold text-lg mt-4 text-white">Bảng đơn hàng</h3>
-        <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
-          Phase 4.6 sẽ build: bảng đơn hàng + filter + Tạo Batch.
-        </p>
+        <div>
+          <label
+            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Trạng thái
+          </label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full px-2 py-1.5 rounded text-sm"
+          >
+            <option value="">Tất cả</option>
+            <option value="READY">Sẵn sàng</option>
+            <option value="ERROR">Lỗi</option>
+            <option value="NEW">Mới</option>
+            <option value="EXPORTED">Đã xuất</option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Khách hàng
+          </label>
+          <select
+            value={filterCustomer}
+            onChange={(e) => {
+              setFilterCustomer(e.target.value);
+              setFilterProduct("");
+            }}
+            className="w-full px-2 py-1.5 rounded text-sm"
+          >
+            <option value="">Tất cả</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label
+            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Sản phẩm
+          </label>
+          <select
+            value={filterProduct}
+            onChange={(e) => setFilterProduct(e.target.value)}
+            className="w-full px-2 py-1.5 rounded text-sm"
+          >
+            <option value="">Tất cả</option>
+            {filteredProducts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-span-2">
+          <label
+            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Tìm kiếm (Order ID, Tên, Phone, Zipcode)
+          </label>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Gõ để tìm..."
+            className="w-full px-3 py-1.5 rounded text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div
+        className="rounded-xl p-3 mb-4 border flex items-center justify-between"
+        style={{
+          backgroundColor: "var(--bg-secondary)",
+          borderColor: "var(--border)",
+        }}
+      >
+        <div className="flex items-center gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+          <span>
+            <span className="font-bold text-white">{orders.length}</span> đơn
+            {readyCount > 0 && (
+              <span className="ml-2" style={{ color: "var(--accent)" }}>
+                · {readyCount} sẵn sàng
+              </span>
+            )}
+          </span>
+          {selectedKeys.size > 0 && (
+            <>
+              <span style={{ color: "var(--text-muted)" }}>•</span>
+              <span style={{ color: "var(--accent)" }}>
+                Đã chọn {selectedKeys.size}
+              </span>
+              <button
+                onClick={clearSelection}
+                className="text-xs underline"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Bỏ chọn
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {message && (
+            <span
+              className="text-xs px-3 py-1.5 rounded font-semibold"
+              style={{
+                backgroundColor: "rgba(16, 185, 129, 0.15)",
+                color: "#34d399",
+              }}
+            >
+              {message}
+            </span>
+          )}
+          {readyCount > 0 && selectedKeys.size === 0 && (
+            <button
+              onClick={selectAllReady}
+              className="px-3 py-1.5 text-sm font-semibold rounded"
+              style={{
+                backgroundColor: "var(--bg-tertiary)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              Chọn tất cả READY
+            </button>
+          )}
+          <button
+            onClick={createBatch}
+            disabled={selectedKeys.size === 0 || creating}
+            className="flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--accent)",
+              color: "var(--bg-primary)",
+            }}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              auto_awesome_motion
+            </span>
+            {creating ? "Đang tạo..." : "Tạo Batch"}
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{
+          backgroundColor: "var(--bg-secondary)",
+          borderColor: "var(--border)",
+        }}
+      >
+        {loading ? (
+          <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
+            Đang tải...
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
+            Không có đơn nào. Bấm <span style={{ color: "var(--accent)" }}>Đồng bộ</span> để kéo đơn về.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  <th className="px-3 py-3 w-10"></th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Order ID
+                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Khách
+                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Sản phẩm
+                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Tên
+                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    City / Zip
+                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Phone
+                  </th>
+                  <th className="text-right px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    SL
+                  </th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Box
+                  </th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Trạng thái
+                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Note / Batch
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => {
+                  const isSelected = selectedKeys.has(o.uniqueKey);
+                  const canSelect = o.status === "READY";
+                  return (
+                    <tr
+                      key={o.uniqueKey}
+                      className="border-t hover:bg-opacity-50 transition-colors"
+                      style={{
+                        borderColor: "var(--border)",
+                        backgroundColor: isSelected
+                          ? "rgba(16, 185, 129, 0.08)"
+                          : "transparent",
+                      }}
+                    >
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!canSelect}
+                          onChange={() => toggleSelect(o.uniqueKey)}
+                          className="w-4 h-4 cursor-pointer disabled:opacity-30"
+                          style={{ accentColor: "var(--accent)" }}
+                        />
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs font-bold text-white">
+                        {o.orderId}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-xs"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {o.customerId}
+                      </td>
+                      <td
+                        className="px-3 py-2"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {o.productName}
+                      </td>
+                      <td
+                        className="px-3 py-2"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {o.name || "—"}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-xs"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {o.city} {o.zipcode}
+                      </td>
+                      <td
+                        className="px-3 py-2 font-mono text-xs"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {o.phone || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        {o.quantity}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {o.boxCode ? (
+                          <span
+                            className="px-2 py-0.5 rounded text-xs font-bold"
+                            style={{
+                              backgroundColor: "var(--accent-bg)",
+                              color: "var(--accent)",
+                            }}
+                          >
+                            {o.boxCode}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span
+                          className={`status-${o.status} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
+                        >
+                          {STATUS_LABELS[o.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {o.batchId ? (
+                          <span
+                            className="font-mono"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            {o.batchId}
+                          </span>
+                        ) : o.errorNote ? (
+                          <span style={{ color: "#f87171" }}>{o.errorNote}</span>
+                        ) : (
+                          ""
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );
