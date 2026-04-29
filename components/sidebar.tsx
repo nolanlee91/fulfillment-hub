@@ -20,7 +20,6 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: "/orders", icon: "inventory_2", label: "Đơn hàng" },
       { href: "/errors", icon: "report_problem", label: "Đơn lỗi" },
       { href: "/batches", icon: "package_2", label: "Lô đóng gói" },
-      { href: "/export", icon: "ios_share", label: "Xuất ClickShip" },
     ],
   },
   {
