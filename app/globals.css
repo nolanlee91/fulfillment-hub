@@ -50,6 +50,11 @@ body {
   color: #94a3b8;
   border: 1px solid rgba(100, 116, 139, 0.3);
 }
+.status-LABEL_CREATED {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
 
 /* Section label trong sidebar */
 .sidebar-section-label {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import ExcelJS from "exceljs";
 
 export const maxDuration = 60;
@@ -165,12 +165,13 @@ export async function POST(req: NextRequest) {
       .filter((o) => !matchedSet.has(o.uniqueKey))
       .map((o) => o.uniqueKey);
 
-    // 4. Update DB
+    // 4. Update DB — đơn có tracking → status LABEL_CREATED
     const now = new Date();
     for (const u of updates) {
       await db
         .update(orders)
         .set({
+          status: "LABEL_CREATED",
           trackingNumber: u.trackingNumber,
           trackingUrl: u.trackingUrl || null,
           shippingCarrier: u.shippingCarrier || null,
@@ -180,13 +181,13 @@ export async function POST(req: NextRequest) {
         .where(eq(orders.uniqueKey, u.uniqueKey));
     }
 
-    // 5. Đơn không có tracking → status ERROR + note
+    // 5. Đơn không có tracking → status ERROR + note (chung chung, không lộ nhà cung cấp)
     if (missingFromFile.length > 0) {
       await db
         .update(orders)
         .set({
           status: "ERROR",
-          errorNote: "ClickShip rejected (no tracking)",
+          errorNote: "Không tạo được label - cần kiểm tra lại",
           updatedAt: now,
         })
         .where(inArray(orders.uniqueKey, missingFromFile));

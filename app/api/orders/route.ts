@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, customers, products, boxes } from "@/lib/db/schema";
-import { eq, and, or, like, sql, desc } from "drizzle-orm";
+import { orders, customers, products } from "@/lib/db/schema";
+import { eq, and, or, sql, desc, inArray } from "drizzle-orm";
+import { z } from "zod";
+
+const DeleteOrdersSchema = z.object({
+  uniqueKeys: z.array(z.string()).min(1),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     const conditions = [];
     if (status) {
-      const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED">;
+      const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED" | "LABEL_CREATED">;
       if (statusList.length === 1) {
         conditions.push(eq(orders.status, statusList[0]));
       } else {
@@ -90,6 +95,34 @@ export async function POST() {
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 },
+    );
+  }
+}
+
+/**
+ * DELETE: bulk xóa đơn theo uniqueKeys.
+ * Cho xóa mọi status. Giữ nguyên batches.totalOrders (snapshot lịch sử).
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { uniqueKeys } = DeleteOrdersSchema.parse(body);
+
+    const deleted = await db
+      .delete(orders)
+      .where(inArray(orders.uniqueKey, uniqueKeys))
+      .returning({ uniqueKey: orders.uniqueKey });
+
+    return NextResponse.json({
+      success: true,
+      deleted: deleted.length,
+      message: `Đã xóa ${deleted.length} đơn`,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 400 },
     );
   }
 }

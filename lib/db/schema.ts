@@ -20,6 +20,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "ERROR",
   "ERROR_UPDATED",
   "EXPORTED",
+  "LABEL_CREATED",
 ]);
 
 // ============================================================================

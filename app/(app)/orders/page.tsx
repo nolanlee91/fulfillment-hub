@@ -14,7 +14,7 @@ interface Order {
   zipcode: string;
   phone: string;
   quantity: number;
-  status: "NEW" | "READY" | "ERROR" | "EXPORTED";
+  status: "NEW" | "READY" | "ERROR" | "ERROR_UPDATED" | "EXPORTED" | "LABEL_CREATED";
   boxCode: string | null;
   errorNote: string | null;
   batchId: string | null;
@@ -31,6 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
   ERROR: "Lỗi",
   ERROR_UPDATED: "Đã cập nhật",
   EXPORTED: "Đã xuất",
+  LABEL_CREATED: "Đã có label",
 };
 
 export default function OrdersPage() {
@@ -40,6 +41,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Filters
@@ -85,12 +87,12 @@ export default function OrdersPage() {
     setSelectedKeys(next);
   }
 
-  function selectAllReady() {
-    const next = new Set<string>();
-    for (const o of orders) {
-      if (o.status === "READY") next.add(o.uniqueKey);
+  function toggleSelectAll() {
+    if (selectedKeys.size === orders.length && orders.length > 0) {
+      setSelectedKeys(new Set());
+    } else {
+      setSelectedKeys(new Set(orders.map((o) => o.uniqueKey)));
     }
-    setSelectedKeys(next);
   }
 
   function clearSelection() {
@@ -99,7 +101,7 @@ export default function OrdersPage() {
 
   async function createBatch() {
     if (selectedKeys.size === 0) return;
-    if (!confirm(`Tạo batch cho ${selectedKeys.size} đơn?`)) return;
+    if (!confirm(`Tạo batch cho ${selectedKeys.size} đơn? (Đơn không phải READY sẽ bị bỏ qua)`)) return;
 
     setCreating(true);
     setMessage(null);
@@ -125,7 +127,37 @@ export default function OrdersPage() {
     }
   }
 
+  async function deleteSelected() {
+    if (selectedKeys.size === 0) return;
+    if (!confirm(`Xóa ${selectedKeys.size} đơn? Hành động này không thể hoàn tác.`)) return;
+
+    setDeleting(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uniqueKeys: Array.from(selectedKeys),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(data.message);
+        setSelectedKeys(new Set());
+        await loadOrders();
+      } else {
+        setMessage("Lỗi: " + data.error);
+      }
+    } finally {
+      setDeleting(false);
+      setTimeout(() => setMessage(null), 6000);
+    }
+  }
+
   const readyCount = orders.filter((o) => o.status === "READY").length;
+  const allSelected = orders.length > 0 && selectedKeys.size === orders.length;
+  const someSelected = selectedKeys.size > 0 && selectedKeys.size < orders.length;
   const filteredProducts = filterCustomer
     ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
     : productOpts;
@@ -160,6 +192,7 @@ export default function OrdersPage() {
             <option value="ERROR_UPDATED">Đã cập nhật</option>
             <option value="NEW">Mới</option>
             <option value="EXPORTED">Đã xuất</option>
+            <option value="LABEL_CREATED">Đã có label</option>
           </select>
         </div>
 
@@ -271,22 +304,24 @@ export default function OrdersPage() {
               {message}
             </span>
           )}
-          {readyCount > 0 && selectedKeys.size === 0 && (
-            <button
-              onClick={selectAllReady}
-              className="px-3 py-1.5 text-sm font-semibold rounded"
-              style={{
-                backgroundColor: "var(--bg-tertiary)",
-                color: "var(--text-primary)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              Chọn tất cả READY
-            </button>
-          )}
+          <button
+            onClick={deleteSelected}
+            disabled={selectedKeys.size === 0 || deleting || creating}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded disabled:opacity-50"
+            style={{
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              color: "#f87171",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+            }}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              delete
+            </span>
+            {deleting ? "Đang xóa..." : "Xóa"}
+          </button>
           <button
             onClick={createBatch}
-            disabled={selectedKeys.size === 0 || creating}
+            disabled={selectedKeys.size === 0 || creating || deleting}
             className="flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded disabled:opacity-50"
             style={{
               backgroundColor: "var(--accent)",
@@ -327,7 +362,18 @@ export default function OrdersPage() {
                     color: "var(--text-muted)",
                   }}
                 >
-                  <th className="px-3 py-3 w-10"></th>
+                  <th className="px-3 py-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 cursor-pointer"
+                      style={{ accentColor: "var(--accent)" }}
+                    />
+                  </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Order ID
                   </th>
@@ -363,7 +409,6 @@ export default function OrdersPage() {
               <tbody>
                 {orders.map((o) => {
                   const isSelected = selectedKeys.has(o.uniqueKey);
-                  const canSelect = o.status === "READY";
                   return (
                     <tr
                       key={o.uniqueKey}
@@ -379,9 +424,8 @@ export default function OrdersPage() {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          disabled={!canSelect}
                           onChange={() => toggleSelect(o.uniqueKey)}
-                          className="w-4 h-4 cursor-pointer disabled:opacity-30"
+                          className="w-4 h-4 cursor-pointer"
                           style={{ accentColor: "var(--accent)" }}
                         />
                       </td>
