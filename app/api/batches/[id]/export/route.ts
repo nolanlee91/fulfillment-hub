@@ -198,9 +198,11 @@ function buildEstCsv(
       lengthCm,                       // #LENGTH (cm)
       widthCm,                        // #WIDTH (cm)
       heightCm,                       // #HEIGHT (cm)
-      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", // 18 indicator/empty fields
-      codAmt,                         // #CODVALUE
-      1,                              // #METHODOFCOLLECTION
+      // 19 cột rỗng giữa #HEIGHT và #CODVALUE:
+      // #DOCUMENTINDICATOR..#INSUREDAMOUNT (cột 24..42)
+      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+      codAmt,                         // #CODVALUE (cột 43)
+      1,                              // #METHODOFCOLLECTION (cột 44)
     ];
 
     lines.push(fields.map(csvEscape).join(","));
