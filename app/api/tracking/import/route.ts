@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders } from "@/lib/db/schema";
+import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import ExcelJS from "exceljs";
 
@@ -25,7 +25,6 @@ async function parseClickshipFile(buffer: ArrayBuffer): Promise<ParsedTrackingRo
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error("File không có sheet nào");
 
-  // Tìm header row (row 1)
   const headerRow = sheet.getRow(1);
   const headerMap: Record<string, number> = {};
   headerRow.eachCell((cell, colNumber) => {
@@ -41,7 +40,7 @@ async function parseClickshipFile(buffer: ArrayBuffer): Promise<ParsedTrackingRo
 
   if (!orderCol || !trackingCol) {
     throw new Error(
-      "File thiếu cột 'Order Number' hoặc 'Tracking Number'. Đây có phải file xuất từ ClickShip không?",
+      "File thiếu cột 'Order Number' hoặc 'Tracking Number'. Đây có phải file xuất từ kênh tạo label không?",
     );
   }
 
@@ -76,6 +75,97 @@ async function parseClickshipFile(buffer: ArrayBuffer): Promise<ParsedTrackingRo
   return rows;
 }
 
+/**
+ * Parse 1 dòng CSV (handle quoted fields với "" escape).
+ */
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let cur = "";
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuote) {
+      if (c === '"' && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else if (c === '"') {
+        inQuote = false;
+      } else {
+        cur += c;
+      }
+    } else {
+      if (c === ",") {
+        fields.push(cur);
+        cur = "";
+      } else if (c === '"') {
+        inQuote = true;
+      } else {
+        cur += c;
+      }
+    }
+  }
+  fields.push(cur);
+  return fields;
+}
+
+/**
+ * Parse file CSV EST trả về → list tracking entries.
+ * Filter dòng BEHALF_OF_CUSTOMER_NAME = KDEXPRESS (skip đơn EXT của khách khác).
+ * Match CUSTOMER_ORDER_ITEM_ID ↔ orders.orderId, lấy BAR_CODE_ID làm tracking number.
+ */
+function parseEstFile(buffer: ArrayBuffer): ParsedTrackingRow[] {
+  // BOM strip
+  let text = new TextDecoder("utf-8").decode(buffer);
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  const header = parseCsvLine(lines[0]).map((h) => h.trim().toUpperCase());
+  const idx = (name: string) => header.indexOf(name);
+
+  const behalfCol = idx("BEHALF_OF_CUSTOMER_NAME");
+  const barcodeCol = idx("BAR_CODE_ID");
+  const orderItemCol = idx("CUSTOMER_ORDER_ITEM_ID");
+  const mailingDateCol = idx("MAILING_DATE");
+
+  if (behalfCol < 0 || barcodeCol < 0 || orderItemCol < 0) {
+    throw new Error(
+      "File EST thiếu cột BEHALF_OF_CUSTOMER_NAME / BAR_CODE_ID / CUSTOMER_ORDER_ITEM_ID",
+    );
+  }
+
+  const rows: ParsedTrackingRow[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const fields = parseCsvLine(lines[i]);
+    const behalf = (fields[behalfCol] || "").trim().toUpperCase();
+    if (behalf !== "KDEXPRESS") continue;
+
+    const orderId = (fields[orderItemCol] || "").trim();
+    const tracking = (fields[barcodeCol] || "").trim();
+    if (!orderId || !tracking) continue;
+
+    let shipDate: Date | null = null;
+    if (mailingDateCol >= 0) {
+      const raw = (fields[mailingDateCol] || "").trim();
+      const m = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+      if (m) {
+        shipDate = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      }
+    }
+
+    rows.push({
+      orderId,
+      trackingNumber: tracking,
+      trackingUrl: "",
+      shippingCarrier: "Canada Post",
+      shipDate,
+    });
+  }
+
+  return rows;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -96,18 +186,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Parse file
+    // 1. Load batch để biết platform
+    const [batch] = await db
+      .select({ id: batches.id, platform: batches.platform })
+      .from(batches)
+      .where(eq(batches.id, batchId));
+
+    if (!batch) {
+      return NextResponse.json(
+        { success: false, error: `Không tìm thấy batch ${batchId}` },
+        { status: 404 },
+      );
+    }
+
+    const platform = batch.platform || "CLICKSHIP";
+
+    // 2. Parse file theo platform
     const buffer = await file.arrayBuffer();
-    const trackingRows = await parseClickshipFile(buffer);
+    const trackingRows =
+      platform === "EST"
+        ? parseEstFile(buffer)
+        : await parseClickshipFile(buffer);
 
     if (trackingRows.length === 0) {
       return NextResponse.json(
-        { success: false, error: "File không có dòng tracking nào" },
+        {
+          success: false,
+          error:
+            platform === "EST"
+              ? "File EST không có dòng nào của KDEXPRESS"
+              : "File không có dòng tracking nào",
+        },
         { status: 400 },
       );
     }
 
-    // 2. Lấy tất cả đơn trong batch (status EXPORTED)
+    // 3. Lấy tất cả đơn trong batch
     const ordersInBatch = await db
       .select({
         uniqueKey: orders.uniqueKey,

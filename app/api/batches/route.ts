@@ -61,16 +61,20 @@ export async function GET() {
 /**
  * POST: tạo batch mới từ list uniqueKeys.
  *  - Chỉ chấp nhận đơn READY
- *  - Set status = EXPORTED, batch_id = batchNo
+ *  - Auto split theo payment method: PREPAID → CLICKSHIP, COD → EST
+ *  - Set status = EXPORTED, batch_id = batchNo, platform tương ứng
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { uniqueKeys } = CreateBatchSchema.parse(body);
 
-    // Filter chỉ READY
+    // Filter chỉ READY + lấy paymentMethod để split
     const validOrders = await db
-      .select({ uniqueKey: orders.uniqueKey })
+      .select({
+        uniqueKey: orders.uniqueKey,
+        paymentMethod: orders.paymentMethod,
+      })
       .from(orders)
       .where(
         and(
@@ -79,10 +83,9 @@ export async function POST(req: NextRequest) {
         ),
       );
 
-    const validKeys = validOrders.map((o) => o.uniqueKey);
-    const skipped = uniqueKeys.length - validKeys.length;
+    const skipped = uniqueKeys.length - validOrders.length;
 
-    if (validKeys.length === 0) {
+    if (validOrders.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -92,34 +95,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate batch ID
-    const batchNo = await generateBatchNo();
+    const prepaidKeys = validOrders
+      .filter((o) => o.paymentMethod === "PREPAID")
+      .map((o) => o.uniqueKey);
+    const codKeys = validOrders
+      .filter((o) => o.paymentMethod === "COD")
+      .map((o) => o.uniqueKey);
+
     const now = new Date();
+    const created: Array<{ batchNo: string; platform: "CLICKSHIP" | "EST"; count: number }> = [];
 
-    // Insert batch record
-    await db.insert(batches).values({
-      id: batchNo,
-      totalOrders: validKeys.length,
-      createdAt: now,
-      exportedAt: now,
-    });
+    if (prepaidKeys.length > 0) {
+      const batchNo = await generateBatchNo();
+      await db.insert(batches).values({
+        id: batchNo,
+        totalOrders: prepaidKeys.length,
+        platform: "CLICKSHIP",
+        createdAt: now,
+        exportedAt: now,
+      });
+      await db
+        .update(orders)
+        .set({
+          status: "EXPORTED",
+          batchId: batchNo,
+          updatedAt: now,
+        })
+        .where(inArray(orders.uniqueKey, prepaidKeys));
+      created.push({ batchNo, platform: "CLICKSHIP", count: prepaidKeys.length });
+    }
 
-    // Update orders
-    await db
-      .update(orders)
-      .set({
-        status: "EXPORTED",
-        batchId: batchNo,
-        updatedAt: now,
-      })
-      .where(inArray(orders.uniqueKey, validKeys));
+    if (codKeys.length > 0) {
+      const batchNo = await generateBatchNo();
+      await db.insert(batches).values({
+        id: batchNo,
+        totalOrders: codKeys.length,
+        platform: "EST",
+        createdAt: now,
+        exportedAt: now,
+      });
+      await db
+        .update(orders)
+        .set({
+          status: "EXPORTED",
+          batchId: batchNo,
+          updatedAt: now,
+        })
+        .where(inArray(orders.uniqueKey, codKeys));
+      created.push({ batchNo, platform: "EST", count: codKeys.length });
+    }
+
+    const summary = created
+      .map((c) => `${c.batchNo} (${c.platform === "CLICKSHIP" ? "Thường" : "COD"}: ${c.count} đơn)`)
+      .join(", ");
 
     return NextResponse.json({
       success: true,
-      batchNo,
-      updated: validKeys.length,
+      batches: created,
+      updated: validOrders.length,
       skipped,
-      message: `Đã tạo batch ${batchNo}: ${validKeys.length} đơn${skipped > 0 ? ` (bỏ qua ${skipped} đơn không READY)` : ""}`,
+      message: `Đã tạo ${created.length} batch: ${summary}${skipped > 0 ? ` (bỏ qua ${skipped} đơn không READY)` : ""}`,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

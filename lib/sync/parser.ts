@@ -20,6 +20,9 @@ export interface ParsedOrder {
   country: string;
   phone: string;
   quantity: number;
+  paymentMethod: "PREPAID" | "COD";
+  codAmount: number | null;
+  note: string;
   // Validation result
   status: "READY" | "ERROR";
   errorNote: string;
@@ -52,6 +55,30 @@ function parseDate(value: string): Date | null {
   const [, d, m, y] = match;
   const date = new Date(Number(y), Number(m) - 1, Number(d));
   return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Normalize phone: strip non-digit; nếu 11 số bắt đầu bằng 1 → bỏ prefix.
+ * Trả về 10-digit string nếu hợp lệ, hoặc raw digits nếu không đủ 10 (để báo lỗi).
+ */
+function normalizePhone(raw: string): { phone: string; valid: boolean } {
+  let digits = String(raw || "").replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    digits = digits.slice(1);
+  }
+  return { phone: digits, valid: digits.length === 10 };
+}
+
+/**
+ * Parse số tiền từ Sheet (có thể có ký tự "$", ",", khoảng trắng).
+ * Trả về NaN nếu không hợp lệ hoặc rỗng.
+ */
+function parseMoney(raw: string): number {
+  const s = String(raw || "").trim();
+  if (!s) return NaN;
+  const cleaned = s.replace(/[^0-9.]/g, "");
+  if (!cleaned) return NaN;
+  return Number(cleaned);
 }
 
 /**
@@ -116,6 +143,7 @@ export async function parseSheet(
   // Identify quantity columns (giữa "phone" và "giá tiền")
   const qtyIndexes: number[] = [];
   const giaTienIdx = header.findIndex((h) => h.startsWith("giá tiền"));
+  const ghiChuIdx = header.findIndex((h) => h.startsWith("ghi chú"));
   if (giaTienIdx > cols.phone) {
     for (let i = cols.phone + 1; i < giaTienIdx; i++) {
       qtyIndexes.push(i);
@@ -145,7 +173,15 @@ export async function parseSheet(
     const address1 = String(row[cols.address1] || "").trim();
     const city = String(row[cols.city] || "").trim();
     const zipcode = String(row[cols.zip] || "").trim();
-    const phone = String(row[cols.phone] || "").trim();
+    const phoneRaw = String(row[cols.phone] || "").trim();
+    const phoneNorm = normalizePhone(phoneRaw);
+
+    // Payment + note
+    const giaTienVal = giaTienIdx >= 0 ? parseMoney(String(row[giaTienIdx] || "")) : NaN;
+    const isCOD = !isNaN(giaTienVal) && giaTienVal > 0;
+    const paymentMethod: "PREPAID" | "COD" = isCOD ? "COD" : "PREPAID";
+    const codAmount = isCOD ? giaTienVal : null;
+    const note = ghiChuIdx >= 0 ? String(row[ghiChuIdx] || "").trim() : "";
 
     // Validate
     const missingFields: string[] = [];
@@ -153,7 +189,11 @@ export async function parseSheet(
     if (!address1) missingFields.push("#ADDRESSLINE1");
     if (!city) missingFields.push("City");
     if (!zipcode) missingFields.push("Zipcode");
-    if (!phone) missingFields.push("Phone");
+    if (!phoneRaw) {
+      missingFields.push("Phone");
+    } else if (!phoneNorm.valid) {
+      missingFields.push("Phone (sai định dạng)");
+    }
 
     const status = missingFields.length > 0 ? "ERROR" : "READY";
     const errorNote =
@@ -173,9 +213,12 @@ export async function parseSheet(
       city,
       province: String(row[cols.province] || "").trim(),
       zipcode,
-      country: String(row[cols.country] || "").trim(),
-      phone,
+      country: "Canada",
+      phone: phoneNorm.valid ? phoneNorm.phone : phoneRaw,
       quantity: totalQty,
+      paymentMethod,
+      codAmount,
+      note,
       status,
       errorNote,
     });

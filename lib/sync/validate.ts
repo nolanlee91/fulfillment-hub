@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { orders, boxes, boxRules } from "../db/schema";
-import { eq, or, sql } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 export interface ValidateResult {
   total: number;
@@ -87,7 +87,12 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
     if (!String(order.addressLine1 || "").trim()) missingFields.push("#ADDRESSLINE1");
     if (!String(order.city || "").trim()) missingFields.push("City");
     if (!String(order.zipcode || "").trim()) missingFields.push("Zipcode");
-    if (!String(order.phone || "").trim()) missingFields.push("Phone");
+    const phoneDigits = String(order.phone || "").replace(/\D/g, "");
+    if (!phoneDigits) {
+      missingFields.push("Phone");
+    } else if (phoneDigits.length !== 10) {
+      missingFields.push("Phone (sai định dạng)");
+    }
 
     if (missingFields.length > 0) {
       updates.push({
@@ -99,6 +104,22 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
       result.errors++;
       result.validated++;
       continue;
+    }
+
+    // Validate COD: phải có số tiền > 0
+    if (order.paymentMethod === "COD") {
+      const amt = order.codAmount !== null ? Number(order.codAmount) : 0;
+      if (!amt || amt <= 0) {
+        updates.push({
+          uniqueKey: order.uniqueKey,
+          status: "ERROR",
+          boxCode: null,
+          errorNote: "COD thiếu số tiền thu",
+        });
+        result.errors++;
+        result.validated++;
+        continue;
+      }
     }
 
     // Validate quantity

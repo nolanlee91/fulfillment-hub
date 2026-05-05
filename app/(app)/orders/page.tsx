@@ -14,6 +14,9 @@ interface Order {
   zipcode: string;
   phone: string;
   quantity: number;
+  paymentMethod: "PREPAID" | "COD";
+  codAmount: string | null;
+  note: string | null;
   status:
     | "NEW"
     | "READY"
@@ -60,6 +63,7 @@ export default function OrdersPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
+  const [filterPayment, setFilterPayment] = useState("");
   const [search, setSearch] = useState("");
 
   const loadOrders = useCallback(async () => {
@@ -68,13 +72,14 @@ export default function OrdersPage() {
     if (filterStatus) params.set("status", filterStatus);
     if (filterCustomer) params.set("customer", filterCustomer);
     if (filterProduct) params.set("product", filterProduct);
+    if (filterPayment) params.set("payment", filterPayment);
     if (search) params.set("search", search);
 
     const res = await fetch(`/api/orders?${params.toString()}`);
     const data = await res.json();
     if (data.success) setOrders(data.data);
     setLoading(false);
-  }, [filterStatus, filterCustomer, filterProduct, search]);
+  }, [filterStatus, filterCustomer, filterProduct, filterPayment, search]);
 
   useEffect(() => {
     loadOrders();
@@ -180,7 +185,7 @@ export default function OrdersPage() {
 
       {/* Filters */}
       <div
-        className="rounded-xl p-4 mb-4 border grid grid-cols-5 gap-3"
+        className="rounded-xl p-4 mb-4 border grid grid-cols-6 gap-3"
         style={{
           backgroundColor: "var(--bg-secondary)",
           borderColor: "var(--border)",
@@ -253,6 +258,24 @@ export default function OrdersPage() {
                 {p.name}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label
+            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Thanh toán
+          </label>
+          <select
+            value={filterPayment}
+            onChange={(e) => setFilterPayment(e.target.value)}
+            className="w-full px-2 py-1.5 rounded text-sm"
+          >
+            <option value="">Tất cả</option>
+            <option value="PREPAID">Thường</option>
+            <option value="COD">COD</option>
           </select>
         </div>
 
@@ -411,6 +434,9 @@ export default function OrdersPage() {
                     SL
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Thanh toán
+                  </th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Box
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
@@ -479,6 +505,18 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-3 py-2 text-right font-mono">
                         {o.quantity}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span
+                          className={`payment-${o.paymentMethod} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
+                          title={
+                            o.paymentMethod === "COD"
+                              ? `Thu hộ: ${o.codAmount ?? "?"}${o.note ? `\n${o.note}` : ""}`
+                              : o.note || ""
+                          }
+                        >
+                          {o.paymentMethod === "COD" ? "COD" : "Thường"}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-center">
                         {o.boxCode ? (

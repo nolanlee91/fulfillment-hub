@@ -26,6 +26,10 @@ export const orderStatusEnum = pgEnum("order_status", [
   "FAILED",
 ]);
 
+export const paymentMethodEnum = pgEnum("payment_method", ["PREPAID", "COD"]);
+
+export const platformEnum = pgEnum("platform", ["CLICKSHIP", "EST"]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -120,6 +124,7 @@ export const boxRules = pgTable(
 export const batches = pgTable("batches", {
   id: text("id").primaryKey(), // VD: "2026-04-27-PM-001"
   totalOrders: integer("total_orders").default(0).notNull(),
+  platform: platformEnum("platform"), // CLICKSHIP | EST
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   exportedAt: timestamp("exported_at"),
@@ -159,6 +164,10 @@ export const orders = pgTable(
     phone: text("phone"),
 
     quantity: integer("quantity").default(0).notNull(),
+
+    paymentMethod: paymentMethodEnum("payment_method").default("PREPAID").notNull(),
+    codAmount: numeric("cod_amount", { precision: 10, scale: 2 }),
+    note: text("note"),
 
     status: orderStatusEnum("status").default("NEW").notNull(),
     boxCode: text("box_code").references(() => boxes.code),

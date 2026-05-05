@@ -70,6 +70,16 @@ body {
   color: #fb923c;
   border: 1px solid rgba(249, 115, 22, 0.3);
 }
+.payment-PREPAID {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+.payment-COD {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
 
 /* Section label trong sidebar */
 .sidebar-section-label {

@@ -37,11 +37,16 @@ function hasChanges(
     [parsed.zipcode || "", existing.zipcode || ""],
     [parsed.country || "", existing.country || ""],
     [parsed.phone || "", existing.phone || ""],
+    [parsed.note || "", existing.note || ""],
   ];
   for (const [a, b] of fields) {
     if (String(a).trim() !== String(b).trim()) return true;
   }
   if (parsed.quantity !== existing.quantity) return true;
+  if (parsed.paymentMethod !== existing.paymentMethod) return true;
+  const parsedAmt = parsed.codAmount !== null ? Number(parsed.codAmount) : null;
+  const existingAmt = existing.codAmount !== null ? Number(existing.codAmount) : null;
+  if (parsedAmt !== existingAmt) return true;
   return false;
 }
 
@@ -136,6 +141,9 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
           country: order.country,
           phone: order.phone,
           quantity: order.quantity,
+          paymentMethod: order.paymentMethod,
+          codAmount: order.codAmount !== null ? String(order.codAmount) : null,
+          note: order.note,
           status: order.status,
           errorNote: order.errorNote,
           syncedAt: startedAt,
@@ -195,6 +203,9 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
         titleDept: u.parsed.titleDept,
         companyName: u.parsed.companyName,
         additionalAddressInfo: u.parsed.additionalAddressInfo,
+        paymentMethod: u.parsed.paymentMethod,
+        codAmount: u.parsed.codAmount !== null ? String(u.parsed.codAmount) : null,
+        note: u.parsed.note,
         // State change
         status: "ERROR_UPDATED",
         errorNote: "Đã cập nhật thông tin từ sheet, cần Validate lại",

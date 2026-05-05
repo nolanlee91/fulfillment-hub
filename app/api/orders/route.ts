@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status"); // READY | ERROR | NEW | EXPORTED
     const customerId = searchParams.get("customer");
     const productId = searchParams.get("product");
+    const payment = searchParams.get("payment"); // PREPAID | COD
     const search = searchParams.get("search");
 
     const conditions = [];
@@ -27,6 +28,9 @@ export async function GET(req: NextRequest) {
     }
     if (customerId) conditions.push(eq(orders.customerId, customerId));
     if (productId) conditions.push(eq(orders.productId, productId));
+    if (payment === "PREPAID" || payment === "COD") {
+      conditions.push(eq(orders.paymentMethod, payment));
+    }
     if (search) {
       const s = `%${search.toLowerCase()}%`;
       conditions.push(
@@ -52,6 +56,9 @@ export async function GET(req: NextRequest) {
         zipcode: orders.zipcode,
         phone: orders.phone,
         quantity: orders.quantity,
+        paymentMethod: orders.paymentMethod,
+        codAmount: orders.codAmount,
+        note: orders.note,
         status: orders.status,
         boxCode: orders.boxCode,
         errorNote: orders.errorNote,
