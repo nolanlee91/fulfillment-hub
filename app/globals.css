@@ -55,6 +55,21 @@ body {
   color: #a78bfa;
   border: 1px solid rgba(139, 92, 246, 0.3);
 }
+.status-IN_TRANSIT {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+.status-DELIVERED {
+  background: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.3);
+}
+.status-FAILED {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
 
 /* Section label trong sidebar */
 .sidebar-section-label {

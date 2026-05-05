@@ -19,6 +19,9 @@ async function getDashboardStats() {
     error: 0,
     exported: 0,
     labeled: 0,
+    inTransit: 0,
+    delivered: 0,
+    failed: 0,
   };
 
   for (const row of statusCounts) {
@@ -30,6 +33,9 @@ async function getDashboardStats() {
       stats.error += count;
     else if (row.status === "EXPORTED") stats.exported = count;
     else if (row.status === "LABEL_CREATED") stats.labeled = count;
+    else if (row.status === "IN_TRANSIT") stats.inTransit = count;
+    else if (row.status === "DELIVERED") stats.delivered = count;
+    else if (row.status === "FAILED") stats.failed = count;
   }
 
   const batchCount = await db
@@ -48,7 +54,7 @@ interface StatCardProps {
   label: string;
   value: number;
   description?: string;
-  accent?: "emerald" | "red" | "blue" | "slate" | "violet";
+  accent?: "emerald" | "red" | "blue" | "slate" | "violet" | "teal" | "sky" | "orange";
   highlight?: boolean;
 }
 
@@ -65,6 +71,9 @@ function StatCard({
     blue: "#3b82f6",
     slate: "#94a3b8",
     violet: "#8b5cf6",
+    teal: "#14b8a6",
+    sky: "#0ea5e9",
+    orange: "#f97316",
   };
   const color = accentColors[accent];
 
@@ -130,7 +139,29 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        <StatCard
+          label="Đang giao"
+          value={stats.inTransit}
+          description="Đang vận chuyển"
+          accent="sky"
+        />
+        <StatCard
+          label="Đã giao"
+          value={stats.delivered}
+          description="Giao thành công"
+          accent="teal"
+        />
+        <StatCard
+          label="Thất bại"
+          value={stats.failed}
+          description="Trả về / không giao được"
+          accent="orange"
+        />
+        <StatCard label="Số batch" value={stats.batches} accent="slate" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <StatCard label="Tổng đơn" value={stats.total} accent="slate" />
         <StatCard
           label="Chưa xử lý"
@@ -138,7 +169,6 @@ export default async function DashboardPage() {
           description="Chờ Validate"
           accent="blue"
         />
-        <StatCard label="Số batch" value={stats.batches} accent="slate" />
       </div>
 
       <div

@@ -21,6 +21,9 @@ export const orderStatusEnum = pgEnum("order_status", [
   "ERROR_UPDATED",
   "EXPORTED",
   "LABEL_CREATED",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "FAILED",
 ]);
 
 // ============================================================================
@@ -165,6 +168,9 @@ export const orders = pgTable(
     trackingUrl: text("tracking_url"),
     shippingCarrier: text("shipping_carrier"),
     shipDate: timestamp("ship_date"),
+    lastTrackingEvent: text("last_tracking_event"),
+    lastTrackingAt: timestamp("last_tracking_at"),
+    deliveredAt: timestamp("delivered_at"),
 
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -175,6 +181,18 @@ export const orders = pgTable(
     batchIdx: index("orders_batch_idx").on(t.batchId),
   }),
 );
+
+// ============================================================================
+// TRACKING FILES (dedup file APT đã xử lý)
+// ============================================================================
+
+export const trackingFiles = pgTable("tracking_files", {
+  filename: text("filename").primaryKey(),
+  source: text("source").notNull(), // VD: "APT"
+  processedAt: timestamp("processed_at").defaultNow().notNull(),
+  totalRows: integer("total_rows").default(0).notNull(),
+  totalUpdated: integer("total_updated").default(0).notNull(),
+});
 
 // ============================================================================
 // SYNC LOG

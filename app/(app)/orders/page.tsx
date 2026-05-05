@@ -14,7 +14,16 @@ interface Order {
   zipcode: string;
   phone: string;
   quantity: number;
-  status: "NEW" | "READY" | "ERROR" | "ERROR_UPDATED" | "EXPORTED" | "LABEL_CREATED";
+  status:
+    | "NEW"
+    | "READY"
+    | "ERROR"
+    | "ERROR_UPDATED"
+    | "EXPORTED"
+    | "LABEL_CREATED"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "FAILED";
   boxCode: string | null;
   errorNote: string | null;
   batchId: string | null;
@@ -32,6 +41,9 @@ const STATUS_LABELS: Record<string, string> = {
   ERROR_UPDATED: "Đã cập nhật",
   EXPORTED: "Đã xuất",
   LABEL_CREATED: "Đã có label",
+  IN_TRANSIT: "Đang giao",
+  DELIVERED: "Đã giao",
+  FAILED: "Thất bại",
 };
 
 export default function OrdersPage() {
@@ -193,6 +205,9 @@ export default function OrdersPage() {
             <option value="NEW">Mới</option>
             <option value="EXPORTED">Đã xuất</option>
             <option value="LABEL_CREATED">Đã có label</option>
+            <option value="IN_TRANSIT">Đang giao</option>
+            <option value="DELIVERED">Đã giao</option>
+            <option value="FAILED">Thất bại</option>
           </select>
         </div>
 
