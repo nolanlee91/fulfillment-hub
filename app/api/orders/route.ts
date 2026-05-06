@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, customers, products } from "@/lib/db/schema";
-import { eq, and, or, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 
 const DeleteOrdersSchema = z.object({
@@ -16,9 +16,13 @@ export async function GET(req: NextRequest) {
     const productId = searchParams.get("product");
     const payment = searchParams.get("payment"); // PREPAID | COD
     const attention = searchParams.get("attention"); // ADDRESS_ERROR | DELAYED | NOTICE_CARD | STUCK | "any"
+    const excludeDelivered = searchParams.get("excludeDelivered") === "true";
     const search = searchParams.get("search");
 
     const conditions = [];
+    if (excludeDelivered) {
+      conditions.push(ne(orders.status, "DELIVERED"));
+    }
     if (status) {
       const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED" | "LABEL_CREATED">;
       if (statusList.length === 1) {
@@ -81,6 +85,7 @@ export async function GET(req: NextRequest) {
         batchId: orders.batchId,
         trackingNumber: orders.trackingNumber,
         trackingUrl: orders.trackingUrl,
+        deliveredAt: orders.deliveredAt,
         attentionReason: orders.attentionReason,
         attentionAt: orders.attentionAt,
         attentionNote: orders.attentionNote,

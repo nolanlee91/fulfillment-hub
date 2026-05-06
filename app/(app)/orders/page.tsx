@@ -52,6 +52,14 @@ const ATTENTION_LABELS: Record<string, string> = {
   STUCK: "Không cập nhật",
 };
 
+function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: string | null }): string | null {
+  if (o.trackingUrl) return o.trackingUrl;
+  if (o.trackingNumber) {
+    return `https://www.canadapost.ca/track-reperage/en#/search?searchFor=${encodeURIComponent(o.trackingNumber)}`;
+  }
+  return null;
+}
+
 interface FilterOption {
   id: string;
   name: string;
@@ -90,6 +98,7 @@ export default function OrdersPage() {
   const loadOrders = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
+    params.set("excludeDelivered", "true");
     if (filterStatus) params.set("status", filterStatus);
     if (filterCustomer) params.set("customer", filterCustomer);
     if (filterProduct) params.set("product", filterProduct);
@@ -204,7 +213,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <Topbar title="Đơn hàng" subtitle="Quản lý" />
+      <Topbar title="Đơn đang xử lý" subtitle="Quản lý" />
 
       {/* Filters */}
       <div
@@ -234,7 +243,6 @@ export default function OrdersPage() {
             <option value="EXPORTED">Đã xuất</option>
             <option value="LABEL_CREATED">Đã có label</option>
             <option value="IN_TRANSIT">Đang vận chuyển</option>
-            <option value="DELIVERED">Đã giao</option>
             <option value="FAILED">Thất bại</option>
           </select>
         </div>
@@ -622,27 +630,27 @@ export default function OrdersPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-xs">
-                        {o.trackingUrl ? (
-                          <a
-                            href={o.trackingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-mono hover:underline"
-                            style={{ color: "var(--accent)" }}
-                            title={o.trackingNumber ?? undefined}
-                          >
-                            {o.trackingNumber ?? "Track"}
-                            <span className="material-symbols-outlined text-[14px]">
-                              open_in_new
-                            </span>
-                          </a>
-                        ) : o.trackingNumber ? (
-                          <span className="font-mono" style={{ color: "var(--text-secondary)" }}>
-                            {o.trackingNumber}
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--text-muted)" }}>—</span>
-                        )}
+                        {(() => {
+                          const url = buildTrackingUrl(o);
+                          if (url) {
+                            return (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-mono hover:underline"
+                                style={{ color: "var(--accent)" }}
+                                title={o.trackingNumber ?? undefined}
+                              >
+                                {o.trackingNumber ?? "Track"}
+                                <span className="material-symbols-outlined text-[14px]">
+                                  open_in_new
+                                </span>
+                              </a>
+                            );
+                          }
+                          return <span style={{ color: "var(--text-muted)" }}>—</span>;
+                        })()}
                       </td>
                     </tr>
                   );

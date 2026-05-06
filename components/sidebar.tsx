@@ -17,7 +17,8 @@ const sections: { label: string; items: NavItem[] }[] = [
   {
     label: "Quản lý",
     items: [
-      { href: "/orders", icon: "inventory_2", label: "Đơn hàng" },
+      { href: "/orders", icon: "inventory_2", label: "Đơn đang xử lý" },
+      { href: "/delivered", icon: "task_alt", label: "Đơn đã giao" },
       { href: "/errors", icon: "report_problem", label: "Đơn lỗi" },
       { href: "/batches", icon: "package_2", label: "Lô đóng gói" },
       { href: "/import-tracking", icon: "upload_file", label: "Đối soát vận chuyển" },
