@@ -384,7 +384,7 @@ function EventsTab() {
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <ResultCard label="Đã giao" value={result.byCategory.delivered} accent="teal" hint="Giao thành công" />
-            <ResultCard label="Đang giao" value={result.byCategory.inTransit} accent="sky" hint="Đang vận chuyển" />
+            <ResultCard label="Đang vận chuyển" value={result.byCategory.inTransit} accent="sky" hint="Trên đường giao" />
             <ResultCard label="Thất bại" value={result.byCategory.failed} accent="orange" hint="Trả về / không giao được" />
           </div>
 

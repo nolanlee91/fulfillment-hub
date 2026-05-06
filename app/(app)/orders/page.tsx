@@ -44,7 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
   ERROR_UPDATED: "Đã cập nhật",
   EXPORTED: "Đã xuất",
   LABEL_CREATED: "Đã có label",
-  IN_TRANSIT: "Đang giao",
+  IN_TRANSIT: "Đang vận chuyển",
   DELIVERED: "Đã giao",
   FAILED: "Thất bại",
 };
@@ -210,7 +210,7 @@ export default function OrdersPage() {
             <option value="NEW">Mới</option>
             <option value="EXPORTED">Đã xuất</option>
             <option value="LABEL_CREATED">Đã có label</option>
-            <option value="IN_TRANSIT">Đang giao</option>
+            <option value="IN_TRANSIT">Đang vận chuyển</option>
             <option value="DELIVERED">Đã giao</option>
             <option value="FAILED">Thất bại</option>
           </select>

@@ -141,9 +141,9 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-4 gap-4 mb-4">
         <StatCard
-          label="Đang giao"
+          label="Đang vận chuyển"
           value={stats.inTransit}
-          description="Đang vận chuyển"
+          description="Trên đường giao"
           accent="sky"
         />
         <StatCard

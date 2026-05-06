@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import { orders } from "@/lib/db/schema";
+import { db } from "../db";
+import { orders } from "../db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { type AptEvent } from "./parser-apt";
 import { classifyEvent, type TrackingCategory } from "./event-codes";
