@@ -2,22 +2,39 @@ import { db } from "../db";
 import { orders } from "../db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { type AptEvent } from "./parser-apt";
-import { classifyEvent, type TrackingCategory } from "./event-codes";
+import {
+  classifyEvent,
+  type AttentionReason,
+  type TrackingStatus,
+} from "./event-codes";
+
+interface AttentionUpdate {
+  reason: AttentionReason;
+  at: Date;
+  note: string;
+}
 
 interface PerTrackingSummary {
   trackingNumber: string;
   latestEvent: AptEvent;
-  latestCategory: TrackingCategory;
-  hasDelivered: boolean;
-  deliveredAt: Date | null; // event time của event DELIVERED đầu tiên (sớm nhất)
+  finalStatus: TrackingStatus;
+  deliveredAt: Date | null;
+  newAttention: AttentionUpdate | null;
 }
 
 /**
- * Gộp event theo tracking number → tóm tắt status cuối + thời gian.
- * Quy tắc:
- *   - Nếu bất kỳ event nào là DELIVERED → coi như DELIVERED (terminal).
- *   - Nếu KHÔNG có DELIVERED và event mới nhất là FAILED → FAILED.
- *   - Còn lại → IN_TRANSIT.
+ * Gộp event theo tracking number → tóm tắt status + attention từ batch event này.
+ *
+ * Logic finalStatus:
+ *   - Nếu có BẤT KỲ event nào classify = DELIVERED (forward delivery, không phải RTS-completed)
+ *     → DELIVERED (terminal).
+ *   - Nếu latest event classify = FAILED → FAILED.
+ *   - Else → IN_TRANSIT.
+ *
+ * Logic newAttention: đi từ event mới nhất ngược về cũ, lấy event đầu tiên có
+ * `classification.attention !== null`. Nếu là "CLEAR" thì newAttention = null
+ * (terminal status sẽ tự clear flag bên ngoài). Nếu là một AttentionReason cụ thể
+ * thì set thông tin tương ứng.
  */
 function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummary> {
   const map = new Map<string, AptEvent[]>();
@@ -30,22 +47,42 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
   for (const [tn, list] of map.entries()) {
     list.sort((a, b) => a.eventAt.getTime() - b.eventAt.getTime());
     const latestEvent = list[list.length - 1];
-    const latestCategory = classifyEvent(
-      latestEvent.eventCode,
-      latestEvent.returnFlag,
-    );
 
-    let hasDelivered = false;
+    const classified = list.map((ev) => ({
+      ev,
+      cls: classifyEvent(ev.eventCode, ev.returnFlag),
+    }));
+
+    // finalStatus
+    let finalStatus: TrackingStatus = "IN_TRANSIT";
     let deliveredAt: Date | null = null;
-    for (const ev of list) {
-      const cat = classifyEvent(ev.eventCode, ev.returnFlag);
-      if (cat === "DELIVERED") {
-        hasDelivered = true;
-        if (!deliveredAt || ev.eventAt < deliveredAt) deliveredAt = ev.eventAt;
+    for (const c of classified) {
+      if (c.cls.status === "DELIVERED") {
+        finalStatus = "DELIVERED";
+        if (!deliveredAt || c.ev.eventAt < deliveredAt) deliveredAt = c.ev.eventAt;
       }
     }
+    if (finalStatus !== "DELIVERED") {
+      const latestCls = classified[classified.length - 1].cls;
+      if (latestCls.status === "FAILED") finalStatus = "FAILED";
+    }
 
-    out.set(tn, { trackingNumber: tn, latestEvent, latestCategory, hasDelivered, deliveredAt });
+    // newAttention: đi từ cuối lên, lấy event đầu tiên có attention != null
+    let newAttention: AttentionUpdate | null = null;
+    for (let i = classified.length - 1; i >= 0; i--) {
+      const c = classified[i];
+      if (c.cls.attention === null) continue;
+      if (c.cls.attention !== "CLEAR") {
+        newAttention = {
+          reason: c.cls.attention,
+          at: c.ev.eventAt,
+          note: `${c.ev.eventCode} — ${c.ev.descriptionEn}`.slice(0, 200),
+        };
+      }
+      break;
+    }
+
+    out.set(tn, { trackingNumber: tn, latestEvent, finalStatus, deliveredAt, newAttention });
   }
   return out;
 }
@@ -56,17 +93,23 @@ export interface ProcessResult {
   totalMatched: number;
   totalUpdated: number;
   totalUnmatched: number;
-  unmatchedSamples: string[]; // tối đa 5 tracking number không match
+  unmatchedSamples: string[];
   byCategory: { delivered: number; failed: number; inTransit: number };
 }
 
 /**
- * Áp dụng kết quả parse lên DB. Quy tắc cập nhật trạng thái:
- *   - Đơn hiện đang DELIVERED → không thay đổi status (terminal).
- *   - Đơn hiện đang FAILED + event mới = DELIVERED → promote lên DELIVERED.
- *   - Còn lại → set theo `nextStatus` tính từ file.
+ * Áp dụng kết quả parse lên DB.
  *
- * `lastTrackingEvent` / `lastTrackingAt` luôn cập nhật nếu event mới hơn DB hiện có.
+ * Status:
+ *   - Không downgrade DELIVERED.
+ *   - Không downgrade FAILED trừ khi status mới = DELIVERED.
+ *
+ * Attention (cờ "cần chú ý"):
+ *   - Nếu status sau update = DELIVERED hoặc FAILED → CLEAR cờ (set null).
+ *   - Nếu status sau update = IN_TRANSIT (hoặc trước đó):
+ *       + Có attention mới trong batch event này → set.
+ *       + Không có → giữ nguyên flag hiện tại trong DB (event intermediate
+ *         như "Item processed" không xóa flag NOTICE_CARD/ADDRESS_ERROR cũ).
  */
 export async function processAptEvents(
   events: AptEvent[],
@@ -92,6 +135,7 @@ export async function processAptEvents(
       trackingNumber: orders.trackingNumber,
       status: orders.status,
       lastTrackingAt: orders.lastTrackingAt,
+      attentionReason: orders.attentionReason,
     })
     .from(orders)
     .where(inArray(orders.trackingNumber, trackingNumbers));
@@ -107,38 +151,43 @@ export async function processAptEvents(
     const sum = summaries.get(ord.trackingNumber!);
     if (!sum) continue;
 
-    // Quyết định status mới
-    let nextStatus: "DELIVERED" | "FAILED" | "IN_TRANSIT" | null;
-    if (sum.hasDelivered) {
-      nextStatus = "DELIVERED";
-    } else if (sum.latestCategory === "FAILED") {
-      nextStatus = "FAILED";
-    } else {
-      nextStatus = "IN_TRANSIT";
+    let setStatus: TrackingStatus | null = sum.finalStatus;
+    if (ord.status === "DELIVERED") setStatus = null;
+    else if (ord.status === "FAILED" && sum.finalStatus !== "DELIVERED") setStatus = null;
+
+    const update: Record<string, unknown> = { updatedAt: now };
+
+    if (setStatus) {
+      update.status = setStatus;
+      if (setStatus === "DELIVERED") {
+        update.deliveredAt = sum.deliveredAt ?? sum.latestEvent.eventAt;
+      }
     }
 
-    // Không downgrade DELIVERED. Không downgrade FAILED trừ khi mới = DELIVERED.
-    let setStatus: typeof nextStatus | null = nextStatus;
-    if (ord.status === "DELIVERED") setStatus = null;
-    else if (ord.status === "FAILED" && nextStatus !== "DELIVERED") setStatus = null;
+    const finalStatusAfter = setStatus ?? ord.status;
+    if (finalStatusAfter === "DELIVERED" || finalStatusAfter === "FAILED") {
+      if (ord.attentionReason !== null) {
+        update.attentionReason = null;
+        update.attentionAt = null;
+        update.attentionNote = null;
+      }
+    } else if (sum.newAttention) {
+      update.attentionReason = sum.newAttention.reason;
+      update.attentionAt = sum.newAttention.at;
+      update.attentionNote = sum.newAttention.note;
+    }
 
-    // lastTrackingAt — chỉ update nếu event mới hơn
     const newLastAt = sum.latestEvent.eventAt;
     const currentLastAt = ord.lastTrackingAt;
     const shouldUpdateLast =
       !currentLastAt || newLastAt.getTime() > currentLastAt.getTime();
-
-    if (!setStatus && !shouldUpdateLast) continue;
-
-    const update: Record<string, unknown> = { updatedAt: now };
-    if (setStatus) {
-      update.status = setStatus;
-      if (setStatus === "DELIVERED") update.deliveredAt = sum.deliveredAt ?? newLastAt;
-    }
     if (shouldUpdateLast) {
       update.lastTrackingEvent = `${sum.latestEvent.eventCode} — ${sum.latestEvent.descriptionEn}`;
       update.lastTrackingAt = newLastAt;
     }
+
+    // Skip nếu chỉ có updatedAt (không có thay đổi gì khác)
+    if (Object.keys(update).length === 1) continue;
 
     await db.update(orders).set(update).where(eq(orders.uniqueKey, ord.uniqueKey));
     totalUpdated += 1;

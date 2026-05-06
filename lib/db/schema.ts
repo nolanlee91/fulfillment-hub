@@ -18,8 +18,8 @@ export const orderStatusEnum = pgEnum("order_status", [
   "NEW",
   "READY",
   "ERROR",
-  "ERROR_UPDATED",
   "EXPORTED",
+  "ERROR_UPDATED",
   "LABEL_CREATED",
   "IN_TRANSIT",
   "DELIVERED",
@@ -29,6 +29,13 @@ export const orderStatusEnum = pgEnum("order_status", [
 export const paymentMethodEnum = pgEnum("payment_method", ["PREPAID", "COD"]);
 
 export const platformEnum = pgEnum("platform", ["CLICKSHIP", "EST"]);
+
+export const attentionReasonEnum = pgEnum("attention_reason", [
+  "ADDRESS_ERROR",
+  "DELAYED",
+  "NOTICE_CARD",
+  "STUCK",
+]);
 
 // ============================================================================
 // CUSTOMERS
@@ -181,6 +188,10 @@ export const orders = pgTable(
     lastTrackingAt: timestamp("last_tracking_at"),
     deliveredAt: timestamp("delivered_at"),
 
+    attentionReason: attentionReasonEnum("attention_reason"),
+    attentionAt: timestamp("attention_at"),
+    attentionNote: text("attention_note"),
+
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -188,6 +199,7 @@ export const orders = pgTable(
     statusIdx: index("orders_status_idx").on(t.status),
     customerIdx: index("orders_customer_idx").on(t.customerId),
     batchIdx: index("orders_batch_idx").on(t.batchId),
+    attentionIdx: index("orders_attention_idx").on(t.attentionReason),
   }),
 );
 
