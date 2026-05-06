@@ -10,8 +10,11 @@ interface Order {
   productId: string;
   productName: string;
   name: string;
+  addressLine1: string | null;
   city: string;
+  province: string | null;
   zipcode: string;
+  country: string | null;
   phone: string;
   quantity: number;
   paymentMethod: "PREPAID" | "COD";
@@ -30,6 +33,8 @@ interface Order {
   boxCode: string | null;
   errorNote: string | null;
   batchId: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
   attentionReason:
     | "ADDRESS_ERROR"
     | "DELAYED"
@@ -469,7 +474,7 @@ export default function OrdersPage() {
                     Tên
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    City / Zip
+                    Địa chỉ
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Phone
@@ -490,7 +495,7 @@ export default function OrdersPage() {
                     Cần chú ý
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Note / Batch
+                    Tracking
                   </th>
                 </tr>
               </thead>
@@ -542,7 +547,15 @@ export default function OrdersPage() {
                         className="px-3 py-2 text-xs"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        {o.city} {o.zipcode}
+                        {o.addressLine1 && (
+                          <div className="truncate max-w-[220px]" title={o.addressLine1}>
+                            {o.addressLine1}
+                          </div>
+                        )}
+                        <div style={{ color: "var(--text-muted)" }}>
+                          {[o.city, o.province, o.zipcode].filter(Boolean).join(", ")}
+                          {o.country && o.country !== "CA" ? ` · ${o.country}` : ""}
+                        </div>
                       </td>
                       <td
                         className="px-3 py-2 font-mono text-xs"
@@ -609,17 +622,26 @@ export default function OrdersPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-xs">
-                        {o.batchId ? (
-                          <span
-                            className="font-mono"
+                        {o.trackingUrl ? (
+                          <a
+                            href={o.trackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 font-mono hover:underline"
                             style={{ color: "var(--accent)" }}
+                            title={o.trackingNumber ?? undefined}
                           >
-                            {o.batchId}
+                            {o.trackingNumber ?? "Track"}
+                            <span className="material-symbols-outlined text-[14px]">
+                              open_in_new
+                            </span>
+                          </a>
+                        ) : o.trackingNumber ? (
+                          <span className="font-mono" style={{ color: "var(--text-secondary)" }}>
+                            {o.trackingNumber}
                           </span>
-                        ) : o.errorNote ? (
-                          <span style={{ color: "#f87171" }}>{o.errorNote}</span>
                         ) : (
-                          ""
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
                         )}
                       </td>
                     </tr>
