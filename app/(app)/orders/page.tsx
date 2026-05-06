@@ -30,7 +30,22 @@ interface Order {
   boxCode: string | null;
   errorNote: string | null;
   batchId: string | null;
+  attentionReason:
+    | "ADDRESS_ERROR"
+    | "DELAYED"
+    | "NOTICE_CARD"
+    | "STUCK"
+    | null;
+  attentionAt: string | null;
+  attentionNote: string | null;
 }
+
+const ATTENTION_LABELS: Record<string, string> = {
+  ADDRESS_ERROR: "Sai địa chỉ",
+  DELAYED: "Delay",
+  NOTICE_CARD: "Notice card",
+  STUCK: "Không cập nhật",
+};
 
 interface FilterOption {
   id: string;
@@ -64,6 +79,7 @@ export default function OrdersPage() {
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
   const [filterPayment, setFilterPayment] = useState("");
+  const [filterAttention, setFilterAttention] = useState("");
   const [search, setSearch] = useState("");
 
   const loadOrders = useCallback(async () => {
@@ -73,13 +89,14 @@ export default function OrdersPage() {
     if (filterCustomer) params.set("customer", filterCustomer);
     if (filterProduct) params.set("product", filterProduct);
     if (filterPayment) params.set("payment", filterPayment);
+    if (filterAttention) params.set("attention", filterAttention);
     if (search) params.set("search", search);
 
     const res = await fetch(`/api/orders?${params.toString()}`);
     const data = await res.json();
     if (data.success) setOrders(data.data);
     setLoading(false);
-  }, [filterStatus, filterCustomer, filterProduct, filterPayment, search]);
+  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, search]);
 
   useEffect(() => {
     loadOrders();
@@ -173,6 +190,7 @@ export default function OrdersPage() {
   }
 
   const readyCount = orders.filter((o) => o.status === "READY").length;
+  const attentionCount = orders.filter((o) => o.attentionReason !== null).length;
   const allSelected = orders.length > 0 && selectedKeys.size === orders.length;
   const someSelected = selectedKeys.size > 0 && selectedKeys.size < orders.length;
   const filteredProducts = filterCustomer
@@ -185,7 +203,7 @@ export default function OrdersPage() {
 
       {/* Filters */}
       <div
-        className="rounded-xl p-4 mb-4 border grid grid-cols-6 gap-3"
+        className="rounded-xl p-4 mb-4 border grid grid-cols-7 gap-3"
         style={{
           backgroundColor: "var(--bg-secondary)",
           borderColor: "var(--border)",
@@ -279,6 +297,27 @@ export default function OrdersPage() {
           </select>
         </div>
 
+        <div>
+          <label
+            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Cần chú ý
+          </label>
+          <select
+            value={filterAttention}
+            onChange={(e) => setFilterAttention(e.target.value)}
+            className="w-full px-2 py-1.5 rounded text-sm"
+          >
+            <option value="">Tất cả</option>
+            <option value="any">Có flag (mọi loại)</option>
+            <option value="ADDRESS_ERROR">Sai địa chỉ</option>
+            <option value="DELAYED">Delay</option>
+            <option value="NOTICE_CARD">Notice card</option>
+            <option value="STUCK">Không cập nhật 3 ngày</option>
+          </select>
+        </div>
+
         <div className="col-span-2">
           <label
             className="text-[10px] font-bold tracking-widest uppercase block mb-1"
@@ -310,6 +349,11 @@ export default function OrdersPage() {
             {readyCount > 0 && (
               <span className="ml-2" style={{ color: "var(--accent)" }}>
                 · {readyCount} sẵn sàng
+              </span>
+            )}
+            {attentionCount > 0 && (
+              <span className="ml-2" style={{ color: "#f472b6" }}>
+                · {attentionCount} cần chú ý
               </span>
             )}
           </span>
@@ -442,6 +486,9 @@ export default function OrdersPage() {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Trạng thái
                   </th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Cần chú ý
+                  </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Note / Batch
                   </th>
@@ -539,6 +586,27 @@ export default function OrdersPage() {
                         >
                           {STATUS_LABELS[o.status]}
                         </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {o.attentionReason ? (
+                          <span
+                            className={`attention-${o.attentionReason} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
+                            title={
+                              [
+                                o.attentionNote,
+                                o.attentionAt
+                                  ? `Lúc: ${new Date(o.attentionAt).toLocaleString("vi-VN")}`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join("\n")
+                            }
+                          >
+                            {ATTENTION_LABELS[o.attentionReason]}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-xs">
                         {o.batchId ? (

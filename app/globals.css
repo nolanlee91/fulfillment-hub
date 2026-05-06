@@ -70,6 +70,28 @@ body {
   color: #fb923c;
   border: 1px solid rgba(249, 115, 22, 0.3);
 }
+/* Attention badges (đơn cần chú ý) */
+.attention-ADDRESS_ERROR {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.attention-DELAYED {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+.attention-NOTICE_CARD {
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+.attention-STUCK {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
 .payment-PREPAID {
   background: rgba(148, 163, 184, 0.15);
   color: #cbd5e1;

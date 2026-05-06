@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const customerId = searchParams.get("customer");
     const productId = searchParams.get("product");
     const payment = searchParams.get("payment"); // PREPAID | COD
+    const attention = searchParams.get("attention"); // ADDRESS_ERROR | DELAYED | NOTICE_CARD | STUCK | "any"
     const search = searchParams.get("search");
 
     const conditions = [];
@@ -30,6 +31,18 @@ export async function GET(req: NextRequest) {
     if (productId) conditions.push(eq(orders.productId, productId));
     if (payment === "PREPAID" || payment === "COD") {
       conditions.push(eq(orders.paymentMethod, payment));
+    }
+    if (attention) {
+      if (attention === "any") {
+        conditions.push(sql`${orders.attentionReason} IS NOT NULL`);
+      } else if (
+        attention === "ADDRESS_ERROR" ||
+        attention === "DELAYED" ||
+        attention === "NOTICE_CARD" ||
+        attention === "STUCK"
+      ) {
+        conditions.push(eq(orders.attentionReason, attention));
+      }
     }
     if (search) {
       const s = `%${search.toLowerCase()}%`;
@@ -63,6 +76,9 @@ export async function GET(req: NextRequest) {
         boxCode: orders.boxCode,
         errorNote: orders.errorNote,
         batchId: orders.batchId,
+        attentionReason: orders.attentionReason,
+        attentionAt: orders.attentionAt,
+        attentionNote: orders.attentionNote,
       })
       .from(orders)
       .leftJoin(products, eq(orders.productId, products.id))
