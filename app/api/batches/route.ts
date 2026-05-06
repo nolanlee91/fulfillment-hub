@@ -42,6 +42,7 @@ export async function GET() {
       .select({
         id: batches.id,
         totalOrders: batches.totalOrders,
+        platform: batches.platform,
         createdAt: batches.createdAt,
         exportedAt: batches.exportedAt,
       })

@@ -6,6 +6,7 @@ import { Topbar } from "@/components/topbar";
 interface Batch {
   id: string;
   totalOrders: number;
+  platform: "CLICKSHIP" | "EST" | null;
   createdAt: string;
   exportedAt: string | null;
 }
@@ -31,11 +32,11 @@ export default function BatchesPage() {
     load();
   }, []);
 
-  async function exportBatch(batchId: string) {
-    setExporting(batchId);
+  async function exportBatch(batch: Batch) {
+    setExporting(batch.id);
     setMessage(null);
     try {
-      const res = await fetch(`/api/batches/${encodeURIComponent(batchId)}/export`);
+      const res = await fetch(`/api/batches/${encodeURIComponent(batch.id)}/export`);
       if (!res.ok) {
         const errData = await res.json();
         setMessage({ text: errData.error || "Export failed", type: "error" });
@@ -45,11 +46,12 @@ export default function BatchesPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `clickship_${batchId}.xlsx`;
+      const isEst = batch.platform === "EST";
+      a.download = isEst ? `EST_${batch.id}.csv` : `clickship_${batch.id}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
       setMessage({
-        text: `Đã tải file Excel cho batch ${batchId}`,
+        text: `Đã tải file ${isEst ? "CSV" : "Excel"} cho batch ${batch.id}`,
         type: "success",
       });
     } catch (e) {
@@ -137,6 +139,9 @@ export default function BatchesPage() {
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Batch ID
                   </th>
+                  <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Loại
+                  </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Số đơn
                   </th>
@@ -149,45 +154,55 @@ export default function BatchesPage() {
                 </tr>
               </thead>
               <tbody>
-                {batches.map((b) => (
-                  <tr
-                    key={b.id}
-                    className="border-t"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <td className="px-4 py-3 font-mono text-sm font-bold text-white">
-                      {b.id}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-right font-mono"
-                      style={{ color: "var(--accent)" }}
+                {batches.map((b) => {
+                  const isEst = b.platform === "EST";
+                  return (
+                    <tr
+                      key={b.id}
+                      className="border-t"
+                      style={{ borderColor: "var(--border)" }}
                     >
-                      {b.totalOrders}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {formatDate(b.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => exportBatch(b.id)}
-                        disabled={exporting === b.id}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded disabled:opacity-50"
-                        style={{
-                          backgroundColor: "var(--accent)",
-                          color: "var(--bg-primary)",
-                        }}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">
-                          download
+                      <td className="px-4 py-3 font-mono text-sm font-bold text-white">
+                        {b.id}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className={`payment-${isEst ? "COD" : "PREPAID"} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
+                        >
+                          {isEst ? "COD" : "Thường"}
                         </span>
-                        {exporting === b.id ? "Đang tải..." : "Tải Excel"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right font-mono"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        {b.totalOrders}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-xs"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {formatDate(b.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => exportBatch(b)}
+                          disabled={exporting === b.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded disabled:opacity-50"
+                          style={{
+                            backgroundColor: "var(--accent)",
+                            color: "var(--bg-primary)",
+                          }}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            download
+                          </span>
+                          {exporting === b.id ? "Đang tải..." : isEst ? "Tải CSV" : "Tải Excel"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

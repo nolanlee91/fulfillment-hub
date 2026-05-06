@@ -6,6 +6,7 @@ import { Topbar } from "@/components/topbar";
 interface Batch {
   id: string;
   totalOrders: number;
+  platform: "CLICKSHIP" | "EST" | null;
   createdAt: string;
 }
 
@@ -48,7 +49,7 @@ export default function ImportTrackingPage() {
         }}
       >
         <TabButton active={tab === "label"} onClick={() => setTab("label")}>
-          Tạo label (Excel)
+          Tạo label
         </TabButton>
         <TabButton active={tab === "events"} onClick={() => setTab("events")}>
           Sự kiện vận chuyển (APT)
@@ -151,7 +152,7 @@ function LabelTab() {
           Upload file kết quả tạo label
         </h3>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-          Chọn batch đã xuất, upload file Excel kết quả để cập nhật tracking và phát hiện đơn không tạo được label.
+          Chọn batch đã xuất, upload file kết quả tương ứng để cập nhật tracking và phát hiện đơn không tạo được label.
         </p>
 
         <label
@@ -167,15 +168,26 @@ function LabelTab() {
           disabled={importing}
         >
           {batches.length === 0 && <option>Chưa có batch nào</option>}
-          {batches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.id} ({b.totalOrders} đơn)
-            </option>
-          ))}
+          {batches.map((b) => {
+            const tag =
+              b.platform === "EST"
+                ? "COD · CSV"
+                : b.platform === "CLICKSHIP"
+                  ? "Thường · Excel"
+                  : "Thường · Excel";
+            return (
+              <option key={b.id} value={b.id}>
+                {b.id} ({b.totalOrders} đơn · {tag})
+              </option>
+            );
+          })}
         </select>
         {selectedBatchInfo && (
           <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-            {selectedBatchInfo.totalOrders} đơn đã xuất trong batch này
+            {selectedBatchInfo.totalOrders} đơn —{" "}
+            {selectedBatchInfo.platform === "EST"
+              ? "Batch COD, expect file CSV trả về"
+              : "Batch thường, expect file Excel trả về"}
           </p>
         )}
 
@@ -183,12 +195,12 @@ function LabelTab() {
           className="text-[11px] font-bold tracking-widest uppercase block mt-4 mb-2"
           style={{ color: "var(--text-muted)" }}
         >
-          File Excel (.xlsx)
+          {selectedBatchInfo?.platform === "EST" ? "File CSV (.csv)" : "File Excel (.xlsx)"}
         </label>
         <input
           id="label-file-input"
           type="file"
-          accept=".xlsx,.xls"
+          accept={selectedBatchInfo?.platform === "EST" ? ".csv" : ".xlsx,.xls"}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           disabled={importing}
           className="w-full px-3 py-2.5 rounded text-sm cursor-pointer"
