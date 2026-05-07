@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
 import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
@@ -130,12 +131,16 @@ interface KpiCardProps {
   value: number;
   icon: string;
   accent: string;
+  href: string;
   subInfo?: { label: string; value: string | number };
 }
 
-function KpiCard({ label, value, icon, accent, subInfo }: KpiCardProps) {
+function KpiCard({ label, value, icon, accent, href, subInfo }: KpiCardProps) {
   return (
-    <div className="card card-interactive p-4 relative overflow-hidden">
+    <Link
+      href={href}
+      className="card card-interactive p-4 relative overflow-hidden block group"
+    >
       <div className="flex items-start justify-between mb-2">
         <p
           className="text-[10px] font-bold tracking-[0.14em] uppercase"
@@ -144,7 +149,7 @@ function KpiCard({ label, value, icon, accent, subInfo }: KpiCardProps) {
           {label}
         </p>
         <span
-          className="material-symbols-outlined text-[20px]"
+          className="material-symbols-outlined text-[20px] transition-opacity"
           style={{ color: accent, opacity: 0.6 }}
         >
           {icon}
@@ -159,7 +164,13 @@ function KpiCard({ label, value, icon, accent, subInfo }: KpiCardProps) {
           <span>{subInfo.label}</span>
         </p>
       )}
-    </div>
+      <span
+        className="material-symbols-outlined text-[14px] absolute bottom-3 right-3 opacity-0 group-hover:opacity-60 transition-opacity"
+        style={{ color: accent }}
+      >
+        arrow_outward
+      </span>
+    </Link>
   );
 }
 
@@ -232,13 +243,14 @@ export default async function DashboardPage() {
     <>
       <Topbar title="Dashboard" subtitle="Tổng quan" />
 
-      {/* === KPI strip — 4 cards compact === */}
+      {/* === KPI strip — 4 cards compact, clickable === */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         <KpiCard
           label="Đang xử lý"
           value={inProgress}
           icon="pending_actions"
           accent="var(--color-info)"
+          href="/orders"
           subInfo={{ label: `tổng ${stats.total} đơn`, value: `${100 - deliveryRate}%` }}
         />
         <KpiCard
@@ -246,6 +258,7 @@ export default async function DashboardPage() {
           value={stats.ready}
           icon="inventory_2"
           accent="var(--accent)"
+          href="/orders?status=READY"
           subInfo={
             stats.new > 0
               ? { label: "đơn mới chờ validate", value: stats.new }
@@ -257,6 +270,7 @@ export default async function DashboardPage() {
           value={stats.delivered}
           icon="task_alt"
           accent="var(--color-teal)"
+          href="/delivered"
           subInfo={{ label: "tỷ lệ giao thành công", value: `${deliveryRate}%` }}
         />
         <KpiCard
@@ -264,6 +278,7 @@ export default async function DashboardPage() {
           value={attention.total}
           icon="priority_high"
           accent="var(--color-pink)"
+          href="/orders?attention=any"
           subInfo={
             attention.total > 0
               ? {

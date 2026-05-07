@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Topbar } from "@/components/topbar";
 
 interface Order {
@@ -78,6 +79,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<FilterOption[]>([]);
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
@@ -87,13 +89,13 @@ export default function OrdersPage() {
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Filters
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterCustomer, setFilterCustomer] = useState("");
-  const [filterProduct, setFilterProduct] = useState("");
-  const [filterPayment, setFilterPayment] = useState("");
-  const [filterAttention, setFilterAttention] = useState("");
-  const [search, setSearch] = useState("");
+  // Filters — initial từ URL search params (cho phép link từ dashboard)
+  const [filterStatus, setFilterStatus] = useState(() => searchParams.get("status") ?? "");
+  const [filterCustomer, setFilterCustomer] = useState(() => searchParams.get("customer") ?? "");
+  const [filterProduct, setFilterProduct] = useState(() => searchParams.get("product") ?? "");
+  const [filterPayment, setFilterPayment] = useState(() => searchParams.get("payment") ?? "");
+  const [filterAttention, setFilterAttention] = useState(() => searchParams.get("attention") ?? "");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
