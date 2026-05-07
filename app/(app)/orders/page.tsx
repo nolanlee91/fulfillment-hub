@@ -457,6 +457,9 @@ function OrdersPageContent() {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Trạng thái
                   </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Batch
+                  </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Cần chú ý
                   </th>
@@ -556,6 +559,19 @@ function OrdersPageContent() {
                         >
                           {STATUS_LABELS[o.status]}
                         </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {o.batchId ? (
+                          <span
+                            className="font-mono text-[11px]"
+                            style={{ color: "var(--text-secondary)" }}
+                            title={o.batchId}
+                          >
+                            {o.batchId}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-center">
                         {o.attentionReason ? (

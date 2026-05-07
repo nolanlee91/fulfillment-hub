@@ -198,12 +198,33 @@ interface PipelineBoxProps {
   color?: string;
 }
 
+const ABOVE_SLOT_HEIGHT = 36;
+
+function AboveSlot({ text, maxWidth }: { text?: string; maxWidth?: number }) {
+  return (
+    <div
+      className="flex items-end justify-center w-full px-1"
+      style={{ minHeight: ABOVE_SLOT_HEIGHT }}
+    >
+      {text && (
+        <p
+          className="text-[9.5px] font-medium tracking-wide text-center leading-tight pb-1"
+          style={{ color: "var(--text-secondary)", maxWidth: maxWidth ?? 140 }}
+        >
+          {text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function PipelineBox({ count, label, color }: PipelineBoxProps) {
   const labels = Array.isArray(label) ? label : [label];
 
   if (count === undefined) {
     return (
       <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 108 }}>
+        <AboveSlot />
         <div
           className="rounded-md px-2.5 py-2 w-full flex flex-col items-center justify-center"
           style={{
@@ -229,6 +250,7 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
 
   return (
     <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 88 }}>
+      <AboveSlot />
       <div
         className="rounded-md py-2 w-full flex items-center justify-center"
         style={{
@@ -251,9 +273,16 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
   );
 }
 
-function PipelineArrow({ caption }: { caption: string }) {
+function PipelineArrow({
+  caption,
+  captionAbove,
+}: {
+  caption: string;
+  captionAbove?: string;
+}) {
   return (
     <div className="shrink-0 flex flex-col items-center px-1" style={{ width: 132 }}>
+      <AboveSlot text={captionAbove} maxWidth={128} />
       <div className="flex items-center w-full" style={{ height: 64 }}>
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
         <span
@@ -285,6 +314,7 @@ function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillDa
   // Pill height 40, gap 8, total 88. Top pill center y=20, bottom y=68, mid y=44.
   return (
     <div className="shrink-0 flex flex-col items-center">
+      <AboveSlot />
       <div className="flex items-center" style={{ height: 88 }}>
         <svg width="32" height="88" className="shrink-0">
           <line x1="0" y1="44" x2="14" y2="44" stroke={stroke} strokeWidth="1" />
@@ -442,24 +472,30 @@ export default async function DashboardPage() {
           <PipelineBox label={["Data khách", "Google Sheet"]} />
           <PipelineArrow caption="Đồng bộ" />
           <PipelineBox count={stats.new + stats.ready} label="Sẵn sàng" color="#34d399" />
-          <PipelineArrow caption="Xuất file upload lên ClickShip & EST" />
+          <PipelineArrow
+            captionAbove="Tạo Batch"
+            caption="Xuất file upload lên ClickShip & EST"
+          />
           <BranchFork
             top={{ count: exported.clickship, label: "ClickShip", sublabel: "đơn thường", color: "#34d399" }}
             bottom={{ count: exported.est, label: "EST", sublabel: "COD", color: "#fbbf24" }}
           />
-          <PipelineArrow caption="Đối soát vận chuyển" />
+          <PipelineArrow
+            captionAbove="Upload file label của ClickShip / EST"
+            caption="Đối soát vận chuyển"
+          />
           <PipelineBox
             count={stats.labeled + stats.inTransit + stats.delivered + stats.failed}
             label="Có label"
             color="#a78bfa"
           />
-          <PipelineArrow caption="Automation" />
+          <PipelineArrow captionAbove="Pull file APT Canada Post" caption="Automation" />
           <PipelineBox
             count={stats.inTransit + stats.delivered + stats.failed}
             label="Vận chuyển"
             color="#38bdf8"
           />
-          <PipelineArrow caption="Automation" />
+          <PipelineArrow captionAbove="Pull file APT Canada Post" caption="Automation" />
           <PipelineBox count={stats.delivered} label="Đã giao" color="#2dd4bf" />
         </div>
         {(stats.error > 0 || stats.failed > 0) && (
