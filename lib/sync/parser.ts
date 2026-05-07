@@ -177,11 +177,11 @@ export async function parseSheet(
     const phoneNorm = normalizePhone(phoneRaw);
 
     // Payment + note
-    const giaTienVal = giaTienIdx >= 0 ? parseMoney(String(row[giaTienIdx] || "")) : NaN;
-    const isCOD = !isNaN(giaTienVal) && giaTienVal > 0;
-    const paymentMethod: "PREPAID" | "COD" = isCOD ? "COD" : "PREPAID";
-    const codAmount = isCOD ? giaTienVal : null;
     const note = ghiChuIdx >= 0 ? String(row[ghiChuIdx] || "").trim() : "";
+    const giaTienVal = giaTienIdx >= 0 ? parseMoney(String(row[giaTienIdx] || "")) : NaN;
+    const isCOD = note.toLowerCase().includes("cod");
+    const paymentMethod: "PREPAID" | "COD" = isCOD ? "COD" : "PREPAID";
+    const codAmount = isCOD && !isNaN(giaTienVal) && giaTienVal > 0 ? giaTienVal : null;
 
     // Validate
     const missingFields: string[] = [];
