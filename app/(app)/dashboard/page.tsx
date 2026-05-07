@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
 import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
-import { sql, desc, isNotNull } from "drizzle-orm";
+import { sql, desc, isNotNull, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +66,23 @@ async function getDashboardData() {
     else if (r.reason === "STUCK") attention.stuck = c;
   }
 
+  const exportedByPlatform = await db
+    .select({
+      platform: batches.platform,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(orders)
+    .innerJoin(batches, eq(orders.batchId, batches.id))
+    .where(eq(orders.status, "EXPORTED"))
+    .groupBy(batches.platform);
+
+  const exported = { clickship: 0, est: 0 };
+  for (const r of exportedByPlatform) {
+    const c = Number(r.count);
+    if (r.platform === "CLICKSHIP") exported.clickship = c;
+    else if (r.platform === "EST") exported.est = c;
+  }
+
   const [batchCount] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(batches);
@@ -119,6 +136,7 @@ async function getDashboardData() {
   return {
     stats: { ...stats, batches: Number(batchCount?.count ?? 0) },
     attention,
+    exported,
     recentBatches,
     recentPulls,
     lastSync: lastSync[0] ?? null,
@@ -174,44 +192,141 @@ function KpiCard({ label, value, icon, accent, href, subInfo }: KpiCardProps) {
   );
 }
 
-interface PipelineStepProps {
-  label: string;
-  count: number;
-  color: string;
-  isLast?: boolean;
+interface PipelineBoxProps {
+  count?: number;
+  label: string | string[];
+  color?: string;
 }
 
-function PipelineStep({ label, count, color, isLast }: PipelineStepProps) {
-  return (
-    <>
-      <div className="flex-1 flex flex-col items-center text-center px-2">
+function PipelineBox({ count, label, color }: PipelineBoxProps) {
+  const labels = Array.isArray(label) ? label : [label];
+
+  if (count === undefined) {
+    return (
+      <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 88 }}>
         <div
-          className="w-full rounded-md py-2.5 mb-2"
+          className="rounded-md px-2 py-2 w-full flex flex-col items-center justify-center"
           style={{
-            backgroundColor: `${color}1f`,
-            border: `1px solid ${color}40`,
+            backgroundColor: "var(--bg-tertiary)",
+            border: "1px dashed var(--border)",
+            minHeight: 44,
           }}
         >
-          <p className="text-[20px] font-bold leading-none" style={{ color }}>
-            {count}
-          </p>
+          {labels.map((l, i) => (
+            <p
+              key={i}
+              className="text-[10px] font-semibold leading-tight"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {l}
+            </p>
+          ))}
         </div>
-        <p
-          className="text-[10px] font-semibold tracking-widest uppercase"
-          style={{ color: "var(--text-muted)" }}
-        >
-          {label}
+        <div style={{ height: 18 }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 64 }}>
+      <div
+        className="rounded-md py-1.5 w-full flex items-center justify-center"
+        style={{
+          backgroundColor: `${color}1f`,
+          border: `1px solid ${color}40`,
+          minHeight: 44,
+        }}
+      >
+        <p className="text-[18px] font-bold leading-none" style={{ color }}>
+          {count}
         </p>
       </div>
-      {!isLast && (
+      <p
+        className="text-[9px] font-semibold tracking-widest uppercase mt-1.5"
+        style={{ color: "var(--text-muted)" }}
+      >
+        {labels[0]}
+      </p>
+    </div>
+  );
+}
+
+function PipelineArrow({ caption }: { caption: string }) {
+  return (
+    <div className="shrink-0 flex flex-col items-center" style={{ width: 92 }}>
+      <div className="flex items-center w-full" style={{ height: 44 }}>
+        <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
         <span
-          className="material-symbols-outlined text-[18px] mt-3 shrink-0"
-          style={{ color: "var(--text-muted)", opacity: 0.5 }}
+          className="material-symbols-outlined text-[16px] -ml-1"
+          style={{ color: "var(--text-muted)" }}
         >
           chevron_right
         </span>
-      )}
-    </>
+      </div>
+      <p
+        className="text-[9px] font-semibold tracking-widest uppercase mt-1.5"
+        style={{ color: "var(--text-muted)" }}
+      >
+        {caption}
+      </p>
+    </div>
+  );
+}
+
+interface BranchPillData {
+  count: number;
+  label: string;
+  color: string;
+}
+
+function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillData }) {
+  const stroke = "rgba(148, 163, 184, 0.4)";
+  return (
+    <div className="shrink-0 flex flex-col items-center">
+      <div className="flex items-center" style={{ height: 58 }}>
+        <svg width="28" height="58" className="shrink-0">
+          <line x1="0" y1="29" x2="12" y2="29" stroke={stroke} strokeWidth="1" />
+          <line x1="12" y1="29" x2="28" y2="13" stroke={stroke} strokeWidth="1" />
+          <line x1="12" y1="29" x2="28" y2="45" stroke={stroke} strokeWidth="1" />
+        </svg>
+        <div className="flex flex-col gap-1.5">
+          <BranchPill {...top} />
+          <BranchPill {...bottom} />
+        </div>
+        <svg width="28" height="58" className="shrink-0">
+          <line x1="0" y1="13" x2="16" y2="29" stroke={stroke} strokeWidth="1" />
+          <line x1="0" y1="45" x2="16" y2="29" stroke={stroke} strokeWidth="1" />
+          <line x1="16" y1="29" x2="28" y2="29" stroke={stroke} strokeWidth="1" />
+        </svg>
+      </div>
+      <p
+        className="text-[9px] font-semibold tracking-widest uppercase mt-1.5"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Đã xuất
+      </p>
+    </div>
+  );
+}
+
+function BranchPill({ count, label, color }: BranchPillData) {
+  return (
+    <div
+      className="flex items-center justify-between gap-2 rounded-md px-2.5"
+      style={{
+        backgroundColor: `${color}1f`,
+        border: `1px solid ${color}40`,
+        minWidth: 96,
+        height: 26,
+      }}
+    >
+      <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color }}>
+        {label}
+      </span>
+      <span className="text-[14px] font-bold leading-none" style={{ color }}>
+        {count}
+      </span>
+    </div>
   );
 }
 
@@ -233,7 +348,7 @@ const ATTENTION_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-  const { stats, attention, recentBatches, recentPulls, lastSync, recentAttention } =
+  const { stats, attention, exported, recentBatches, recentPulls, lastSync, recentAttention } =
     await getDashboardData();
 
   const inProgress = stats.total - stats.delivered;
@@ -314,13 +429,21 @@ export default async function DashboardPage() {
             <span>Cập nhật real-time</span>
           </div>
         </div>
-        <div className="flex items-start">
-          <PipelineStep label="Mới" count={stats.new} color="#60a5fa" />
-          <PipelineStep label="Sẵn sàng" count={stats.ready} color="#34d399" />
-          <PipelineStep label="Đã xuất" count={stats.exported} color="#94a3b8" />
-          <PipelineStep label="Có label" count={stats.labeled} color="#a78bfa" />
-          <PipelineStep label="Vận chuyển" count={stats.inTransit} color="#38bdf8" />
-          <PipelineStep label="Đã giao" count={stats.delivered} color="#2dd4bf" isLast />
+        <div className="flex items-center justify-between overflow-x-auto pb-2">
+          <PipelineBox label={["Data khách", "Google Sheet"]} />
+          <PipelineArrow caption="Đồng bộ" />
+          <PipelineBox count={stats.new + stats.ready} label="Sẵn sàng" color="#34d399" />
+          <PipelineArrow caption="Tạo batch" />
+          <BranchFork
+            top={{ count: exported.clickship, label: "ClickShip", color: "#34d399" }}
+            bottom={{ count: exported.est, label: "EST", color: "#fbbf24" }}
+          />
+          <PipelineArrow caption="Import label" />
+          <PipelineBox count={stats.labeled} label="Có label" color="#a78bfa" />
+          <PipelineArrow caption="Pull APT" />
+          <PipelineBox count={stats.inTransit} label="Vận chuyển" color="#38bdf8" />
+          <PipelineArrow caption="Pull APT" />
+          <PipelineBox count={stats.delivered} label="Đã giao" color="#2dd4bf" />
         </div>
         {(stats.error > 0 || stats.failed > 0) && (
           <div
