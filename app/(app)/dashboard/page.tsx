@@ -97,7 +97,7 @@ async function getDashboardData() {
     })
     .from(batches)
     .orderBy(desc(batches.createdAt))
-    .limit(5);
+    .limit(4);
 
   const recentPulls = await db
     .select({
@@ -108,7 +108,7 @@ async function getDashboardData() {
     })
     .from(trackingFiles)
     .orderBy(desc(trackingFiles.processedAt))
-    .limit(5);
+    .limit(4);
 
   const lastSync = await db
     .select({
@@ -281,7 +281,7 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
 function PipelineArrow({
   caption,
   captionAbove,
-  width = 132,
+  width = 108,
 }: {
   caption: string;
   captionAbove?: string;
@@ -356,27 +356,20 @@ function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillDa
   );
 }
 
-function BranchPill({ count, label, sublabel, color }: BranchPillData) {
+function BranchPill({ count, label, color }: BranchPillData) {
   return (
     <div
       className="flex items-center justify-between gap-3 rounded-md px-3"
       style={{
         backgroundColor: `${color}1f`,
         border: `1px solid ${color}40`,
-        minWidth: 168,
+        minWidth: 124,
         height: 40,
       }}
     >
-      <div className="flex flex-col">
-        <span className="text-[11px] font-bold tracking-wider uppercase leading-tight" style={{ color }}>
-          {label}
-        </span>
-        {sublabel && (
-          <span className="text-[9px] font-medium leading-tight" style={{ color: "var(--text-muted)" }}>
-            {sublabel}
-          </span>
-        )}
-      </div>
+      <span className="text-[11px] font-bold tracking-wider uppercase" style={{ color }}>
+        {label}
+      </span>
       <span className="text-[20px] font-bold leading-none" style={{ color }}>
         {count}
       </span>
@@ -413,7 +406,7 @@ export default async function DashboardPage() {
       <Topbar title="Dashboard" subtitle="Tổng quan" />
 
       {/* === KPI strip — 4 cards compact, clickable === */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-4 gap-3 mb-3">
         <KpiCard
           label="Đang xử lý"
           value={inProgress}
@@ -467,7 +460,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* === Pipeline === */}
-      <div className="card p-5 mb-4">
+      <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p
@@ -492,14 +485,14 @@ export default async function DashboardPage() {
             caption="Xuất file upload lên ClickShip & EST"
           />
           <BranchFork
-            top={{ count: exported.clickship, label: "ClickShip", sublabel: "đơn thường", color: "#34d399" }}
-            bottom={{ count: exported.est, label: "EST", sublabel: "COD", color: "#fbbf24" }}
+            top={{ count: exported.clickship, label: "ClickShip", color: "#34d399" }}
+            bottom={{ count: exported.est, label: "EST", color: "#fbbf24" }}
           />
           <PipelineArrow
             captionAbove="Download label từ ClickShip/EST"
             caption="Tải label về máy"
           />
-          <PipelineBox label={["Đã download", "chờ upload"]} />
+          <PipelineBox label="Label Downloaded" />
           <PipelineArrow
             captionAbove="Upload file label của ClickShip / EST"
             caption="Đối soát vận chuyển"
@@ -560,9 +553,9 @@ export default async function DashboardPage() {
       </div>
 
       {/* === 2-column: Recent batches + Activity === */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-3 gap-4 mb-3">
         {/* Recent batches */}
-        <div className="card p-5 col-span-2">
+        <div className="card p-4 col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p
@@ -643,7 +636,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Activity feed */}
-        <div className="card p-5">
+        <div className="card p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p
@@ -722,7 +715,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* === Recent APT pulls === */}
-      <div className="card p-5">
+      <div className="card p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p
@@ -743,7 +736,7 @@ export default async function DashboardPage() {
             Chưa có file nào được pull.
           </p>
         ) : (
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {recentPulls.map((p) => (
               <div
                 key={p.filename}
