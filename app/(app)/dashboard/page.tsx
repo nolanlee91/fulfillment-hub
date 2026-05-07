@@ -281,13 +281,15 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
 function PipelineArrow({
   caption,
   captionAbove,
+  width = 132,
 }: {
   caption: string;
   captionAbove?: string;
+  width?: number;
 }) {
   return (
-    <div className="shrink-0 flex flex-col items-center px-1" style={{ width: 132 }}>
-      <AboveSlot text={captionAbove} maxWidth={128} />
+    <div className="shrink-0 flex flex-col items-center px-1" style={{ width }}>
+      <AboveSlot text={captionAbove} maxWidth={width - 8} />
       <div className="flex items-center w-full" style={{ height: 64 }}>
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
         <span
@@ -299,7 +301,7 @@ function PipelineArrow({
       </div>
       <p
         className="text-[10px] font-semibold tracking-wider uppercase mt-2 text-center leading-tight"
-        style={{ color: "var(--text-muted)", maxWidth: 124 }}
+        style={{ color: "var(--text-muted)", maxWidth: width - 8 }}
       >
         {caption}
       </p>
@@ -483,7 +485,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-center justify-between overflow-x-auto pb-2 gap-1">
           <PipelineBox label={["Data khách", "Google Sheet"]} />
-          <PipelineArrow caption="Đồng bộ" />
+          <PipelineArrow caption="Đồng bộ" width={88} />
           <PipelineBox count={stats.new + stats.ready} label="Sẵn sàng" color="#34d399" />
           <PipelineArrow
             captionAbove="Tạo Batch"
@@ -493,6 +495,11 @@ export default async function DashboardPage() {
             top={{ count: exported.clickship, label: "ClickShip", sublabel: "đơn thường", color: "#34d399" }}
             bottom={{ count: exported.est, label: "EST", sublabel: "COD", color: "#fbbf24" }}
           />
+          <PipelineArrow
+            captionAbove="Download label từ ClickShip/EST"
+            caption="Tải label về máy"
+          />
+          <PipelineBox label={["Đã download", "chờ upload"]} />
           <PipelineArrow
             captionAbove="Upload file label của ClickShip / EST"
             caption="Đối soát vận chuyển"
