@@ -71,7 +71,7 @@ const STATUS_LABELS: Record<string, string> = {
   READY: "Sẵn sàng",
   ERROR: "Lỗi",
   ERROR_UPDATED: "Đã cập nhật",
-  EXPORTED: "Đã upload",
+  EXPORTED: "Đã upload/chờ label",
   LABEL_CREATED: "Đã có label",
   IN_TRANSIT: "Đang vận chuyển",
   DELIVERED: "Đã giao",
@@ -241,7 +241,7 @@ function OrdersPageContent() {
             <option value="ERROR">Lỗi</option>
             <option value="ERROR_UPDATED">Đã cập nhật</option>
             <option value="NEW">Mới</option>
-            <option value="EXPORTED">Đã upload</option>
+            <option value="EXPORTED">Đã upload/chờ label</option>
             <option value="LABEL_CREATED">Đã có label</option>
             <option value="IN_TRANSIT">Đang vận chuyển</option>
             <option value="FAILED">Thất bại</option>

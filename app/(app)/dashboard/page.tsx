@@ -208,8 +208,8 @@ function AboveSlot({ text, maxWidth }: { text?: string; maxWidth?: number }) {
     >
       {text && (
         <p
-          className="text-[9.5px] font-medium tracking-wide text-center leading-tight pb-1"
-          style={{ color: "var(--text-secondary)", maxWidth: maxWidth ?? 140 }}
+          className="text-[10px] font-semibold tracking-wider uppercase text-center leading-tight pb-1"
+          style={{ color: "var(--text-muted)", maxWidth: maxWidth ?? 140 }}
         >
           {text}
         </p>
@@ -344,7 +344,7 @@ function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillDa
           Đã upload
         </p>
         <p
-          className="text-[9px] font-medium"
+          className="text-[10px] font-semibold tracking-widest uppercase"
           style={{ color: "var(--text-muted)" }}
         >
           chờ label
