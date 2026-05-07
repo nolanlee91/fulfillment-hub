@@ -238,17 +238,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Map orderId → uniqueKey (chỉ trong batch này)
-    const orderIdToKey: Record<string, string> = {};
+    // Map orderId → { uniqueKey, status } (chỉ trong batch này)
+    const orderIdToInfo: Record<string, { uniqueKey: string; status: string }> = {};
     for (const o of ordersInBatch) {
-      orderIdToKey[o.orderId] = o.uniqueKey;
+      orderIdToInfo[o.orderId] = { uniqueKey: o.uniqueKey, status: o.status };
     }
 
-    // 3. Tách thành 3 nhóm:
-    //   - matched: trong file ClickShip + có trong batch → cập nhật tracking
-    //   - notInBatch: trong file ClickShip nhưng không thuộc batch này → bỏ qua
-    //   - missingFromFile: trong batch nhưng không có trong file → ClickShip rejected
+    // 3. Tách thành 4 nhóm (chỉ touch đơn EXPORTED, không bao giờ downgrade đơn đã LABEL_CREATED+):
+    //   - updates: trong file + status EXPORTED → set tracking + LABEL_CREATED
+    //   - skippedAlreadyLabeled: trong file nhưng đã LABEL_CREATED/IN_TRANSIT/DELIVERED/FAILED → bỏ qua
+    //   - notInBatch: trong file nhưng không thuộc batch này → bỏ qua
+    //   - missingFromFile: trong batch + status EXPORTED nhưng không có trong file → ERROR (rejected)
+    //     (đơn missing đã LABEL_CREATED+ → bỏ qua, không downgrade)
     const matchedKeys: string[] = [];
+    const skippedAlreadyLabeled: string[] = [];
     const notInBatch: string[] = [];
     const updates: Array<{
       uniqueKey: string;
@@ -259,14 +262,18 @@ export async function POST(req: NextRequest) {
     }> = [];
 
     for (const t of trackingRows) {
-      const uniqueKey = orderIdToKey[t.orderId];
-      if (!uniqueKey) {
+      const info = orderIdToInfo[t.orderId];
+      if (!info) {
         notInBatch.push(t.orderId);
         continue;
       }
-      matchedKeys.push(uniqueKey);
+      matchedKeys.push(info.uniqueKey);
+      if (info.status !== "EXPORTED") {
+        skippedAlreadyLabeled.push(info.uniqueKey);
+        continue;
+      }
       updates.push({
-        uniqueKey,
+        uniqueKey: info.uniqueKey,
         trackingNumber: t.trackingNumber,
         trackingUrl: t.trackingUrl,
         shippingCarrier: t.shippingCarrier,
@@ -277,9 +284,10 @@ export async function POST(req: NextRequest) {
     const matchedSet = new Set(matchedKeys);
     const missingFromFile = ordersInBatch
       .filter((o) => !matchedSet.has(o.uniqueKey))
+      .filter((o) => o.status === "EXPORTED")
       .map((o) => o.uniqueKey);
 
-    // 4. Update DB — đơn có tracking → status LABEL_CREATED
+    // 4. Update DB — đơn EXPORTED có tracking trong file → LABEL_CREATED
     const now = new Date();
     for (const u of updates) {
       await db
@@ -295,7 +303,7 @@ export async function POST(req: NextRequest) {
         .where(eq(orders.uniqueKey, u.uniqueKey));
     }
 
-    // 5. Đơn không có tracking → status ERROR + note (chung chung, không lộ nhà cung cấp)
+    // 5. Đơn EXPORTED không có trong file → ERROR (chung chung, không lộ nhà cung cấp)
     if (missingFromFile.length > 0) {
       await db
         .update(orders)
@@ -307,15 +315,27 @@ export async function POST(req: NextRequest) {
         .where(inArray(orders.uniqueKey, missingFromFile));
     }
 
+    const messageParts = [`${updates.length} đơn có tracking`];
+    if (skippedAlreadyLabeled.length > 0) {
+      messageParts.push(`${skippedAlreadyLabeled.length} đơn đã có label trước đó (skip)`);
+    }
+    if (missingFromFile.length > 0) {
+      messageParts.push(`${missingFromFile.length} đơn rejected`);
+    }
+    if (notInBatch.length > 0) {
+      messageParts.push(`${notInBatch.length} đơn không thuộc batch này (bỏ qua)`);
+    }
+
     return NextResponse.json({
       success: true,
       batchId,
       totalInFile: trackingRows.length,
       totalInBatch: ordersInBatch.length,
-      matched: matchedKeys.length,
+      matched: updates.length,
+      skipped: skippedAlreadyLabeled.length,
       rejected: missingFromFile.length,
       notInBatch: notInBatch.length,
-      message: `Đã import: ${matchedKeys.length} đơn có tracking, ${missingFromFile.length} đơn rejected${notInBatch.length > 0 ? `, ${notInBatch.length} đơn không thuộc batch này (bỏ qua)` : ""}`,
+      message: `Đã import: ${messageParts.join(", ")}`,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
