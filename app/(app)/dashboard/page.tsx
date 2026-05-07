@@ -1,9 +1,11 @@
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
-import { orders, batches } from "@/lib/db/schema";
-import { sql } from "drizzle-orm";
+import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
+import { sql, desc, isNotNull } from "drizzle-orm";
 
-async function getDashboardStats() {
+export const dynamic = "force-dynamic";
+
+async function getDashboardData() {
   const statusCounts = await db
     .select({
       status: orders.status,
@@ -38,173 +40,553 @@ async function getDashboardStats() {
     else if (row.status === "FAILED") stats.failed = count;
   }
 
-  const batchCount = await db
+  const attentionRows = await db
+    .select({
+      reason: orders.attentionReason,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(orders)
+    .where(isNotNull(orders.attentionReason))
+    .groupBy(orders.attentionReason);
+
+  const attention = {
+    total: 0,
+    addressError: 0,
+    delayed: 0,
+    noticeCard: 0,
+    stuck: 0,
+  };
+  for (const r of attentionRows) {
+    const c = Number(r.count);
+    attention.total += c;
+    if (r.reason === "ADDRESS_ERROR") attention.addressError = c;
+    else if (r.reason === "DELAYED") attention.delayed = c;
+    else if (r.reason === "NOTICE_CARD") attention.noticeCard = c;
+    else if (r.reason === "STUCK") attention.stuck = c;
+  }
+
+  const [batchCount] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(batches);
 
+  const recentBatches = await db
+    .select({
+      id: batches.id,
+      totalOrders: batches.totalOrders,
+      platform: batches.platform,
+      createdAt: batches.createdAt,
+      exportedAt: batches.exportedAt,
+    })
+    .from(batches)
+    .orderBy(desc(batches.createdAt))
+    .limit(5);
+
+  const recentPulls = await db
+    .select({
+      filename: trackingFiles.filename,
+      processedAt: trackingFiles.processedAt,
+      totalRows: trackingFiles.totalRows,
+      totalUpdated: trackingFiles.totalUpdated,
+    })
+    .from(trackingFiles)
+    .orderBy(desc(trackingFiles.processedAt))
+    .limit(5);
+
+  const lastSync = await db
+    .select({
+      startedAt: syncLogs.startedAt,
+      completedAt: syncLogs.completedAt,
+      totalAdded: syncLogs.totalAdded,
+      totalErrors: syncLogs.totalErrors,
+    })
+    .from(syncLogs)
+    .orderBy(desc(syncLogs.startedAt))
+    .limit(1);
+
+  const recentAttention = await db
+    .select({
+      orderId: orders.orderId,
+      attentionReason: orders.attentionReason,
+      attentionAt: orders.attentionAt,
+      attentionNote: orders.attentionNote,
+    })
+    .from(orders)
+    .where(isNotNull(orders.attentionReason))
+    .orderBy(desc(orders.attentionAt))
+    .limit(5);
+
   return {
-    ...stats,
-    batches: Number(batchCount[0]?.count ?? 0),
+    stats: { ...stats, batches: Number(batchCount?.count ?? 0) },
+    attention,
+    recentBatches,
+    recentPulls,
+    lastSync: lastSync[0] ?? null,
+    recentAttention,
   };
 }
 
-export const dynamic = "force-dynamic";
-
-interface StatCardProps {
+interface KpiCardProps {
   label: string;
   value: number;
-  description?: string;
-  accent?: "emerald" | "red" | "blue" | "slate" | "violet" | "teal" | "sky" | "orange";
-  highlight?: boolean;
+  icon: string;
+  accent: string;
+  subInfo?: { label: string; value: string | number };
 }
 
-function StatCard({
-  label,
-  value,
-  description,
-  accent = "slate",
-  highlight = false,
-}: StatCardProps) {
-  const accentColors = {
-    emerald: "#10b981",
-    red: "#ef4444",
-    blue: "#3b82f6",
-    slate: "#94a3b8",
-    violet: "#8b5cf6",
-    teal: "#14b8a6",
-    sky: "#0ea5e9",
-    orange: "#f97316",
-  };
-  const color = accentColors[accent];
-
+function KpiCard({ label, value, icon, accent, subInfo }: KpiCardProps) {
   return (
-    <div
-      className="rounded-xl p-5 border"
-      style={{
-        backgroundColor: "var(--bg-secondary)",
-        borderColor: highlight ? color : "var(--border)",
-        borderLeftWidth: highlight ? "4px" : "1px",
-      }}
-    >
-      <p
-        className="text-[11px] font-bold tracking-widest uppercase mb-3"
-        style={{ color }}
-      >
-        {label}
+    <div className="card card-interactive p-4 relative overflow-hidden">
+      <div className="flex items-start justify-between mb-2">
+        <p
+          className="text-[10px] font-bold tracking-[0.14em] uppercase"
+          style={{ color: "var(--text-muted)" }}
+        >
+          {label}
+        </p>
+        <span
+          className="material-symbols-outlined text-[20px]"
+          style={{ color: accent, opacity: 0.6 }}
+        >
+          {icon}
+        </span>
+      </div>
+      <p className="text-[28px] font-bold leading-none tracking-tight" style={{ color: accent }}>
+        {value.toLocaleString()}
       </p>
-      <p className="text-4xl font-bold" style={{ color }}>
-        {value}
-      </p>
-      {description && (
-        <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
-          {description}
+      {subInfo && (
+        <p className="text-[11px] mt-2.5 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+          <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{subInfo.value}</span>
+          <span>{subInfo.label}</span>
         </p>
       )}
     </div>
   );
 }
 
+interface PipelineStepProps {
+  label: string;
+  count: number;
+  color: string;
+  isLast?: boolean;
+}
+
+function PipelineStep({ label, count, color, isLast }: PipelineStepProps) {
+  return (
+    <>
+      <div className="flex-1 flex flex-col items-center text-center px-2">
+        <div
+          className="w-full rounded-md py-2.5 mb-2"
+          style={{
+            backgroundColor: `${color}1f`,
+            border: `1px solid ${color}40`,
+          }}
+        >
+          <p className="text-[20px] font-bold leading-none" style={{ color }}>
+            {count}
+          </p>
+        </div>
+        <p
+          className="text-[10px] font-semibold tracking-widest uppercase"
+          style={{ color: "var(--text-muted)" }}
+        >
+          {label}
+        </p>
+      </div>
+      {!isLast && (
+        <span
+          className="material-symbols-outlined text-[18px] mt-3 shrink-0"
+          style={{ color: "var(--text-muted)", opacity: 0.5 }}
+        >
+          chevron_right
+        </span>
+      )}
+    </>
+  );
+}
+
+function timeAgo(date: Date | null): string {
+  if (!date) return "—";
+  const now = Date.now();
+  const diff = Math.floor((now - new Date(date).getTime()) / 1000);
+  if (diff < 60) return `${diff}s trước`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+  return `${Math.floor(diff / 86400)} ngày trước`;
+}
+
+const ATTENTION_LABELS: Record<string, string> = {
+  ADDRESS_ERROR: "Sai địa chỉ",
+  DELAYED: "Delay",
+  NOTICE_CARD: "Notice card",
+  STUCK: "Không cập nhật",
+};
+
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
+  const { stats, attention, recentBatches, recentPulls, lastSync, recentAttention } =
+    await getDashboardData();
+
+  const inProgress = stats.total - stats.delivered;
+  const deliveryRate = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
 
   return (
     <>
       <Topbar title="Dashboard" subtitle="Tổng quan" />
 
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <StatCard
-          label="Sẵn sàng"
+      {/* === KPI strip — 4 cards compact === */}
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <KpiCard
+          label="Đang xử lý"
+          value={inProgress}
+          icon="pending_actions"
+          accent="var(--color-info)"
+          subInfo={{ label: `tổng ${stats.total} đơn`, value: `${100 - deliveryRate}%` }}
+        />
+        <KpiCard
+          label="Sẵn sàng đóng gói"
           value={stats.ready}
-          description="Sẵn sàng đóng gói"
-          accent="emerald"
+          icon="inventory_2"
+          accent="var(--accent)"
+          subInfo={
+            stats.new > 0
+              ? { label: "đơn mới chờ validate", value: stats.new }
+              : { label: "tất cả đã validate", value: "✓" }
+          }
         />
-        <StatCard
-          label="Đã xuất"
-          value={stats.exported}
-          description="Đã xuất batch, chờ label"
-          accent="slate"
-        />
-        <StatCard
-          label="Đã có label"
-          value={stats.labeled}
-          description="Có tracking, chờ ship"
-          accent="violet"
-        />
-        <StatCard
-          label="Lỗi"
-          value={stats.error}
-          description="Cần sửa thông tin"
-          accent="red"
-          highlight
-        />
-      </div>
-
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <StatCard
-          label="Đang vận chuyển"
-          value={stats.inTransit}
-          description="Trên đường giao"
-          accent="sky"
-        />
-        <StatCard
+        <KpiCard
           label="Đã giao"
           value={stats.delivered}
-          description="Giao thành công"
-          accent="teal"
+          icon="task_alt"
+          accent="var(--color-teal)"
+          subInfo={{ label: "tỷ lệ giao thành công", value: `${deliveryRate}%` }}
         />
-        <StatCard
-          label="Thất bại"
-          value={stats.failed}
-          description="Trả về / không giao được"
-          accent="orange"
+        <KpiCard
+          label="Cần chú ý"
+          value={attention.total}
+          icon="priority_high"
+          accent="var(--color-pink)"
+          subInfo={
+            attention.total > 0
+              ? {
+                  label: "đơn đang flag",
+                  value: [
+                    attention.noticeCard ? `${attention.noticeCard} notice` : null,
+                    attention.addressError ? `${attention.addressError} address` : null,
+                    attention.delayed ? `${attention.delayed} delay` : null,
+                    attention.stuck ? `${attention.stuck} stuck` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—",
+                }
+              : { label: "không có đơn cần chú ý", value: "✓" }
+          }
         />
-        <StatCard label="Số batch" value={stats.batches} accent="slate" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <StatCard label="Tổng đơn" value={stats.total} accent="slate" />
-        <StatCard
-          label="Chưa xử lý"
-          value={stats.new}
-          description="Chờ Validate"
-          accent="blue"
-        />
+      {/* === Pipeline === */}
+      <div className="card p-5 mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p
+              className="text-[10px] font-bold tracking-[0.14em] uppercase mb-1"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Luồng xử lý đơn
+            </p>
+            <h3 className="text-sm font-semibold text-white">Pipeline trạng thái</h3>
+          </div>
+          <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="live-dot" />
+            <span>Cập nhật real-time</span>
+          </div>
+        </div>
+        <div className="flex items-start">
+          <PipelineStep label="Mới" count={stats.new} color="#60a5fa" />
+          <PipelineStep label="Sẵn sàng" count={stats.ready} color="#34d399" />
+          <PipelineStep label="Đã xuất" count={stats.exported} color="#94a3b8" />
+          <PipelineStep label="Có label" count={stats.labeled} color="#a78bfa" />
+          <PipelineStep label="Vận chuyển" count={stats.inTransit} color="#38bdf8" />
+          <PipelineStep label="Đã giao" count={stats.delivered} color="#2dd4bf" isLast />
+        </div>
+        {(stats.error > 0 || stats.failed > 0) && (
+          <div
+            className="mt-4 pt-4 border-t flex items-center gap-6 text-xs"
+            style={{ borderColor: "var(--border)" }}
+          >
+            {stats.error > 0 && (
+              <div className="flex items-center gap-2">
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ color: "var(--color-danger)" }}
+                >
+                  error
+                </span>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  <span style={{ color: "var(--color-danger)", fontWeight: 600 }}>
+                    {stats.error}
+                  </span>{" "}
+                  đơn lỗi cần sửa
+                </span>
+              </div>
+            )}
+            {stats.failed > 0 && (
+              <div className="flex items-center gap-2">
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ color: "var(--color-orange)" }}
+                >
+                  cancel
+                </span>
+                <span style={{ color: "var(--text-secondary)" }}>
+                  <span style={{ color: "var(--color-orange)", fontWeight: 600 }}>
+                    {stats.failed}
+                  </span>{" "}
+                  đơn thất bại / trả về
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <div
-        className="rounded-xl p-6 border"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
-        <h3 className="font-bold text-lg text-white mb-3">Hoạt động gần đây</h3>
-        {stats.new > 0 ? (
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Có{" "}
-            <span className="font-bold" style={{ color: "#60a5fa" }}>
-              {stats.new}
-            </span>{" "}
-            đơn NEW chưa được validate. Bấm{" "}
-            <span className="font-semibold" style={{ color: "var(--accent)" }}>
-              &quot;Validate &amp; Gán thùng&quot;
-            </span>{" "}
-            để xử lý.
-          </p>
-        ) : stats.total === 0 ? (
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Chưa có đơn hàng nào. Bấm{" "}
-            <span className="font-semibold" style={{ color: "var(--accent)" }}>
-              &quot;Đồng bộ&quot;
-            </span>{" "}
-            để kéo đơn từ Google Sheets.
+      {/* === 2-column: Recent batches + Activity === */}
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        {/* Recent batches */}
+        <div className="card p-5 col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p
+                className="text-[10px] font-bold tracking-[0.14em] uppercase mb-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Hoạt động gần đây
+              </p>
+              <h3 className="text-sm font-semibold text-white">Batch mới nhất</h3>
+            </div>
+            <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              {stats.batches} batch tổng
+            </span>
+          </div>
+
+          {recentBatches.length === 0 ? (
+            <p className="text-xs py-6 text-center" style={{ color: "var(--text-muted)" }}>
+              Chưa có batch nào.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {recentBatches.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between py-2 px-3 rounded-md transition-colors hover:bg-[var(--bg-tertiary)]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: b.exportedAt
+                          ? "rgba(20, 184, 166, 0.12)"
+                          : "rgba(148, 163, 184, 0.12)",
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined text-[18px]"
+                        style={{
+                          color: b.exportedAt ? "var(--color-teal)" : "var(--color-slate)",
+                        }}
+                      >
+                        {b.exportedAt ? "check_circle" : "package_2"}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-mono font-semibold text-white truncate">
+                        {b.id}
+                      </p>
+                      <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                        {b.totalOrders} đơn
+                        {b.platform && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider"
+                            style={{
+                              backgroundColor: b.platform === "EST"
+                                ? "rgba(245, 158, 11, 0.15)"
+                                : "rgba(16, 185, 129, 0.15)",
+                              color: b.platform === "EST" ? "#fbbf24" : "#34d399",
+                            }}
+                          >
+                            {b.platform}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                      {b.exportedAt ? "Đã xuất" : "Đang dựng"}
+                    </p>
+                    <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      {timeAgo(b.exportedAt ?? b.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Activity feed */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p
+                className="text-[10px] font-bold tracking-[0.14em] uppercase mb-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                System
+              </p>
+              <h3 className="text-sm font-semibold text-white">Live activity</h3>
+            </div>
+            <span className="live-dot" />
+          </div>
+
+          <div className="space-y-3">
+            <ActivityRow
+              icon="cloud_sync"
+              iconColor="var(--color-info)"
+              title="Đồng bộ Google Sheets"
+              detail={
+                lastSync
+                  ? `+${lastSync.totalAdded} mới · ${lastSync.totalErrors} lỗi`
+                  : "Chưa chạy lần nào"
+              }
+              time={timeAgo(lastSync?.completedAt ?? lastSync?.startedAt ?? null)}
+            />
+            <ActivityRow
+              icon="download"
+              iconColor="var(--color-teal)"
+              title="Pull tracking events"
+              detail={
+                recentPulls[0]
+                  ? `+${recentPulls[0].totalUpdated} đơn cập nhật`
+                  : "Chưa có file"
+              }
+              time={timeAgo(recentPulls[0]?.processedAt ?? null)}
+            />
+            <div
+              className="border-t pt-3 mt-3"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <p
+                className="text-[10px] font-bold tracking-widest uppercase mb-2"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Đơn vừa flag
+              </p>
+              {recentAttention.length === 0 ? (
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  Không có flag mới.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {recentAttention.slice(0, 3).map((a) => (
+                    <div key={a.orderId} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`attention-${a.attentionReason}`}
+                          style={{ height: "18px", padding: "0 6px", fontSize: "9px" }}
+                        >
+                          {ATTENTION_LABELS[a.attentionReason ?? ""] ?? a.attentionReason}
+                        </span>
+                        <span className="text-[11px] font-mono truncate" style={{ color: "var(--text-secondary)" }}>
+                          {a.orderId}
+                        </span>
+                      </div>
+                      <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>
+                        {timeAgo(a.attentionAt)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* === Recent APT pulls === */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p
+              className="text-[10px] font-bold tracking-[0.14em] uppercase mb-1"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Tracking ingest
+            </p>
+            <h3 className="text-sm font-semibold text-white">Pull file gần nhất</h3>
+          </div>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Cron 15 phút/lần
+          </span>
+        </div>
+
+        {recentPulls.length === 0 ? (
+          <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
+            Chưa có file nào được pull.
           </p>
         ) : (
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Hệ thống đang ổn định. Tất cả đơn đã được xử lý.
-          </p>
+          <div className="grid grid-cols-5 gap-2">
+            {recentPulls.map((p) => (
+              <div
+                key={p.filename}
+                className="rounded-md p-3"
+                style={{ backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--border)" }}
+              >
+                <p className="text-[10px] font-mono truncate" style={{ color: "var(--text-muted)" }} title={p.filename}>
+                  {p.filename.replace("APT_0001031358_", "").replace(".csv", "")}
+                </p>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-[18px] font-bold text-white leading-none">
+                    {p.totalUpdated}
+                  </span>
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    / {p.totalRows} events
+                  </span>
+                </div>
+                <p className="text-[10px] mt-1" style={{ color: "var(--text-secondary)" }}>
+                  {timeAgo(p.processedAt)}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </>
+  );
+}
+
+interface ActivityRowProps {
+  icon: string;
+  iconColor: string;
+  title: string;
+  detail: string;
+  time: string;
+}
+
+function ActivityRow({ icon, iconColor, title, detail, time }: ActivityRowProps) {
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5"
+        style={{ backgroundColor: `${iconColor}1f` }}
+      >
+        <span className="material-symbols-outlined text-[16px]" style={{ color: iconColor }}>
+          {icon}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium text-white">{title}</p>
+        <p className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
+          {detail} · {time}
+        </p>
+      </div>
+    </div>
   );
 }

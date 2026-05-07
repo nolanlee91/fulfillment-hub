@@ -87,18 +87,9 @@ export default function DeliveredOrdersPage() {
       <Topbar title="Đơn đã giao" subtitle="Quản lý" />
 
       {/* Filters */}
-      <div
-        className="rounded-xl p-4 mb-4 border grid grid-cols-5 gap-3"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="filter-card grid grid-cols-5 gap-3">
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Khách hàng
           </label>
           <select
@@ -107,7 +98,7 @@ export default function DeliveredOrdersPage() {
               setFilterCustomer(e.target.value);
               setFilterProduct("");
             }}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             {customers.map((c) => (
@@ -119,16 +110,13 @@ export default function DeliveredOrdersPage() {
         </div>
 
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Sản phẩm
           </label>
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             {filteredProducts.map((p) => (
@@ -140,16 +128,13 @@ export default function DeliveredOrdersPage() {
         </div>
 
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Thanh toán
           </label>
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             <option value="PREPAID">Thường</option>
@@ -158,61 +143,47 @@ export default function DeliveredOrdersPage() {
         </div>
 
         <div className="col-span-2">
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Tìm kiếm (Order ID, Tên, Phone, Zipcode)
           </label>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Gõ để tìm..."
-            className="w-full px-3 py-1.5 rounded text-sm"
+            placeholder="Tìm Order ID, Tên, Phone, Zipcode..."
+            className="filter-search"
           />
         </div>
       </div>
 
       {/* Counter */}
-      <div
-        className="rounded-xl p-3 mb-4 border flex items-center"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="action-bar">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
           <span className="font-bold text-white">{orders.length}</span> đơn đã giao
+        </div>
+        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+          <span className="material-symbols-outlined text-[16px]" style={{ color: "var(--color-teal)" }}>
+            check_circle
+          </span>
+          <span>Tỷ lệ giao thành công ổn định</span>
         </div>
       </div>
 
       {/* Table */}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="table-shell">
         {loading ? (
-          <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
             Đang tải...
           </div>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
             Chưa có đơn nào đã giao.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="table-base">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    color: "var(--text-muted)",
-                  }}
-                >
+                <tr>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Order ID
                   </th>
@@ -247,11 +218,7 @@ export default function DeliveredOrdersPage() {
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr
-                    key={o.uniqueKey}
-                    className="border-t hover:bg-opacity-50 transition-colors"
-                    style={{ borderColor: "var(--border)" }}
-                  >
+                  <tr key={o.uniqueKey}>
                     <td className="px-3 py-2 font-mono text-xs font-bold text-white">
                       {o.orderId}
                     </td>

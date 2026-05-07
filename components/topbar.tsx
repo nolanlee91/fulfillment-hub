@@ -80,18 +80,18 @@ export function Topbar({ title, subtitle }: TopbarProps) {
     >
       <div>
         <p
-          className="text-[11px] font-bold tracking-widest uppercase mb-1"
+          className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1.5"
           style={{ color: "var(--text-muted)" }}
         >
           {subtitle ?? "Tổng quan"}
         </p>
-        <h2 className="text-2xl font-bold text-white">{title}</h2>
+        <h2 className="text-[22px] font-bold text-white tracking-tight">{title}</h2>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {message && (
           <div
-            className="px-3 py-1.5 text-xs font-semibold rounded max-w-md"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md max-w-md"
             style={messageColor}
           >
             {message.text}
@@ -101,16 +101,10 @@ export function Topbar({ title, subtitle }: TopbarProps) {
         <button
           onClick={runSync}
           disabled={syncing || validating}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded transition-colors disabled:opacity-50"
-          style={{
-            backgroundColor: "var(--bg-tertiary)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--border)",
-          }}
+          className="btn btn-secondary"
         >
           <span
-            className="material-symbols-outlined text-[18px]"
-            style={{ animation: syncing ? "spin 1s linear infinite" : "none" }}
+            className={`material-symbols-outlined text-[17px] ${syncing ? "animate-spin" : ""}`}
           >
             refresh
           </span>
@@ -120,29 +114,16 @@ export function Topbar({ title, subtitle }: TopbarProps) {
         <button
           onClick={runValidate}
           disabled={syncing || validating}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded transition-colors disabled:opacity-50"
-          style={{
-            backgroundColor: "var(--accent)",
-            color: "var(--bg-primary)",
-          }}
+          className="btn btn-primary"
         >
           <span
-            className="material-symbols-outlined text-[18px]"
-            style={{ animation: validating ? "spin 1s linear infinite" : "none" }}
+            className={`material-symbols-outlined text-[17px] ${validating ? "animate-spin" : ""}`}
           >
             verified
           </span>
           {validating ? "Đang xử lý..." : "Validate & Gán thùng"}
         </button>
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </header>
   );
 }

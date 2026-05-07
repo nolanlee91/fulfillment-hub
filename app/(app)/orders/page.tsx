@@ -216,24 +216,15 @@ export default function OrdersPage() {
       <Topbar title="Đơn đang xử lý" subtitle="Quản lý" />
 
       {/* Filters */}
-      <div
-        className="rounded-xl p-4 mb-4 border grid grid-cols-7 gap-3"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="filter-card grid grid-cols-7 gap-3">
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Trạng thái
           </label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             <option value="READY">Sẵn sàng</option>
@@ -248,10 +239,7 @@ export default function OrdersPage() {
         </div>
 
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Khách hàng
           </label>
           <select
@@ -260,7 +248,7 @@ export default function OrdersPage() {
               setFilterCustomer(e.target.value);
               setFilterProduct("");
             }}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             {customers.map((c) => (
@@ -272,16 +260,13 @@ export default function OrdersPage() {
         </div>
 
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Sản phẩm
           </label>
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             {filteredProducts.map((p) => (
@@ -293,16 +278,13 @@ export default function OrdersPage() {
         </div>
 
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Thanh toán
           </label>
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             <option value="PREPAID">Thường</option>
@@ -311,16 +293,13 @@ export default function OrdersPage() {
         </div>
 
         <div>
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Cần chú ý
           </label>
           <select
             value={filterAttention}
             onChange={(e) => setFilterAttention(e.target.value)}
-            className="w-full px-2 py-1.5 rounded text-sm"
+            className="filter-input"
           >
             <option value="">Tất cả</option>
             <option value="any">Có flag (mọi loại)</option>
@@ -332,30 +311,21 @@ export default function OrdersPage() {
         </div>
 
         <div className="col-span-2">
-          <label
-            className="text-[10px] font-bold tracking-widest uppercase block mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <label className="filter-label">
             Tìm kiếm (Order ID, Tên, Phone, Zipcode)
           </label>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Gõ để tìm..."
-            className="w-full px-3 py-1.5 rounded text-sm"
+            placeholder="Tìm Order ID, Tên, Phone, Zipcode..."
+            className="filter-search"
           />
         </div>
       </div>
 
       {/* Action bar */}
-      <div
-        className="rounded-xl p-3 mb-4 border flex items-center justify-between"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="action-bar">
         <div className="flex items-center gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
           <span>
             <span className="font-bold text-white">{orders.length}</span> đơn
@@ -402,28 +372,17 @@ export default function OrdersPage() {
           <button
             onClick={deleteSelected}
             disabled={selectedKeys.size === 0 || deleting || creating}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded disabled:opacity-50"
-            style={{
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              color: "#f87171",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-            }}
+            className="btn btn-danger"
           >
-            <span className="material-symbols-outlined text-[18px]">
-              delete
-            </span>
+            <span className="material-symbols-outlined text-[17px]">delete</span>
             {deleting ? "Đang xóa..." : "Xóa"}
           </button>
           <button
             onClick={createBatch}
             disabled={selectedKeys.size === 0 || creating || deleting}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--accent)",
-              color: "var(--bg-primary)",
-            }}
+            className="btn btn-primary"
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span className="material-symbols-outlined text-[17px]">
               auto_awesome_motion
             </span>
             {creating ? "Đang tạo..." : "Tạo Batch"}
@@ -432,32 +391,21 @@ export default function OrdersPage() {
       </div>
 
       {/* Table */}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="table-shell">
         {loading ? (
-          <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
             Đang tải...
           </div>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
             Không có đơn nào. Bấm <span style={{ color: "var(--accent)" }}>Đồng bộ</span> để kéo đơn về.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="table-base">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  <th className="px-3 py-3 w-10 text-center">
+                <tr>
+                  <th className="w-10 text-center">
                     <input
                       type="checkbox"
                       checked={allSelected}
@@ -511,16 +459,7 @@ export default function OrdersPage() {
                 {orders.map((o) => {
                   const isSelected = selectedKeys.has(o.uniqueKey);
                   return (
-                    <tr
-                      key={o.uniqueKey}
-                      className="border-t hover:bg-opacity-50 transition-colors"
-                      style={{
-                        borderColor: "var(--border)",
-                        backgroundColor: isSelected
-                          ? "rgba(16, 185, 129, 0.08)"
-                          : "transparent",
-                      }}
-                    >
+                    <tr key={o.uniqueKey} className={isSelected ? "selected" : ""}>
                       <td className="px-3 py-2 text-center">
                         <input
                           type="checkbox"
