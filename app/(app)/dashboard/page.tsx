@@ -263,12 +263,17 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
           {count}
         </p>
       </div>
-      <p
-        className="text-[10px] font-semibold tracking-widest uppercase mt-2"
-        style={{ color: "var(--text-muted)" }}
-      >
-        {labels[0]}
-      </p>
+      <div className="mt-2 text-center leading-tight">
+        {labels.map((l, i) => (
+          <p
+            key={i}
+            className="text-[10px] font-semibold tracking-widest uppercase"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {l}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
@@ -331,12 +336,20 @@ function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillDa
           <line x1="18" y1="44" x2="32" y2="44" stroke={stroke} strokeWidth="1" />
         </svg>
       </div>
-      <p
-        className="text-[10px] font-semibold tracking-widest uppercase mt-2"
-        style={{ color: "var(--text-muted)" }}
-      >
-        Đã xuất
-      </p>
+      <div className="mt-2 text-center leading-tight">
+        <p
+          className="text-[10px] font-semibold tracking-widest uppercase"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Đã upload
+        </p>
+        <p
+          className="text-[9px] font-medium"
+          style={{ color: "var(--text-muted)" }}
+        >
+          chờ label
+        </p>
+      </div>
     </div>
   );
 }
@@ -492,7 +505,7 @@ export default async function DashboardPage() {
           <PipelineArrow captionAbove="Pull file APT Canada Post" caption="Automation" />
           <PipelineBox
             count={stats.inTransit + stats.delivered + stats.failed}
-            label="Vận chuyển"
+            label={["Đang vận", "chuyển"]}
             color="#38bdf8"
           />
           <PipelineArrow captionAbove="Pull file APT Canada Post" caption="Automation" />
@@ -610,7 +623,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {b.exportedAt ? "Đã xuất" : "Đang dựng"}
+                      {b.exportedAt ? "Đã upload" : "Đang dựng"}
                     </p>
                     <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                       {timeAgo(b.exportedAt ?? b.createdAt)}
