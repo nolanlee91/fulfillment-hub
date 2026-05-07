@@ -8,10 +8,11 @@ interface TopbarProps {
   subtitle?: string;
 }
 
+type Phase = "idle" | "syncing" | "validating";
+
 export function Topbar({ title, subtitle }: TopbarProps) {
   const router = useRouter();
-  const [syncing, setSyncing] = useState(false);
-  const [validating, setValidating] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error" | "info";
@@ -19,58 +20,90 @@ export function Topbar({ title, subtitle }: TopbarProps) {
 
   function showMessage(text: string, type: "success" | "error" | "info" = "info") {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 6000);
+    setTimeout(() => setMessage(null), 8000);
   }
 
-  async function runSync() {
-    setSyncing(true);
+  async function runSyncAndValidate() {
     setMessage(null);
+
+    // Step 1 — Đồng bộ từ Google Sheets
+    setPhase("syncing");
+    let syncResult: {
+      success: boolean;
+      totalAdded?: number;
+      totalUpdated?: number;
+      totalErrors?: number;
+      error?: string;
+    };
     try {
       const res = await fetch("/api/sync", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        showMessage(
-          `Sync xong: +${data.totalAdded} mới, ${data.totalUpdated ?? 0} cập nhật (ERROR: ${data.totalErrors})`,
-          "success",
-        );
-        router.refresh();
-      } else {
-        showMessage(`Lỗi: ${data.error}`, "error");
-      }
+      syncResult = await res.json();
     } catch (e) {
-      showMessage(`Lỗi kết nối: ${(e as Error).message}`, "error");
-    } finally {
-      setSyncing(false);
+      setPhase("idle");
+      showMessage(`Lỗi kết nối khi đồng bộ: ${(e as Error).message}`, "error");
+      return;
     }
-  }
 
-  async function runValidate() {
-    setValidating(true);
-    setMessage(null);
+    if (!syncResult.success) {
+      setPhase("idle");
+      showMessage(`Lỗi đồng bộ: ${syncResult.error}`, "error");
+      return;
+    }
+
+    // Step 2 — Validate & gán thùng
+    setPhase("validating");
+    let validateResult: {
+      success: boolean;
+      ready?: number;
+      errors?: number;
+      validated?: number;
+      total?: number;
+      error?: string;
+    };
     try {
       const res = await fetch("/api/validate", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        showMessage(
-          `Validate xong: ${data.ready} READY, ${data.errors} ERROR (${data.validated}/${data.total} đơn)`,
-          "success",
-        );
-        router.refresh();
-      } else {
-        showMessage(`Lỗi: ${data.error}`, "error");
-      }
+      validateResult = await res.json();
     } catch (e) {
-      showMessage(`Lỗi kết nối: ${(e as Error).message}`, "error");
-    } finally {
-      setValidating(false);
+      setPhase("idle");
+      showMessage(
+        `Sync OK (+${syncResult.totalAdded} mới) nhưng lỗi validate: ${(e as Error).message}`,
+        "error",
+      );
+      router.refresh();
+      return;
     }
+
+    setPhase("idle");
+
+    if (!validateResult.success) {
+      showMessage(
+        `Sync OK (+${syncResult.totalAdded} mới) nhưng lỗi validate: ${validateResult.error}`,
+        "error",
+      );
+      router.refresh();
+      return;
+    }
+
+    showMessage(
+      `Hoàn tất: +${syncResult.totalAdded} mới, ${syncResult.totalUpdated ?? 0} cập nhật · ${validateResult.ready} READY, ${validateResult.errors} lỗi`,
+      "success",
+    );
+    router.refresh();
   }
+
+  const isRunning = phase !== "idle";
+  const buttonLabel =
+    phase === "syncing"
+      ? "Đang đồng bộ..."
+      : phase === "validating"
+        ? "Đang validate..."
+        : "Đồng bộ";
 
   const messageColor =
     message?.type === "success"
       ? { backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#34d399" }
       : message?.type === "error"
-        ? { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#f87171" }
+        ? { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#fca5a5" }
         : { backgroundColor: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" };
 
   return (
@@ -99,29 +132,17 @@ export function Topbar({ title, subtitle }: TopbarProps) {
         )}
 
         <button
-          onClick={runSync}
-          disabled={syncing || validating}
-          className="btn btn-secondary"
-        >
-          <span
-            className={`material-symbols-outlined text-[17px] ${syncing ? "animate-spin" : ""}`}
-          >
-            refresh
-          </span>
-          {syncing ? "Đang sync..." : "Đồng bộ"}
-        </button>
-
-        <button
-          onClick={runValidate}
-          disabled={syncing || validating}
+          onClick={runSyncAndValidate}
+          disabled={isRunning}
           className="btn btn-primary"
+          title="Kéo đơn từ Google Sheets về và tự động validate gán thùng"
         >
           <span
-            className={`material-symbols-outlined text-[17px] ${validating ? "animate-spin" : ""}`}
+            className={`material-symbols-outlined text-[17px] ${isRunning ? "animate-spin" : ""}`}
           >
-            verified
+            {phase === "validating" ? "verified" : "refresh"}
           </span>
-          {validating ? "Đang xử lý..." : "Validate & Gán thùng"}
+          {buttonLabel}
         </button>
       </div>
     </header>
