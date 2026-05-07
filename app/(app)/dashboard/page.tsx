@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
 import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
-import { sql, desc, isNotNull, eq } from "drizzle-orm";
+import { sql, desc, asc, isNotNull, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +110,22 @@ async function getDashboardData() {
     .orderBy(desc(trackingFiles.processedAt))
     .limit(4);
 
+  const [aptFilesCount] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(trackingFiles);
+
+  const [oldestFile] = await db
+    .select({ filename: trackingFiles.filename })
+    .from(trackingFiles)
+    .orderBy(asc(trackingFiles.filename))
+    .limit(1);
+
+  const [newestFile] = await db
+    .select({ filename: trackingFiles.filename })
+    .from(trackingFiles)
+    .orderBy(desc(trackingFiles.filename))
+    .limit(1);
+
   const lastSync = await db
     .select({
       startedAt: syncLogs.startedAt,
@@ -139,9 +155,22 @@ async function getDashboardData() {
     exported,
     recentBatches,
     recentPulls,
+    aptFiles: {
+      total: Number(aptFilesCount?.count ?? 0),
+      oldest: oldestFile?.filename ?? null,
+      newest: newestFile?.filename ?? null,
+    },
     lastSync: lastSync[0] ?? null,
     recentAttention,
   };
+}
+
+function parseAptFileDate(filename: string | null): string {
+  if (!filename) return "—";
+  const m = filename.match(/_(\d{8})/);
+  if (!m) return "?";
+  const d = m[1];
+  return `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}`;
 }
 
 interface KpiCardProps {
@@ -395,7 +424,7 @@ const ATTENTION_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-  const { stats, attention, exported, recentBatches, recentPulls, lastSync, recentAttention } =
+  const { stats, attention, exported, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
     await getDashboardData();
 
   const inProgress = stats.total - stats.delivered;
@@ -726,9 +755,22 @@ export default async function DashboardPage() {
             </p>
             <h3 className="text-sm font-semibold text-white">Pull file gần nhất</h3>
           </div>
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Cron 15 phút/lần
-          </span>
+          <div className="text-right text-xs" style={{ color: "var(--text-muted)" }}>
+            <p>
+              <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
+                {aptFiles.total}
+              </span>{" "}
+              file · từ{" "}
+              <span style={{ color: "var(--text-secondary)" }}>
+                {parseAptFileDate(aptFiles.oldest)}
+              </span>{" "}
+              đến{" "}
+              <span style={{ color: "var(--text-secondary)" }}>
+                {parseAptFileDate(aptFiles.newest)}
+              </span>
+            </p>
+            <p className="text-[10px] mt-0.5">Cron 15 phút/lần</p>
+          </div>
         </div>
 
         {recentPulls.length === 0 ? (

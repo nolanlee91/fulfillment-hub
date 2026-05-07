@@ -1,0 +1,56 @@
+﻿ORDER_ORIGIN_CDE,BEHALF_OF_CUSTOMER_NAME,ORDER_TYPE_CDE,MAILING_DATE,BAR_CODE_ID,CONTACT_FULL_NAME,CUSTOMER_CLIENT_ID,CUSTOMER_ORDER_ITEM_ID,REFERENCE_NBR,MAKTX,ITEM.CALC_WEIGHT_IN_G/1000,BASE_AMT,TOTAL_ITEM_OPTIONS_AMT,EST_DISCOUNT_AMT,ITEM_PST_AMT,ITEM_GST_AMT,ITEM_HST_AMT,TOTAL_ITEM_DUE_AMT
+EST-D2,KDEXPRESS,ZAB,20260504,1031358022849204,Micheline Arbour,01/05/2026,FitNgxvdttnw,null,Expedited Parcel,1080,12.52,11.63,0,0,1.21,0,25.36
+EST-D2,KDEXPRESS,ZAB,20260504,1031358057012208,Sandrs Raymond,25/04/2026,FitXkOXoQezN,null,Expedited Parcel,1080,9.62,10.62,0,0,1.01,0,21.25
+EST-D2,KDEXPRESS,ZAB,20260504,1031358105988202,Juditha Nimer,na,FIT2470,null,Expedited Parcel,1790,7.33,9.82,0,0,0.86,0,18.01
+EST-D2,KDEXPRESS,ZAB,20260504,1031358158372201,Rejeanne Richard,03/05/2026,Fit5fLsaW9v9,null,Expedited Parcel,1080,11.21,11.17,0,0,1.12,0,23.5
+EXT,Distribution Centre,ZAB,20260504,1031358612236209,Pedro Polintan,na,BruOwtqqf6C,null,Expedited Parcel,1280,9.24,3.23,0,0,0,1.62,14.09
+EXT,Distribution Centre,ZAB,20260504,1031358612330204,Regie Aranil,na,Fitoc1u78n,null,Expedited Parcel,450,7.94,2.78,0,0,0,1.39,12.11
+EXT,Distribution Centre,ZAB,20260504,1031358612332208,sherilyn mabanglo,na,FitZI60cgs,null,Expedited Parcel,680,8.59,3.01,0,0,0.58,0,12.18
+EXT,Distribution Centre,ZAB,20260504,1031358612336206,Revie Aguilar,na,FitSVteeYhUN,null,Expedited Parcel,450,7.03,2.46,0,0,0.47,0,9.96
+EXT,Distribution Centre,ZAB,20260504,1031358612337203,Emmie Lamis,na,Fit0cLcrhXMa,null,Expedited Parcel,450,7.03,2.46,0,0,0.47,0,9.96
+EXT,Distribution Centre,ZAB,20260504,1031358612339207,Jonalyn Perez,na,FittdNXiL2oE,null,Expedited Parcel,820,9.57,3.35,0,0,0,1.68,14.6
+EXT,Distribution Centre,ZAB,20260504,1031358612343204,Olive Ilano Sico,na,Fitvw0KWkkCx,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260504,1031358612344201,Maria Cielo Ranay,na,Fitz4s96MmM4,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260504,1031358612346205,Allen V Dula,na,Bon4c0Cz5j,null,Expedited Parcel,1280,9.24,3.23,0,0,0,1.62,14.09
+EXT,Distribution Centre,ZAB,20260504,1031358612463209,Nini Helen Basa,na,Bonu4NbKuPBr,null,Expedited Parcel,1460,4.43,1.55,0,0,0.3,0,6.28
+EXT,Distribution Centre,ZAB,20260504,1031358612465203,LITA N GATCHALIAN,na,BonkgsQ6Ix,null,Expedited Parcel,1280,7.97,2.79,0,0,0.54,0,11.3
+EXT,Distribution Centre,ZAB,20260504,1031358612468204,AURORA BASILIO,na,Fit9HnhsOTRw,null,Expedited Parcel,450,7.94,2.78,0,0,0,1.39,12.11
+EXT,Distribution Centre,ZAB,20260504,1031358612469201,Gleen Parba,na,FitBh9emeQr,null,Expedited Parcel,510,8.74,3.06,0,0,0,1.53,13.33
+EXT,Distribution Centre,ZAB,20260504,1031358612471204,Natividad Ablay,na,Fit7Hj113Evx,null,Expedited Parcel,680,20.11,7.04,0,0,1.36,0,28.51
+EXT,Distribution Centre,ZAB,20260504,1031358612473208,Lenssy Postrano Padilla,na,FitFQhdFXOFf,null,Expedited Parcel,450,7.03,2.46,0,0,0.47,0,9.96
+EXT,Distribution Centre,ZAB,20260504,1031358612475202,Teresita David,na,CD92,null,Expedited Parcel,250,7.79,2.73,0,0,0.53,0,11.05
+EXT,Distribution Centre,ZAB,20260504,1031358612480206,Jose Aquino,na,Bon0CHVkdg,null,Expedited Parcel,2070,10.09,3.53,0,0,0.68,0,14.3
+EXT,Distribution Centre,ZAB,20260504,1031358612482200,Demmie Javien Ang,na,BoncdB3Lpp2,null,Expedited Parcel,1100,9.24,3.23,0,0,0,1.62,14.09
+EXT,Distribution Centre,ZAB,20260504,1031358612483207,Olivia Lansang,na,Fit4bDnbIdQ,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260504,1031358612485201,Esther Abon,na,FitRviLAzv,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260504,1031358612643205,Amie Timplanza,na,FitpEEdavht,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260504,1031358612653204,Emelinda Pana,na,FFMCA59,null,Expedited Parcel,390,7.79,2.73,0,0,0.53,0,11.05
+EXT,Distribution Centre,ZAB,20260504,1031358612656205,Celeste Borero-Smith,na,FitJrA8dVn5,null,Expedited Parcel,450,7.75,2.71,0,0,0.52,0,10.98
+EXT,Distribution Centre,ZAB,20260504,1031358612658209,Elpidio Suguitan,na,Bru7Ye6GGfV,null,Expedited Parcel,840,7.1,2.49,0,0,0.48,0,10.07
+EXT,Distribution Centre,ZAB,20260504,1031358612659206,Lucia Kinch,na,FitERC8uVKCB,null,Expedited Parcel,450,7.79,2.73,0,0,0.53,0,11.05
+EXT,Distribution Centre,ZAB,20260504,1031358612662206,Elizabeth Vidal,na,FitCIpXoJhU,null,Expedited Parcel,450,8.41,2.94,0,0,0.57,0,11.92
+EST-D2,KDEXPRESS,ZAB,20260504,1031358614216209,Evelyne Saintima,27/04/2026,Fitbafdzii,null,Expedited Parcel,1080,9.62,10.62,0,0,1.01,0,21.25
+EST-D2,KDEXPRESS,ZAB,20260504,1031358619775206,Mona Giroux,28/04/2026,FitJ8lB5DFp8,null,Expedited Parcel,1080,11.21,11.17,0,0,1.12,0,23.5
+EST-D2,KDEXPRESS,ZAB,20260504,1031358889351193,Céline Caron,03/05/2026,FitfczhyzxhD,null,Expedited Parcel,1080,12.52,11.63,0,0,1.21,0,25.36
+EST-D2,KDEXPRESS,ZAB,20260504,1031358890535193,Guildard Pierre,25/04/2026,FitMgRVVaCM,null,Expedited Parcel,1080,9.62,10.62,0,0,1.01,0,21.25
+EST-D2,KDEXPRESS,ZAB,20260504,1031358890536190,Guylaine Belanger,29/04/2026,FitQMS499hD,null,Expedited Parcel,1080,11.14,11.15,0,0,1.11,0,23.4
+EST-D2,KDEXPRESS,ZAB,20260504,1031358890537197,Yza Moratin,na,FIT2469,null,Expedited Parcel,1080,7.13,9.75,0,0,0.84,0,17.72
+EST-D2,KDEXPRESS,ZAB,20260504,1031358890538194,Monique Stuart,27/04/2026,FitEXl0vrP5,null,Expedited Parcel,1080,9.62,10.62,0,0,1.01,0,21.25
+EST-D2,KDEXPRESS,ZAB,20260504,1031358890539191,Folly-bebe Kanle Abla,30/04/2026,FitSqpwmGz8,null,Expedited Parcel,1080,12.52,11.63,0,0,1.21,0,25.36
+EXT,Distribution Centre,ZAB,20260505,1031358661714208,Corazon Canlas,na,Bon4YXgxnSP,null,Expedited Parcel,1280,9.24,3.23,0,0,0,1.62,14.09
+EXT,Distribution Centre,ZAB,20260505,1031358661716202,Rica Arksey,na,BakXlKpD2GJ,null,Expedited Parcel,780,7.1,2.49,0,0,0.48,0,10.07
+EXT,Distribution Centre,ZAB,20260505,1031358661717209,Marlon ablao,na,CD93,null,Expedited Parcel,250,10.34,3.62,0,0,0.7,0,14.66
+EXT,Distribution Centre,ZAB,20260505,1031358661721206,Shine D. Carta,na,BakGQpMFeAnC,null,Expedited Parcel,2210,9.51,3.33,0,0,0,1.67,14.51
+EXT,Distribution Centre,ZAB,20260505,1031358661725204,Gem Jewells,na,FitP3iOzmfN,null,Expedited Parcel,450,7.94,2.78,0,0,0,1.39,12.11
+EXT,Distribution Centre,ZAB,20260505,1031358661727208,Lagrisola L Lägüärdíä,na,FitFvdUkGFk,null,Expedited Parcel,450,7.03,2.46,0,0,0.47,0,9.96
+EXT,Distribution Centre,ZAB,20260505,1031358661729202,Jona Sallar,na,BakqQM6mfzR,null,Expedited Parcel,1000,9.2,3.22,0,0,0,1.61,14.03
+EXT,Distribution Centre,ZAB,20260505,1031358661896201,Abdi,na,CD96,null,Expedited Parcel,250,7.94,2.78,0,0,0,1.39,12.11
+EXT,Distribution Centre,ZAB,20260505,1031358661897208,Maryrose Salido,na,CD95,null,Expedited Parcel,250,7.94,2.78,0,0,0,1.39,12.11
+EXT,Distribution Centre,ZAB,20260505,1031358661899202,wayne Bradshaw,na,CD94,null,Expedited Parcel,250,7.94,2.78,0,0,0,1.39,12.11
+EXT,Distribution Centre,ZAB,20260505,1031358661906207,Rosenda Yumul,na,FitZ6GFQDM3,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260505,1031358661911201,Jolie Baltazar,na,BakgDk13YLQ7,null,Expedited Parcel,1000,8.63,3.02,0,0,0.58,0,12.23
+EXT,Distribution Centre,ZAB,20260505,1031358661912208,Celeste Alo,na,FitBNESXu5q,null,Expedited Parcel,450,3.98,1.39,0,0,0.27,0,5.64
+EXT,Distribution Centre,ZAB,20260505,1031358661915209,Vina Mariano,na,Baknfdpm1n,null,Expedited Parcel,1440,7.13,2.5,0,0,0.48,0,10.11
+EXT,Distribution Centre,ZAB,20260505,1031358662072208,Derla Bayuca,na,Bon8lTPQ67,null,Expedited Parcel,1100,9.24,3.23,0,0,0,1.62,14.09
+EXT,Distribution Centre,ZAB,20260505,1031358662073205,Ellen Ramones,na,BonAu9dM4Iq,null,Expedited Parcel,1100,9.24,3.23,0,0,0,1.62,14.09
+EXT,Distribution Centre,ZAB,20260505,1031358662919206,Pedro Polintan,na,Bru289,null,Expedited Parcel,840,9.2,3.22,0,0,0,1.61,14.03

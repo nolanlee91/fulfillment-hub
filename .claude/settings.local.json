@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx tsx *)",
+      "Bash(node -e ' *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(git commit *)",
+      "Bash(del *)",
+      "Bash(npm install *)",
+      "Bash(node *)",
+      "Bash(curl.exe *)",
+      "Bash(Get-Content -Path 'C:\\\\Users\\\\User\\\\Desktop\\\\Thang Le\\\\11. App Fulfilment\\\\railway\\\\fulfillment-hub\\\\scripts\\\\event-codes-dump.json')",
+      "Bash(Measure-Object -Line)",
+      "Bash(jq --version)",
+      "Bash(rm drizzle/0000_tiresome_legion.sql)",
+      "Bash(rm -rf drizzle/meta)",
+      "Bash(git rm *)"
+    ]
+  }
+}
