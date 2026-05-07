@@ -66,6 +66,7 @@ async function getDashboardData() {
     else if (r.reason === "STUCK") attention.stuck = c;
   }
 
+  // Cumulative: tất cả đơn đã từng được xuất batch (regardless of current status)
   const exportedByPlatform = await db
     .select({
       platform: batches.platform,
@@ -73,7 +74,6 @@ async function getDashboardData() {
     })
     .from(orders)
     .innerJoin(batches, eq(orders.batchId, batches.id))
-    .where(eq(orders.status, "EXPORTED"))
     .groupBy(batches.platform);
 
   const exported = { clickship: 0, est: 0 };
@@ -203,46 +203,46 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
 
   if (count === undefined) {
     return (
-      <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 88 }}>
+      <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 108 }}>
         <div
-          className="rounded-md px-2 py-2 w-full flex flex-col items-center justify-center"
+          className="rounded-md px-2.5 py-2 w-full flex flex-col items-center justify-center"
           style={{
             backgroundColor: "var(--bg-tertiary)",
             border: "1px dashed var(--border)",
-            minHeight: 44,
+            minHeight: 64,
           }}
         >
           {labels.map((l, i) => (
             <p
               key={i}
-              className="text-[10px] font-semibold leading-tight"
+              className="text-[11px] font-semibold leading-tight"
               style={{ color: "var(--text-secondary)" }}
             >
               {l}
             </p>
           ))}
         </div>
-        <div style={{ height: 18 }} />
+        <div style={{ height: 22 }} />
       </div>
     );
   }
 
   return (
-    <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 64 }}>
+    <div className="shrink-0 flex flex-col items-center text-center" style={{ width: 88 }}>
       <div
-        className="rounded-md py-1.5 w-full flex items-center justify-center"
+        className="rounded-md py-2 w-full flex items-center justify-center"
         style={{
           backgroundColor: `${color}1f`,
           border: `1px solid ${color}40`,
-          minHeight: 44,
+          minHeight: 64,
         }}
       >
-        <p className="text-[18px] font-bold leading-none" style={{ color }}>
+        <p className="text-[26px] font-bold leading-none" style={{ color }}>
           {count}
         </p>
       </div>
       <p
-        className="text-[9px] font-semibold tracking-widest uppercase mt-1.5"
+        className="text-[10px] font-semibold tracking-widest uppercase mt-2"
         style={{ color: "var(--text-muted)" }}
       >
         {labels[0]}
@@ -253,19 +253,19 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
 
 function PipelineArrow({ caption }: { caption: string }) {
   return (
-    <div className="shrink-0 flex flex-col items-center" style={{ width: 92 }}>
-      <div className="flex items-center w-full" style={{ height: 44 }}>
+    <div className="shrink-0 flex flex-col items-center px-1" style={{ width: 132 }}>
+      <div className="flex items-center w-full" style={{ height: 64 }}>
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
         <span
-          className="material-symbols-outlined text-[16px] -ml-1"
+          className="material-symbols-outlined text-[18px] -ml-1"
           style={{ color: "var(--text-muted)" }}
         >
           chevron_right
         </span>
       </div>
       <p
-        className="text-[9px] font-semibold tracking-widest uppercase mt-1.5"
-        style={{ color: "var(--text-muted)" }}
+        className="text-[10px] font-semibold tracking-wider uppercase mt-2 text-center leading-tight"
+        style={{ color: "var(--text-muted)", maxWidth: 124 }}
       >
         {caption}
       </p>
@@ -276,31 +276,33 @@ function PipelineArrow({ caption }: { caption: string }) {
 interface BranchPillData {
   count: number;
   label: string;
+  sublabel?: string;
   color: string;
 }
 
 function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillData }) {
   const stroke = "rgba(148, 163, 184, 0.4)";
+  // Pill height 40, gap 8, total 88. Top pill center y=20, bottom y=68, mid y=44.
   return (
     <div className="shrink-0 flex flex-col items-center">
-      <div className="flex items-center" style={{ height: 58 }}>
-        <svg width="28" height="58" className="shrink-0">
-          <line x1="0" y1="29" x2="12" y2="29" stroke={stroke} strokeWidth="1" />
-          <line x1="12" y1="29" x2="28" y2="13" stroke={stroke} strokeWidth="1" />
-          <line x1="12" y1="29" x2="28" y2="45" stroke={stroke} strokeWidth="1" />
+      <div className="flex items-center" style={{ height: 88 }}>
+        <svg width="32" height="88" className="shrink-0">
+          <line x1="0" y1="44" x2="14" y2="44" stroke={stroke} strokeWidth="1" />
+          <line x1="14" y1="44" x2="32" y2="20" stroke={stroke} strokeWidth="1" />
+          <line x1="14" y1="44" x2="32" y2="68" stroke={stroke} strokeWidth="1" />
         </svg>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <BranchPill {...top} />
           <BranchPill {...bottom} />
         </div>
-        <svg width="28" height="58" className="shrink-0">
-          <line x1="0" y1="13" x2="16" y2="29" stroke={stroke} strokeWidth="1" />
-          <line x1="0" y1="45" x2="16" y2="29" stroke={stroke} strokeWidth="1" />
-          <line x1="16" y1="29" x2="28" y2="29" stroke={stroke} strokeWidth="1" />
+        <svg width="32" height="88" className="shrink-0">
+          <line x1="0" y1="20" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
+          <line x1="0" y1="68" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
+          <line x1="18" y1="44" x2="32" y2="44" stroke={stroke} strokeWidth="1" />
         </svg>
       </div>
       <p
-        className="text-[9px] font-semibold tracking-widest uppercase mt-1.5"
+        className="text-[10px] font-semibold tracking-widest uppercase mt-2"
         style={{ color: "var(--text-muted)" }}
       >
         Đã xuất
@@ -309,21 +311,28 @@ function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillDa
   );
 }
 
-function BranchPill({ count, label, color }: BranchPillData) {
+function BranchPill({ count, label, sublabel, color }: BranchPillData) {
   return (
     <div
-      className="flex items-center justify-between gap-2 rounded-md px-2.5"
+      className="flex items-center justify-between gap-3 rounded-md px-3"
       style={{
         backgroundColor: `${color}1f`,
         border: `1px solid ${color}40`,
-        minWidth: 96,
-        height: 26,
+        minWidth: 168,
+        height: 40,
       }}
     >
-      <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color }}>
-        {label}
-      </span>
-      <span className="text-[14px] font-bold leading-none" style={{ color }}>
+      <div className="flex flex-col">
+        <span className="text-[11px] font-bold tracking-wider uppercase leading-tight" style={{ color }}>
+          {label}
+        </span>
+        {sublabel && (
+          <span className="text-[9px] font-medium leading-tight" style={{ color: "var(--text-muted)" }}>
+            {sublabel}
+          </span>
+        )}
+      </div>
+      <span className="text-[20px] font-bold leading-none" style={{ color }}>
         {count}
       </span>
     </div>
@@ -429,20 +438,28 @@ export default async function DashboardPage() {
             <span>Cập nhật real-time</span>
           </div>
         </div>
-        <div className="flex items-center justify-between overflow-x-auto pb-2">
+        <div className="flex items-center justify-between overflow-x-auto pb-2 gap-1">
           <PipelineBox label={["Data khách", "Google Sheet"]} />
           <PipelineArrow caption="Đồng bộ" />
           <PipelineBox count={stats.new + stats.ready} label="Sẵn sàng" color="#34d399" />
-          <PipelineArrow caption="Tạo batch" />
+          <PipelineArrow caption="Xuất file upload lên ClickShip & EST" />
           <BranchFork
-            top={{ count: exported.clickship, label: "ClickShip", color: "#34d399" }}
-            bottom={{ count: exported.est, label: "EST", color: "#fbbf24" }}
+            top={{ count: exported.clickship, label: "ClickShip", sublabel: "đơn thường", color: "#34d399" }}
+            bottom={{ count: exported.est, label: "EST", sublabel: "COD", color: "#fbbf24" }}
           />
-          <PipelineArrow caption="Import label" />
-          <PipelineBox count={stats.labeled} label="Có label" color="#a78bfa" />
-          <PipelineArrow caption="Pull APT" />
-          <PipelineBox count={stats.inTransit} label="Vận chuyển" color="#38bdf8" />
-          <PipelineArrow caption="Pull APT" />
+          <PipelineArrow caption="Đối soát vận chuyển" />
+          <PipelineBox
+            count={stats.labeled + stats.inTransit + stats.delivered + stats.failed}
+            label="Có label"
+            color="#a78bfa"
+          />
+          <PipelineArrow caption="Automation" />
+          <PipelineBox
+            count={stats.inTransit + stats.delivered + stats.failed}
+            label="Vận chuyển"
+            color="#38bdf8"
+          />
+          <PipelineArrow caption="Automation" />
           <PipelineBox count={stats.delivered} label="Đã giao" color="#2dd4bf" />
         </div>
         {(stats.error > 0 || stats.failed > 0) && (
