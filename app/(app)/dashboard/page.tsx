@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
 import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
-import { sql, desc, asc, isNotNull, eq } from "drizzle-orm";
+import { sql, desc, asc, isNotNull } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -64,23 +64,6 @@ async function getDashboardData() {
     else if (r.reason === "DELAYED") attention.delayed = c;
     else if (r.reason === "NOTICE_CARD") attention.noticeCard = c;
     else if (r.reason === "STUCK") attention.stuck = c;
-  }
-
-  // Cumulative: tất cả đơn đã từng được xuất batch (regardless of current status)
-  const exportedByPlatform = await db
-    .select({
-      platform: batches.platform,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(orders)
-    .innerJoin(batches, eq(orders.batchId, batches.id))
-    .groupBy(batches.platform);
-
-  const exported = { clickship: 0, est: 0 };
-  for (const r of exportedByPlatform) {
-    const c = Number(r.count);
-    if (r.platform === "CLICKSHIP") exported.clickship = c;
-    else if (r.platform === "EST") exported.est = c;
   }
 
   const [batchCount] = await db
@@ -152,7 +135,6 @@ async function getDashboardData() {
   return {
     stats: { ...stats, batches: Number(batchCount?.count ?? 0) },
     attention,
-    exported,
     recentBatches,
     recentPulls,
     aptFiles: {
@@ -339,14 +321,27 @@ function PipelineArrow({
 }
 
 interface BranchPillData {
-  count: number;
+  count?: number;
   label: string;
   sublabel?: string;
   color: string;
 }
 
-function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillData }) {
+function BranchFork({
+  top,
+  bottom,
+  belowLabel,
+}: {
+  top: BranchPillData;
+  bottom: BranchPillData;
+  belowLabel?: string | string[];
+}) {
   const stroke = "rgba(148, 163, 184, 0.4)";
+  const labels = belowLabel
+    ? Array.isArray(belowLabel)
+      ? belowLabel
+      : [belowLabel]
+    : [];
   // Pill height 40, gap 8, total 88. Top pill center y=20, bottom y=68, mid y=44.
   return (
     <div className="shrink-0 flex flex-col items-center">
@@ -367,41 +362,50 @@ function BranchFork({ top, bottom }: { top: BranchPillData; bottom: BranchPillDa
           <line x1="18" y1="44" x2="32" y2="44" stroke={stroke} strokeWidth="1" />
         </svg>
       </div>
-      <div className="mt-2 text-center leading-tight">
-        <p
-          className="text-[10px] font-semibold tracking-widest uppercase"
-          style={{ color: "var(--text-muted)" }}
-        >
-          Đã upload
-        </p>
-        <p
-          className="text-[10px] font-semibold tracking-widest uppercase"
-          style={{ color: "var(--text-muted)" }}
-        >
-          chờ label
-        </p>
+      <div className="mt-2 text-center leading-tight" style={{ minHeight: labels.length > 0 ? 0 : 24 }}>
+        {labels.map((l, i) => (
+          <p
+            key={i}
+            className="text-[10px] font-semibold tracking-widest uppercase"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {l}
+          </p>
+        ))}
       </div>
     </div>
   );
 }
 
-function BranchPill({ count, label, color }: BranchPillData) {
+function BranchPill({ count, label, sublabel, color }: BranchPillData) {
+  const hasCount = count !== undefined;
   return (
     <div
-      className="flex items-center justify-between gap-3 rounded-md px-3"
+      className="flex items-center rounded-md px-3"
       style={{
         backgroundColor: `${color}1f`,
         border: `1px solid ${color}40`,
         minWidth: 124,
         height: 40,
+        justifyContent: hasCount ? "space-between" : "center",
+        gap: 12,
       }}
     >
-      <span className="text-[11px] font-bold tracking-wider uppercase" style={{ color }}>
-        {label}
-      </span>
-      <span className="text-[20px] font-bold leading-none" style={{ color }}>
-        {count}
-      </span>
+      <div className="flex flex-col leading-tight">
+        <span className="text-[11px] font-bold tracking-wider uppercase" style={{ color }}>
+          {label}
+        </span>
+        {sublabel && (
+          <span className="text-[9px] font-medium" style={{ color: "var(--text-muted)" }}>
+            {sublabel}
+          </span>
+        )}
+      </div>
+      {hasCount && (
+        <span className="text-[20px] font-bold leading-none" style={{ color }}>
+          {count}
+        </span>
+      )}
     </div>
   );
 }
@@ -424,7 +428,7 @@ const ATTENTION_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-  const { stats, attention, exported, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
+  const { stats, attention, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
     await getDashboardData();
 
   const inProgress = stats.total - stats.delivered;
@@ -514,8 +518,9 @@ export default async function DashboardPage() {
             caption="Xuất file upload lên ClickShip & EST"
           />
           <BranchFork
-            top={{ count: exported.clickship, label: "ClickShip", color: "#34d399" }}
-            bottom={{ count: exported.est, label: "EST", color: "#fbbf24" }}
+            top={{ label: "ClickShip", color: "#34d399" }}
+            bottom={{ label: "EST", color: "#fbbf24" }}
+            belowLabel={["Đã upload", "chờ label"]}
           />
           <PipelineArrow
             captionAbove="Download label từ ClickShip/EST"
@@ -527,18 +532,18 @@ export default async function DashboardPage() {
             caption="Đối soát vận chuyển"
           />
           <PipelineBox
-            count={stats.labeled + stats.inTransit + stats.delivered + stats.failed}
-            label="Có label"
-            color="#a78bfa"
+            count={stats.labeled + stats.inTransit}
+            label={["Đơn cần", "xử lý"]}
+            color="#60a5fa"
           />
-          <PipelineArrow captionAbove="Pull file APT Canada Post" caption="Automation" />
-          <PipelineBox
-            count={stats.inTransit + stats.delivered + stats.failed}
-            label={["Đang vận", "chuyển"]}
-            color="#38bdf8"
+          <BranchFork
+            top={{ count: stats.labeled, label: "Có label", sublabel: "chờ pickup", color: "#a78bfa" }}
+            bottom={{ count: stats.inTransit, label: "Đang vận chuyển", color: "#38bdf8" }}
           />
-          <PipelineArrow captionAbove="Pull file APT Canada Post" caption="Automation" />
-          <PipelineBox count={stats.delivered} label="Đã giao" color="#2dd4bf" />
+          <BranchFork
+            top={{ label: "Giao thành công", color: "#2dd4bf" }}
+            bottom={{ count: attention.total, label: "Cần chú ý", color: "#f472b6" }}
+          />
         </div>
         {(stats.error > 0 || stats.failed > 0) && (
           <div
