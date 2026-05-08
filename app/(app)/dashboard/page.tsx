@@ -587,7 +587,7 @@ export default async function DashboardPage() {
             color="#60a5fa"
           />
           <BranchFork
-            top={{ count: stats.labeled, label: "Có label", sublabel: "chờ pickup", color: "#a78bfa" }}
+            top={{ count: stats.labeled, label: "Có label", color: "#a78bfa" }}
             bottom={{ count: stats.inTransit, label: "Đang vận chuyển", color: "#38bdf8", pulse: true }}
             bottomSpur={
               attention.total > 0
