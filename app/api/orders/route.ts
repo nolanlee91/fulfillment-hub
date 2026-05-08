@@ -16,12 +16,13 @@ export async function GET(req: NextRequest) {
     const productId = searchParams.get("product");
     const payment = searchParams.get("payment"); // PREPAID | COD
     const attention = searchParams.get("attention"); // ADDRESS_ERROR | DELAYED | NOTICE_CARD | STUCK | "any"
-    const excludeDelivered = searchParams.get("excludeDelivered") === "true";
+    const excludeTerminal = searchParams.get("excludeTerminal") === "true";
     const search = searchParams.get("search");
 
     const conditions = [];
-    if (excludeDelivered) {
+    if (excludeTerminal) {
       conditions.push(ne(orders.status, "DELIVERED"));
+      conditions.push(ne(orders.status, "FAILED"));
     }
     if (status) {
       const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED" | "LABEL_CREATED">;
@@ -86,6 +87,8 @@ export async function GET(req: NextRequest) {
         trackingNumber: orders.trackingNumber,
         trackingUrl: orders.trackingUrl,
         deliveredAt: orders.deliveredAt,
+        lastTrackingEvent: orders.lastTrackingEvent,
+        lastTrackingAt: orders.lastTrackingAt,
         attentionReason: orders.attentionReason,
         attentionAt: orders.attentionAt,
         attentionNote: orders.attentionNote,

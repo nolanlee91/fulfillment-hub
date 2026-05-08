@@ -482,8 +482,9 @@ export default async function DashboardPage() {
   const { stats, attention, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
     await getDashboardData();
 
-  const inProgress = stats.total - stats.delivered;
+  const inProgress = stats.total - stats.delivered - stats.failed;
   const deliveryRate = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
+  const inProgressRate = stats.total > 0 ? Math.round((inProgress / stats.total) * 100) : 0;
 
   return (
     <>
@@ -497,7 +498,7 @@ export default async function DashboardPage() {
           icon="pending_actions"
           accent="var(--color-info)"
           href="/orders"
-          subInfo={{ label: `tổng ${stats.total} đơn`, value: `${100 - deliveryRate}%` }}
+          subInfo={{ label: `tổng ${stats.total} đơn`, value: `${inProgressRate}%` }}
         />
         <KpiCard
           label="Sẵn sàng đóng gói"
@@ -597,43 +598,25 @@ export default async function DashboardPage() {
             }
           />
         </div>
-        {(stats.error > 0 || stats.failed > 0) && (
+        {stats.error > 0 && (
           <div
             className="mt-4 pt-4 border-t flex items-center gap-6 text-xs"
             style={{ borderColor: "var(--border)" }}
           >
-            {stats.error > 0 && (
-              <div className="flex items-center gap-2">
-                <span
-                  className="material-symbols-outlined text-[16px]"
-                  style={{ color: "var(--color-danger)" }}
-                >
-                  error
-                </span>
-                <span style={{ color: "var(--text-secondary)" }}>
-                  <span style={{ color: "var(--color-danger)", fontWeight: 600 }}>
-                    {stats.error}
-                  </span>{" "}
-                  đơn lỗi cần sửa
-                </span>
-              </div>
-            )}
-            {stats.failed > 0 && (
-              <div className="flex items-center gap-2">
-                <span
-                  className="material-symbols-outlined text-[16px]"
-                  style={{ color: "var(--color-orange)" }}
-                >
-                  cancel
-                </span>
-                <span style={{ color: "var(--text-secondary)" }}>
-                  <span style={{ color: "var(--color-orange)", fontWeight: 600 }}>
-                    {stats.failed}
-                  </span>{" "}
-                  đơn thất bại / trả về
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span
+                className="material-symbols-outlined text-[16px]"
+                style={{ color: "var(--color-danger)" }}
+              >
+                error
+              </span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                <span style={{ color: "var(--color-danger)", fontWeight: 600 }}>
+                  {stats.error}
+                </span>{" "}
+                đơn lỗi cần sửa
+              </span>
+            </div>
           </div>
         )}
       </div>

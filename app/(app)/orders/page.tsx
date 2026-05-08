@@ -108,7 +108,7 @@ function OrdersPageContent() {
   const loadOrders = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
-    params.set("excludeDelivered", "true");
+    params.set("excludeTerminal", "true");
     if (filterStatus) params.set("status", filterStatus);
     if (filterCustomer) params.set("customer", filterCustomer);
     if (filterProduct) params.set("product", filterProduct);
@@ -244,7 +244,6 @@ function OrdersPageContent() {
             <option value="EXPORTED">Đã upload/chờ label</option>
             <option value="LABEL_CREATED">Đã có label</option>
             <option value="IN_TRANSIT">Đang vận chuyển</option>
-            <option value="FAILED">Thất bại</option>
           </select>
         </div>
 
