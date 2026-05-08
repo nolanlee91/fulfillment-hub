@@ -268,6 +268,7 @@ function PipelineBox({ count, label, color }: PipelineBoxProps) {
           backgroundColor: `${color}1f`,
           border: `1px solid ${color}40`,
           minHeight: 64,
+          boxShadow: `0 0 0 1px ${color}1a, 0 4px 16px -8px ${color}40`,
         }}
       >
         <p className="text-[26px] font-bold leading-none" style={{ color }}>
@@ -302,13 +303,23 @@ function PipelineArrow({
     <div className="shrink-0 flex flex-col items-center px-1" style={{ width }}>
       <AboveSlot text={captionAbove} maxWidth={width - 8} />
       <div className="flex items-center w-full" style={{ height: 64 }}>
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
-        <span
-          className="material-symbols-outlined text-[18px] -ml-1"
-          style={{ color: "var(--text-muted)" }}
-        >
-          chevron_right
-        </span>
+        <div
+          className="flex-1 h-px"
+          style={{
+            background:
+              "linear-gradient(to right, rgba(34,211,238,0.05), rgba(34,211,238,0.45) 60%, rgba(34,211,238,0.65))",
+          }}
+        />
+        <svg width="6" height="10" className="shrink-0" style={{ marginLeft: -1 }}>
+          <path
+            d="M0 0 L6 5 L0 10"
+            stroke="rgba(34,211,238,0.75)"
+            strokeWidth="1.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
       <p
         className="text-[10px] font-semibold tracking-wider uppercase mt-2 text-center leading-tight"
@@ -325,6 +336,7 @@ interface BranchPillData {
   label: string;
   sublabel?: string;
   color: string;
+  pulse?: boolean;
 }
 
 function BranchFork({
@@ -377,11 +389,11 @@ function BranchFork({
   );
 }
 
-function BranchPill({ count, label, sublabel, color }: BranchPillData) {
+function BranchPill({ count, label, sublabel, color, pulse }: BranchPillData) {
   const hasCount = count !== undefined;
   return (
     <div
-      className="flex items-center rounded-md px-3"
+      className="relative flex items-center rounded-md px-3"
       style={{
         backgroundColor: `${color}1f`,
         border: `1px solid ${color}40`,
@@ -389,8 +401,24 @@ function BranchPill({ count, label, sublabel, color }: BranchPillData) {
         height: 40,
         justifyContent: hasCount ? "space-between" : "center",
         gap: 12,
+        boxShadow: `0 0 0 1px ${color}1a, 0 4px 14px -8px ${color}50`,
       }}
     >
+      {pulse && hasCount && count > 0 && (
+        <span
+          className="absolute"
+          style={{
+            top: 6,
+            right: 6,
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            backgroundColor: color,
+            boxShadow: `0 0 8px ${color}`,
+            animation: "pipeline-pulse 1.6s ease-in-out infinite",
+          }}
+        />
+      )}
       <div className="flex flex-col leading-tight">
         <span className="text-[11px] font-bold tracking-wider uppercase" style={{ color }}>
           {label}
@@ -528,7 +556,7 @@ export default async function DashboardPage() {
           />
           <PipelineBox label="Label Downloaded" />
           <PipelineArrow
-            captionAbove="Upload file label của ClickShip / EST"
+            captionAbove="Upload label lên KDE-app"
             caption="Đối soát vận chuyển"
           />
           <PipelineBox
@@ -538,11 +566,11 @@ export default async function DashboardPage() {
           />
           <BranchFork
             top={{ count: stats.labeled, label: "Có label", sublabel: "chờ pickup", color: "#a78bfa" }}
-            bottom={{ count: stats.inTransit, label: "Đang vận chuyển", color: "#38bdf8" }}
+            bottom={{ count: stats.inTransit, label: "Đang vận chuyển", color: "#38bdf8", pulse: true }}
           />
           <BranchFork
             top={{ label: "Giao thành công", color: "#2dd4bf" }}
-            bottom={{ count: attention.total, label: "Cần chú ý", color: "#f472b6" }}
+            bottom={{ count: attention.total, label: "Cần chú ý", color: "#f472b6", pulse: true }}
           />
         </div>
         {(stats.error > 0 || stats.failed > 0) && (

@@ -354,6 +354,12 @@ select {
   50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.08); }
 }
 
+/* Generic pulse for any-color dot (opacity only, color stays as set) */
+@keyframes pipeline-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.25); }
+}
+
 /* === Spin animation === */
 @keyframes spin {
   to { transform: rotate(360deg); }
