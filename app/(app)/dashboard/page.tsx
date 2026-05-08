@@ -368,26 +368,27 @@ function BranchFork({
         </svg>
         <div className="flex flex-col gap-2">
           <BranchPill {...top} />
-          <div className="flex items-center">
-            <BranchPill {...bottom} />
-            {bottomSpur && (
-              <>
-                <svg width="24" height="2" className="shrink-0">
-                  <line
-                    x1="0"
-                    y1="1"
-                    x2="24"
-                    y2="1"
-                    stroke={`${bottomSpur.color}80`}
-                    strokeWidth="1.2"
-                    strokeDasharray="3 2"
-                  />
-                </svg>
-                <BranchPill {...bottomSpur} />
-              </>
-            )}
-          </div>
+          <BranchPill {...bottom} />
         </div>
+        {bottomSpur && (
+          <div className="flex flex-col gap-2 ml-1">
+            <div style={{ height: 40 }} />
+            <div className="flex items-center">
+              <svg width="24" height="2" className="shrink-0">
+                <line
+                  x1="0"
+                  y1="1"
+                  x2="24"
+                  y2="1"
+                  stroke={`${bottomSpur.color}80`}
+                  strokeWidth="1.2"
+                  strokeDasharray="3 2"
+                />
+              </svg>
+              <BranchPill {...bottomSpur} />
+            </div>
+          </div>
+        )}
         {!bottomSpur && (
           <svg width="32" height="88" className="shrink-0">
             <line x1="0" y1="20" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
