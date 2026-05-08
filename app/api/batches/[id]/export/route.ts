@@ -51,6 +51,42 @@ function csvEscape(value: string | number): string {
   return s;
 }
 
+const CA_PROVINCE_MAP: Record<string, string> = {
+  "british columbia": "BC",
+  "ontario": "ON",
+  "quebec": "QC",
+  "québec": "QC",
+  "alberta": "AB",
+  "manitoba": "MB",
+  "new brunswick": "NB",
+  "nouveau-brunswick": "NB",
+  "newfoundland and labrador": "NL",
+  "newfoundland": "NL",
+  "terre-neuve-et-labrador": "NL",
+  "nova scotia": "NS",
+  "nouvelle-écosse": "NS",
+  "northwest territories": "NT",
+  "territoires du nord-ouest": "NT",
+  "nunavut": "NU",
+  "prince edward island": "PE",
+  "île-du-prince-édouard": "PE",
+  "saskatchewan": "SK",
+  "yukon": "YT",
+};
+
+function normalizeProvince(p: string | null): string {
+  if (!p) return "";
+  const trimmed = p.trim();
+  if (trimmed.length === 2) return trimmed.toUpperCase();
+  const lower = trimmed.toLowerCase();
+  return CA_PROVINCE_MAP[lower] || trimmed.toUpperCase().slice(0, 2);
+}
+
+function normalizePostalCode(z: string | null): string {
+  if (!z) return "";
+  return z.replace(/\s+/g, "").toUpperCase();
+}
+
 function buildClickshipXlsx(
   ordersList: OrderRow[],
   boxMap: Record<string, BoxInfo>,
@@ -188,8 +224,8 @@ function buildEstCsv(
       o.addressLine1 || "",           // #ADDRESSLINE1
       o.addressLine2 || "",           // #ADDRESSLINE2
       o.city || "",                   // #CITY
-      o.province || "",               // #PROVINCE/STATE
-      o.zipcode || "",                // #POSTAL/ZIPCODE
+      normalizeProvince(o.province),  // #PROVINCE/STATE (2-letter code)
+      normalizePostalCode(o.zipcode), // #POSTAL/ZIPCODE (no spaces, uppercase)
       "CA",                           // #COUNTRYCODE
       o.phone || "",                  // #PHONENUMBER
       "", "",                         // #FAXNUMBER, #EMAILADDRESS

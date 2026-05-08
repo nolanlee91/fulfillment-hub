@@ -343,10 +343,12 @@ function BranchFork({
   top,
   bottom,
   belowLabel,
+  bottomSpur,
 }: {
   top: BranchPillData;
   bottom: BranchPillData;
   belowLabel?: string | string[];
+  bottomSpur?: BranchPillData;
 }) {
   const stroke = "rgba(148, 163, 184, 0.4)";
   const labels = belowLabel
@@ -366,13 +368,33 @@ function BranchFork({
         </svg>
         <div className="flex flex-col gap-2">
           <BranchPill {...top} />
-          <BranchPill {...bottom} />
+          <div className="flex items-center">
+            <BranchPill {...bottom} />
+            {bottomSpur && (
+              <>
+                <svg width="24" height="2" className="shrink-0">
+                  <line
+                    x1="0"
+                    y1="1"
+                    x2="24"
+                    y2="1"
+                    stroke={`${bottomSpur.color}80`}
+                    strokeWidth="1.2"
+                    strokeDasharray="3 2"
+                  />
+                </svg>
+                <BranchPill {...bottomSpur} />
+              </>
+            )}
+          </div>
         </div>
-        <svg width="32" height="88" className="shrink-0">
-          <line x1="0" y1="20" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
-          <line x1="0" y1="68" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
-          <line x1="18" y1="44" x2="32" y2="44" stroke={stroke} strokeWidth="1" />
-        </svg>
+        {!bottomSpur && (
+          <svg width="32" height="88" className="shrink-0">
+            <line x1="0" y1="20" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
+            <line x1="0" y1="68" x2="18" y2="44" stroke={stroke} strokeWidth="1" />
+            <line x1="18" y1="44" x2="32" y2="44" stroke={stroke} strokeWidth="1" />
+          </svg>
+        )}
       </div>
       <div className="mt-2 text-center leading-tight" style={{ minHeight: labels.length > 0 ? 0 : 24 }}>
         {labels.map((l, i) => (
@@ -494,7 +516,7 @@ export default async function DashboardPage() {
           icon="task_alt"
           accent="var(--color-teal)"
           href="/delivered"
-          subInfo={{ label: "tỷ lệ giao thành công", value: `${deliveryRate}%` }}
+          subInfo={{ label: `giao thành công trên ${stats.total} đơn`, value: `${deliveryRate}%` }}
         />
         <KpiCard
           label="Cần chú ý"
@@ -567,10 +589,11 @@ export default async function DashboardPage() {
           <BranchFork
             top={{ count: stats.labeled, label: "Có label", sublabel: "chờ pickup", color: "#a78bfa" }}
             bottom={{ count: stats.inTransit, label: "Đang vận chuyển", color: "#38bdf8", pulse: true }}
-          />
-          <BranchFork
-            top={{ label: "Giao thành công", color: "#2dd4bf" }}
-            bottom={{ count: attention.total, label: "Cần chú ý", color: "#f472b6", pulse: true }}
+            bottomSpur={
+              attention.total > 0
+                ? { count: attention.total, label: "Cần chú ý", color: "#f472b6", pulse: true }
+                : undefined
+            }
           />
         </div>
         {(stats.error > 0 || stats.failed > 0) && (
