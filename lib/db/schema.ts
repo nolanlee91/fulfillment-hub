@@ -37,6 +37,12 @@ export const attentionReasonEnum = pgEnum("attention_reason", [
   "STUCK",
 ]);
 
+export const userRoleEnum = pgEnum("user_role", [
+  "SUPER_ADMIN",
+  "STAFF",
+  "CUSTOMER",
+]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -214,6 +220,43 @@ export const trackingFiles = pgTable("tracking_files", {
   totalRows: integer("total_rows").default(0).notNull(),
   totalUpdated: integer("total_updated").default(0).notNull(),
 });
+
+// ============================================================================
+// USERS / SESSIONS (auth)
+// ============================================================================
+
+export const users = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
+    username: text("username").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    name: text("name").notNull(),
+    role: userRoleEnum("role").notNull(),
+    customerId: text("customer_id").references(() => customers.id),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastLoginAt: timestamp("last_login_at"),
+  },
+  (t) => ({
+    usernameIdx: uniqueIndex("users_username_idx").on(t.username),
+  }),
+);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx: index("sessions_user_idx").on(t.userId),
+  }),
+);
 
 // ============================================================================
 // SYNC LOG

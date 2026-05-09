@@ -1,18 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import type { CurrentUser, Role } from "@/lib/auth/current-user";
 
 interface NavItem {
   href: string;
   icon: string;
   label: string;
+  roles?: Role[]; // undefined = tất cả role; có list = chỉ role trong list
 }
 
-const sections: { label: string; items: NavItem[] }[] = [
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const sections: NavSection[] = [
   {
     label: "Tổng quan",
-    items: [{ href: "/dashboard", icon: "dashboard", label: "Dashboard" }],
+    items: [
+      {
+        href: "/dashboard",
+        icon: "dashboard",
+        label: "Dashboard",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+    ],
   },
   {
     label: "Quản lý",
@@ -20,19 +35,77 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: "/orders", icon: "inventory_2", label: "Đơn đang xử lý" },
       { href: "/delivered", icon: "task_alt", label: "Đơn đã giao" },
       { href: "/failed", icon: "assignment_return", label: "Đơn thất bại" },
-      { href: "/errors", icon: "report_problem", label: "Đơn lỗi" },
-      { href: "/batches", icon: "package_2", label: "Lô đóng gói" },
-      { href: "/import-tracking", icon: "upload_file", label: "Đối soát vận chuyển" },
+      {
+        href: "/errors",
+        icon: "report_problem",
+        label: "Đơn lỗi",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+      {
+        href: "/batches",
+        icon: "package_2",
+        label: "Lô đóng gói",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+      {
+        href: "/import-tracking",
+        icon: "upload_file",
+        label: "Đối soát vận chuyển",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
     ],
   },
   {
     label: "Cài đặt",
-    items: [{ href: "/settings", icon: "settings", label: "Cấu hình" }],
+    items: [
+      {
+        href: "/admin/users",
+        icon: "manage_accounts",
+        label: "Tài khoản",
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        href: "/settings",
+        icon: "settings",
+        label: "Cấu hình",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+    ],
   },
 ];
 
-export function Sidebar() {
+const ROLE_LABEL: Record<Role, string> = {
+  SUPER_ADMIN: "Super Admin",
+  STAFF: "Nhân viên",
+  CUSTOMER: "Khách hàng",
+};
+
+export function Sidebar({ user }: { user: CurrentUser }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.roles || item.roles.includes(user.role),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  const initial = (user.name || user.username).charAt(0).toUpperCase();
 
   return (
     <aside
@@ -42,7 +115,10 @@ export function Sidebar() {
         borderColor: "var(--border)",
       }}
     >
-      <div className="px-5 py-5 border-b flex items-center gap-2.5" style={{ borderColor: "var(--border)" }}>
+      <div
+        className="px-5 py-5 border-b flex items-center gap-2.5"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div
           className="w-8 h-8 rounded-md flex items-center justify-center"
           style={{
@@ -50,7 +126,10 @@ export function Sidebar() {
             boxShadow: "0 2px 8px rgba(16,185,129,0.25)",
           }}
         >
-          <span className="material-symbols-outlined text-[18px]" style={{ color: "var(--bg-primary)" }}>
+          <span
+            className="material-symbols-outlined text-[18px]"
+            style={{ color: "var(--bg-primary)" }}
+          >
             local_shipping
           </span>
         </div>
@@ -68,20 +147,26 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto pb-4">
-        {sections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.label}>
             <div className="sidebar-section-label">{section.label}</div>
             <div className="space-y-px">
               {section.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-all"
                     style={{
-                      color: isActive ? "var(--accent)" : "var(--text-secondary)",
-                      backgroundColor: isActive ? "var(--accent-bg)" : "transparent",
+                      color: isActive
+                        ? "var(--accent)"
+                        : "var(--text-secondary)",
+                      backgroundColor: isActive
+                        ? "var(--accent-bg)"
+                        : "transparent",
                       fontWeight: isActive ? 600 : 500,
                     }}
                   >
@@ -104,29 +189,45 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-4 py-3 border-t" style={{ borderColor: "var(--border)" }}>
+      <div
+        className="px-4 py-3 border-t"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-3">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
             style={{
               backgroundColor: "var(--accent)",
               color: "var(--bg-primary)",
             }}
           >
-            S
+            {initial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">Super Admin</p>
-            <div className="flex items-center gap-1.5">
-              <span className="live-dot" />
-              <p
-                className="text-[10px] tracking-wider"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Online
-              </p>
-            </div>
+            <p
+              className="text-xs font-bold text-white truncate"
+              title={user.name}
+            >
+              {user.name}
+            </p>
+            <p
+              className="text-[10px] tracking-wider truncate"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {ROLE_LABEL[user.role]}
+            </p>
           </div>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            title="Đăng xuất"
+            className="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--bg-tertiary)] shrink-0"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {loggingOut ? "hourglass_empty" : "logout"}
+            </span>
+          </button>
         </div>
       </div>
     </aside>
