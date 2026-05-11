@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -60,5 +61,19 @@ export async function requireUser(): Promise<CurrentUser> {
 export async function requireRole(allowed: Role[]): Promise<CurrentUser> {
   const u = await requireUser();
   if (!allowed.includes(u.role)) throw new Error("FORBIDDEN");
+  return u;
+}
+
+/**
+ * Dùng trong Server Component (page.tsx) — redirect nếu role không phù hợp.
+ * Khác requireRole ở chỗ: không throw, mà redirect về fallback (mặc định /orders).
+ */
+export async function requirePageRole(
+  allowed: Role[],
+  fallback = "/orders",
+): Promise<CurrentUser> {
+  const u = await getCurrentUser();
+  if (!u) redirect("/login");
+  if (!allowed.includes(u.role)) redirect(fallback);
   return u;
 }

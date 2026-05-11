@@ -3,6 +3,7 @@ import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
 import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
 import { sql, desc, asc, isNotNull } from "drizzle-orm";
+import { requirePageRole } from "@/lib/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -479,6 +480,7 @@ const ATTENTION_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
+  await requirePageRole(["SUPER_ADMIN", "STAFF"]);
   const { stats, attention, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
     await getDashboardData();
 

@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, boxes, products, batches } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import ExcelJS from "exceljs";
+import { withAuth } from "@/lib/auth/api-guard";
 
 export const maxDuration = 60;
 
@@ -249,7 +250,8 @@ function buildEstCsv(
   return { csv, missingBox, missingProduct, missingCod };
 }
 
-export async function GET(req: NextRequest, ctx: RouteContext) {
+export const GET = withAuth<RouteContext>(
+  async (_req, _user, ctx) => {
   try {
     const { id: batchId } = await ctx.params;
 
@@ -402,4 +404,6 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       { status: 500 },
     );
   }
-}
+  },
+  { roles: ["SUPER_ADMIN", "STAFF"] },
+);

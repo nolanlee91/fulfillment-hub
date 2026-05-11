@@ -1,13 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { trackingFiles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { parseAptFile } from "@/lib/carrier-tracking/parser-apt";
 import { processAptEvents } from "@/lib/carrier-tracking/processor";
+import { withAuth } from "@/lib/auth/api-guard";
 
 export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(
+  async (req) => {
   try {
     const formData = await req.formData();
     const file = formData.get("file");
@@ -83,4 +85,6 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+  },
+  { roles: ["SUPER_ADMIN", "STAFF"] },
+);

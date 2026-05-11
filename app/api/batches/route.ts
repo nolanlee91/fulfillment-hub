@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray, and, sql, desc } from "drizzle-orm";
 import { z } from "zod";
+import { withAuth } from "@/lib/auth/api-guard";
 
 const CreateBatchSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
@@ -36,7 +37,8 @@ async function generateBatchNo(): Promise<string> {
 /**
  * GET: list các batch đã tạo
  */
-export async function GET() {
+export const GET = withAuth(
+  async () => {
   try {
     const rows = await db
       .select({
@@ -57,7 +59,9 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+  },
+  { roles: ["SUPER_ADMIN", "STAFF"] },
+);
 
 /**
  * POST: tạo batch mới từ list uniqueKeys.
@@ -65,7 +69,8 @@ export async function GET() {
  *  - Auto split theo payment method: PREPAID → CLICKSHIP, COD → EST
  *  - Set status = EXPORTED, batch_id = batchNo, platform tương ứng
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(
+  async (req) => {
   try {
     const body = await req.json();
     const { uniqueKeys } = CreateBatchSchema.parse(body);
@@ -164,4 +169,6 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-}
+  },
+  { roles: ["SUPER_ADMIN", "STAFF"] },
+);

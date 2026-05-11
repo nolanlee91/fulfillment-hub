@@ -3,12 +3,13 @@ import { db } from "@/lib/db";
 import { orders, customers, products } from "@/lib/db/schema";
 import { eq, and, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
+import { withAuth } from "@/lib/auth/api-guard";
 
 const DeleteOrdersSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
 });
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req, user) => {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // READY | ERROR | NEW | EXPORTED
@@ -20,6 +21,22 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
 
     const conditions = [];
+
+    if (user.role === "CUSTOMER") {
+      if (!user.customerId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Tài khoản chưa được gán khách hàng — liên hệ quản trị viên",
+          },
+          { status: 500 },
+        );
+      }
+      conditions.push(eq(orders.customerId, user.customerId));
+    } else if (customerId) {
+      conditions.push(eq(orders.customerId, customerId));
+    }
+
     if (excludeTerminal) {
       conditions.push(ne(orders.status, "DELIVERED"));
       conditions.push(ne(orders.status, "FAILED"));
@@ -32,7 +49,6 @@ export async function GET(req: NextRequest) {
         conditions.push(or(...statusList.map((s) => eq(orders.status, s)))!);
       }
     }
-    if (customerId) conditions.push(eq(orders.customerId, customerId));
     if (productId) conditions.push(eq(orders.productId, productId));
     if (payment === "PREPAID" || payment === "COD") {
       conditions.push(eq(orders.paymentMethod, payment));
@@ -107,11 +123,37 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
 
-export async function POST() {
+export const POST = withAuth(async (_req, user) => {
   // Get distinct customers + products for filters
   try {
+    if (user.role === "CUSTOMER") {
+      if (!user.customerId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Tài khoản chưa được gán khách hàng — liên hệ quản trị viên",
+          },
+          { status: 500 },
+        );
+      }
+      const customerList = await db
+        .select({ id: customers.id, name: customers.name })
+        .from(customers)
+        .where(and(eq(customers.active, true), eq(customers.id, user.customerId)));
+
+      const productList = await db
+        .select({ id: products.id, name: products.name, customerId: products.customerId })
+        .from(products)
+        .where(and(eq(products.active, true), eq(products.customerId, user.customerId)));
+
+      return NextResponse.json({
+        success: true,
+        data: { customers: customerList, products: productList },
+      });
+    }
+
     const customerList = await db
       .select({ id: customers.id, name: customers.name })
       .from(customers)
@@ -133,32 +175,35 @@ export async function POST() {
       { status: 500 },
     );
   }
-}
+});
 
 /**
  * DELETE: bulk xóa đơn theo uniqueKeys.
  * Cho xóa mọi status. Giữ nguyên batches.totalOrders (snapshot lịch sử).
  */
-export async function DELETE(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { uniqueKeys } = DeleteOrdersSchema.parse(body);
+export const DELETE = withAuth(
+  async (req) => {
+    try {
+      const body = await req.json();
+      const { uniqueKeys } = DeleteOrdersSchema.parse(body);
 
-    const deleted = await db
-      .delete(orders)
-      .where(inArray(orders.uniqueKey, uniqueKeys))
-      .returning({ uniqueKey: orders.uniqueKey });
+      const deleted = await db
+        .delete(orders)
+        .where(inArray(orders.uniqueKey, uniqueKeys))
+        .returning({ uniqueKey: orders.uniqueKey });
 
-    return NextResponse.json({
-      success: true,
-      deleted: deleted.length,
-      message: `Đã xóa ${deleted.length} đơn`,
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 400 },
-    );
-  }
-}
+      return NextResponse.json({
+        success: true,
+        deleted: deleted.length,
+        message: `Đã xóa ${deleted.length} đơn`,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 400 },
+      );
+    }
+  },
+  { roles: ["SUPER_ADMIN", "STAFF"] },
+);

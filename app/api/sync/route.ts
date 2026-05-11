@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { syncAllSheets } from "@/lib/sync/sync";
+import { withAuth } from "@/lib/auth/api-guard";
 
 export const maxDuration = 60; // Vercel/Next limit, Railway không bị giới hạn
 
-export async function POST() {
+async function handleSync() {
   try {
     const result = await syncAllSheets("manual");
     return NextResponse.json({
@@ -23,7 +24,5 @@ export async function POST() {
   }
 }
 
-// Cho phép GET để test từ browser
-export async function GET() {
-  return POST();
-}
+export const POST = withAuth(handleSync, { roles: ["SUPER_ADMIN", "STAFF"] });
+export const GET = withAuth(handleSync, { roles: ["SUPER_ADMIN", "STAFF"] });

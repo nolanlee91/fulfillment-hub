@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { validateAndAssignAll } from "@/lib/sync/validate";
+import { withAuth } from "@/lib/auth/api-guard";
 
 export const maxDuration = 60;
 
-export async function POST() {
+async function handleValidate() {
   try {
     const result = await validateAndAssignAll();
     return NextResponse.json({
@@ -23,6 +24,5 @@ export async function POST() {
   }
 }
 
-export async function GET() {
-  return POST();
-}
+export const POST = withAuth(handleValidate, { roles: ["SUPER_ADMIN", "STAFF"] });
+export const GET = withAuth(handleValidate, { roles: ["SUPER_ADMIN", "STAFF"] });
