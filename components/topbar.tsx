@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 interface TopbarProps {
   title: string;
   subtitle?: string;
+  /** Hiển thị nút "Đồng bộ". Mặc định true. Đặt false cho CUSTOMER. */
+  showSync?: boolean;
 }
 
 type Phase = "idle" | "syncing" | "validating";
 
-export function Topbar({ title, subtitle }: TopbarProps) {
+export function Topbar({ title, subtitle, showSync = true }: TopbarProps) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<{
@@ -131,19 +133,21 @@ export function Topbar({ title, subtitle }: TopbarProps) {
           </div>
         )}
 
-        <button
-          onClick={runSyncAndValidate}
-          disabled={isRunning}
-          className="btn btn-primary"
-          title="Kéo đơn từ Google Sheets về và tự động validate gán thùng"
-        >
-          <span
-            className={`material-symbols-outlined text-[17px] ${isRunning ? "animate-spin" : ""}`}
+        {showSync && (
+          <button
+            onClick={runSyncAndValidate}
+            disabled={isRunning}
+            className="btn btn-primary"
+            title="Kéo đơn từ Google Sheets về và tự động validate gán thùng"
           >
-            {phase === "validating" ? "verified" : "refresh"}
-          </span>
-          {buttonLabel}
-        </button>
+            <span
+              className={`material-symbols-outlined text-[17px] ${isRunning ? "animate-spin" : ""}`}
+            >
+              {phase === "validating" ? "verified" : "refresh"}
+            </span>
+            {buttonLabel}
+          </button>
+        )}
       </div>
     </header>
   );
