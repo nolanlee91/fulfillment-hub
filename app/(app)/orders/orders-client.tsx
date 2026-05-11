@@ -98,6 +98,7 @@ function OrdersPageContent({ role }: { role: Role }) {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Filters — initial từ URL search params (cho phép link từ dashboard)
@@ -185,6 +186,40 @@ function OrdersPageContent({ role }: { role: Role }) {
     } finally {
       setCreating(false);
       setTimeout(() => setMessage(null), 6000);
+    }
+  }
+
+  async function exportFile() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", "processing");
+      if (filterStatus) params.set("status", filterStatus);
+      if (!isCustomer && filterCustomer) params.set("customer", filterCustomer);
+      if (filterProduct) params.set("product", filterProduct);
+      if (filterPayment) params.set("payment", filterPayment);
+      if (filterAttention) params.set("attention", filterAttention);
+      if (search) params.set("search", search);
+
+      const res = await fetch(`/api/orders/export?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Lỗi không xác định" }));
+        alert("Lỗi xuất file: " + (data.error || res.statusText));
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = cd.match(/filename="([^"]+)"/);
+      a.download = m ? m[1] : `orders-processing-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -383,6 +418,15 @@ function OrdersPageContent({ role }: { role: Role }) {
               {message}
             </span>
           )}
+          <button
+            onClick={exportFile}
+            disabled={exporting || orders.length === 0}
+            className="btn btn-secondary"
+            title="Xuất file Excel toàn bộ đơn theo filter hiện tại"
+          >
+            <span className="material-symbols-outlined text-[17px]">download</span>
+            {exporting ? "Đang xuất..." : "Xuất file"}
+          </button>
           {!isCustomer && (
             <>
               <button

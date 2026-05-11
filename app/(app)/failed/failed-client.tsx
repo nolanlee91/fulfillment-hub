@@ -46,6 +46,7 @@ export default function FailedClient({ role }: { role: Role }) {
   const [customers, setCustomers] = useState<FilterOption[]>([]);
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
@@ -81,6 +82,38 @@ export default function FailedClient({ role }: { role: Role }) {
         }
       });
   }, []);
+
+  async function exportFile() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", "failed");
+      if (!isCustomer && filterCustomer) params.set("customer", filterCustomer);
+      if (filterProduct) params.set("product", filterProduct);
+      if (filterPayment) params.set("payment", filterPayment);
+      if (search) params.set("search", search);
+
+      const res = await fetch(`/api/orders/export?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Lỗi không xác định" }));
+        alert("Lỗi xuất file: " + (data.error || res.statusText));
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = cd.match(/filename="([^"]+)"/);
+      a.download = m ? m[1] : `orders-failed-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const filteredProducts = filterCustomer
     ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
@@ -167,11 +200,22 @@ export default function FailedClient({ role }: { role: Role }) {
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
           <span className="font-bold text-white">{orders.length}</span> đơn thất bại / trả về
         </div>
-        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          <span className="material-symbols-outlined text-[16px]" style={{ color: "var(--color-orange)" }}>
-            assignment_return
-          </span>
-          <span>Đơn không giao được, đã trả về sender</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="material-symbols-outlined text-[16px]" style={{ color: "var(--color-orange)" }}>
+              assignment_return
+            </span>
+            <span>Đơn không giao được, đã trả về sender</span>
+          </div>
+          <button
+            onClick={exportFile}
+            disabled={exporting || orders.length === 0}
+            className="btn btn-secondary"
+            title="Xuất file Excel toàn bộ đơn theo filter hiện tại"
+          >
+            <span className="material-symbols-outlined text-[17px]">download</span>
+            {exporting ? "Đang xuất..." : "Xuất file"}
+          </button>
         </div>
       </div>
 
