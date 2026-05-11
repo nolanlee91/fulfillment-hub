@@ -39,6 +39,6 @@ export const config = {
      *   - /favicon.ico, /robots.txt, /sitemap.xml
      *   - File static (chứa dấu chấm)
      */
-    "/((?!api/cron|api/auth|api/admin/setup-auth|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
+    "/((?!api/cron|api/auth|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
   ],
 };
