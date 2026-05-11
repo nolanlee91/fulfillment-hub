@@ -199,6 +199,7 @@ export const orders = pgTable(
     attentionNote: text("attention_note"),
 
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
+    syncedToSheetAt: timestamp("synced_to_sheet_at"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
@@ -206,6 +207,7 @@ export const orders = pgTable(
     customerIdx: index("orders_customer_idx").on(t.customerId),
     batchIdx: index("orders_batch_idx").on(t.batchId),
     attentionIdx: index("orders_attention_idx").on(t.attentionReason),
+    unsyncedSheetIdx: index("orders_unsynced_sheet_idx").on(t.syncedToSheetAt),
   }),
 );
 

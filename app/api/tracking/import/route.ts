@@ -4,6 +4,7 @@ import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
+import { syncTrackingToSheet } from "@/lib/sync/write-back";
 
 export const maxDuration = 60;
 
@@ -316,6 +317,18 @@ export const POST = withAuth(
         })
         .where(inArray(orders.uniqueKey, missingFromFile));
     }
+
+    // 6. Đẩy tracking về sheet nguồn (fire-and-forget, không block response)
+    //    Cron sync-source-sheets sẽ retry các đơn fail.
+    void Promise.allSettled(
+      updates.map((u) =>
+        syncTrackingToSheet(u.uniqueKey).catch((e) => ({
+          success: false as const,
+          uniqueKey: u.uniqueKey,
+          reason: e instanceof Error ? e.message : String(e),
+        })),
+      ),
+    );
 
     const messageParts = [`${updates.length} đơn có tracking`];
     if (skippedAlreadyLabeled.length > 0) {
