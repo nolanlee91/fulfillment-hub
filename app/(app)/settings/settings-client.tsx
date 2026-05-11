@@ -5,13 +5,15 @@ import { Topbar } from "@/components/topbar";
 import { BoxMasterTab } from "@/components/settings/box-master-tab";
 import { ProductMasterTab } from "@/components/settings/product-master-tab";
 import { BoxRulesTab } from "@/components/settings/box-rules-tab";
+import { CustomerMasterTab } from "@/components/settings/customer-master-tab";
 
-type Tab = "boxes" | "products" | "rules";
+type Tab = "customers" | "boxes" | "products" | "rules";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("boxes");
+  const [activeTab, setActiveTab] = useState<Tab>("customers");
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
+    { id: "customers", label: "Customer Master", icon: "business" },
     { id: "boxes", label: "Box Master", icon: "inventory_2" },
     { id: "products", label: "Product Master", icon: "category" },
     { id: "rules", label: "Box Rules", icon: "rule" },
@@ -55,6 +57,7 @@ export default function SettingsPage() {
           borderColor: "var(--border)",
         }}
       >
+        {activeTab === "customers" && <CustomerMasterTab />}
         {activeTab === "boxes" && <BoxMasterTab />}
         {activeTab === "products" && <ProductMasterTab />}
         {activeTab === "rules" && <BoxRulesTab />}

@@ -2,54 +2,43 @@
 
 import { useEffect, useState } from "react";
 
-interface Product {
-  id: string;
-  name: string;
-  customerId: string;
-  unitWeightLb: string | null;
-  active: boolean;
-}
-
 interface Customer {
   id: string;
   name: string;
   active: boolean;
+  createdAt: string;
 }
 
-interface NewProductDraft {
+interface NewCustomerDraft {
   id: string;
   name: string;
-  customerId: string;
-  unitWeightLb: string;
   active: boolean;
 }
 
-const EMPTY_PRODUCT: NewProductDraft = {
+interface EditCustomerDraft {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+const EMPTY_CUSTOMER: NewCustomerDraft = {
   id: "",
   name: "",
-  customerId: "",
-  unitWeightLb: "",
   active: true,
 };
 
-export function ProductMasterTab() {
-  const [products, setProducts] = useState<Product[]>([]);
+export function CustomerMasterTab() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [creating, setCreating] = useState<NewProductDraft | null>(null);
+  const [editing, setEditing] = useState<EditCustomerDraft | null>(null);
+  const [creating, setCreating] = useState<NewCustomerDraft | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
-    const [productsRes, customersRes] = await Promise.all([
-      fetch("/api/products"),
-      fetch("/api/customers"),
-    ]);
-    const productsData = await productsRes.json();
-    const customersData = await customersRes.json();
-    if (productsData.success) setProducts(productsData.data);
-    if (customersData.success) setCustomers(customersData.data);
+    const res = await fetch("/api/customers");
+    const data = await res.json();
+    if (data.success) setCustomers(data.data);
     setLoading(false);
   }
 
@@ -59,14 +48,18 @@ export function ProductMasterTab() {
 
   async function save() {
     if (!editing) return;
+    if (!editing.name.trim()) {
+      alert("Vui lòng nhập Tên khách hàng");
+      return;
+    }
     setSaving(true);
     try {
-      const res = await fetch("/api/products", {
+      const res = await fetch("/api/customers", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editing.id,
-          unitWeightLb: Number(editing.unitWeightLb) || 0,
+          name: editing.name.trim(),
           active: editing.active,
         }),
       });
@@ -84,20 +77,18 @@ export function ProductMasterTab() {
 
   async function create() {
     if (!creating) return;
-    if (!creating.id.trim() || !creating.name.trim() || !creating.customerId) {
-      alert("Vui lòng nhập Mã, Tên sản phẩm và chọn Khách hàng");
+    if (!creating.id.trim() || !creating.name.trim()) {
+      alert("Vui lòng nhập Mã và Tên khách hàng");
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/products", {
+      const res = await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: creating.id.trim(),
           name: creating.name.trim(),
-          customerId: creating.customerId,
-          unitWeightLb: Number(creating.unitWeightLb) || 0,
           active: creating.active,
         }),
       });
@@ -121,22 +112,19 @@ export function ProductMasterTab() {
     );
   }
 
-  const activeCustomers = customers.filter((c) => c.active);
-
   return (
     <div>
       <div className="flex justify-end p-3">
         <button
-          onClick={() => setCreating({ ...EMPTY_PRODUCT })}
-          disabled={activeCustomers.length === 0}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={() => setCreating({ ...EMPTY_CUSTOMER })}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded"
           style={{ backgroundColor: "var(--accent)", color: "var(--bg-primary)" }}
-          title={activeCustomers.length === 0 ? "Cần tạo khách hàng trước" : ""}
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          Tạo Sản phẩm
+          Tạo Khách hàng
         </button>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -147,13 +135,10 @@ export function ProductMasterTab() {
               }}
             >
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Khách hàng
+                Mã
               </th>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Sản phẩm
-              </th>
-              <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Cân nặng (lb)
+                Tên
               </th>
               <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                 Active
@@ -164,27 +149,21 @@ export function ProductMasterTab() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {customers.map((c) => (
               <tr
-                key={p.id}
+                key={c.id}
                 className="border-t"
                 style={{ borderColor: "var(--border)" }}
               >
+                <td className="px-4 py-3 font-mono text-white">{c.id}</td>
                 <td
-                  className="px-4 py-3 text-xs"
-                  style={{ color: "var(--text-muted)" }}
+                  className="px-4 py-3 font-bold"
+                  style={{ color: "var(--text-primary)" }}
                 >
-                  {p.customerId}
-                </td>
-                <td className="px-4 py-3 font-bold text-white">{p.name}</td>
-                <td
-                  className="px-4 py-3 text-right font-mono"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {p.unitWeightLb ? Number(p.unitWeightLb).toFixed(4) : "—"}
+                  {c.name}
                 </td>
                 <td className="px-4 py-3 text-center">
-                  {p.active ? (
+                  {c.active ? (
                     <span
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
@@ -208,7 +187,9 @@ export function ProductMasterTab() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
-                    onClick={() => setEditing(p)}
+                    onClick={() =>
+                      setEditing({ id: c.id, name: c.name, active: c.active })
+                    }
                     className="px-3 py-1 text-xs font-semibold rounded"
                     style={{
                       backgroundColor: "var(--accent-bg)",
@@ -220,6 +201,17 @@ export function ProductMasterTab() {
                 </td>
               </tr>
             ))}
+            {customers.length === 0 && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-4 py-8 text-center text-sm"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Chưa có khách hàng nào
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -238,7 +230,7 @@ export function ProductMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">Tạo Sản phẩm mới</h3>
+            <h3 className="text-lg font-bold text-white mb-4">Tạo Khách hàng mới</h3>
 
             <div className="space-y-3">
               <div>
@@ -246,38 +238,18 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Khách hàng <span style={{ color: "var(--accent)" }}>*</span>
-                </label>
-                <select
-                  value={creating.customerId}
-                  onChange={(e) =>
-                    setCreating({ ...creating, customerId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded text-sm"
-                >
-                  <option value="">— Chọn khách hàng —</option>
-                  {activeCustomers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.id})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  className="text-[11px] font-bold tracking-widest uppercase block mb-1"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Mã sản phẩm <span style={{ color: "var(--accent)" }}>*</span>
+                  Mã khách hàng <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
                   value={creating.id}
                   onChange={(e) =>
-                    setCreating({ ...creating, id: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })
+                    setCreating({
+                      ...creating,
+                      id: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                    })
                   }
-                  placeholder="VD: fitgum_acai"
+                  placeholder="VD: venatureco, skylane"
                   className="w-full px-3 py-2 rounded text-sm font-mono"
                 />
                 <p
@@ -301,26 +273,7 @@ export function ProductMasterTab() {
                   onChange={(e) =>
                     setCreating({ ...creating, name: e.target.value })
                   }
-                  placeholder="VD: Fitgum Acai"
-                  className="w-full px-3 py-2 rounded text-sm"
-                />
-              </div>
-
-              <div>
-                <label
-                  className="text-[11px] font-bold tracking-widest uppercase block mb-1"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Cân nặng đơn vị (lb)
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={creating.unitWeightLb}
-                  onChange={(e) =>
-                    setCreating({ ...creating, unitWeightLb: e.target.value })
-                  }
-                  placeholder="0.0000"
+                  placeholder="VD: Venature Co"
                   className="w-full px-3 py-2 rounded text-sm"
                 />
               </div>
@@ -384,32 +337,24 @@ export function ProductMasterTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-white mb-1">
-              Sửa <span style={{ color: "var(--accent)" }}>{editing.name}</span>
+              Sửa khách hàng <span style={{ color: "var(--accent)" }}>{editing.id}</span>
             </h3>
-            <p
-              className="text-xs mb-4"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {editing.customerId}
-            </p>
 
-            <div className="space-y-3">
+            <div className="space-y-3 mt-4">
               <div>
                 <label
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Cân nặng đơn vị (lb)
+                  Tên hiển thị
                 </label>
                 <input
-                  type="number"
-                  step="0.0001"
-                  value={editing.unitWeightLb || ""}
+                  type="text"
+                  value={editing.name}
                   onChange={(e) =>
-                    setEditing({ ...editing, unitWeightLb: e.target.value })
+                    setEditing({ ...editing, name: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded text-sm"
-                  placeholder="0.0000"
                 />
               </div>
 

@@ -12,10 +12,21 @@ interface Box {
   active: boolean;
 }
 
+const EMPTY_BOX: Box = {
+  code: "",
+  name: "",
+  lengthIn: "",
+  widthIn: "",
+  heightIn: "",
+  emptyWeightLb: "",
+  active: true,
+};
+
 export function BoxMasterTab() {
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Box | null>(null);
+  const [creating, setCreating] = useState<Box | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -59,6 +70,39 @@ export function BoxMasterTab() {
     }
   }
 
+  async function create() {
+    if (!creating) return;
+    if (!creating.code.trim() || !creating.name.trim()) {
+      alert("Vui lòng nhập Mã và Tên thùng");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/boxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: creating.code.trim(),
+          name: creating.name.trim(),
+          lengthIn: Number(creating.lengthIn) || 0,
+          widthIn: Number(creating.widthIn) || 0,
+          heightIn: Number(creating.heightIn) || 0,
+          emptyWeightLb: Number(creating.emptyWeightLb) || 0,
+          active: creating.active,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCreating(null);
+        await load();
+      } else {
+        alert("Lỗi: " + data.error);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div
@@ -72,6 +116,16 @@ export function BoxMasterTab() {
 
   return (
     <div>
+      <div className="flex justify-end p-3">
+        <button
+          onClick={() => setCreating({ ...EMPTY_BOX })}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded"
+          style={{ backgroundColor: "var(--accent)", color: "var(--bg-primary)" }}
+        >
+          <span className="material-symbols-outlined text-[18px]">add</span>
+          Tạo Box
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -185,6 +239,174 @@ export function BoxMasterTab() {
           </tbody>
         </table>
       </div>
+
+      {creating && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+          onClick={() => !saving && setCreating(null)}
+        >
+          <div
+            className="rounded-xl p-6 w-full max-w-md border"
+            style={{
+              backgroundColor: "var(--bg-secondary)",
+              borderColor: "var(--border)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-white mb-4">Tạo Box mới</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label
+                  className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Mã thùng <span style={{ color: "var(--accent)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={creating.code}
+                  onChange={(e) =>
+                    setCreating({ ...creating, code: e.target.value.toUpperCase() })
+                  }
+                  placeholder="VD: A, B, M5"
+                  className="w-full px-3 py-2 rounded text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label
+                  className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Tên thùng <span style={{ color: "var(--accent)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={creating.name}
+                  onChange={(e) =>
+                    setCreating({ ...creating, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label
+                    className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Dài (in)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={creating.lengthIn}
+                    onChange={(e) =>
+                      setCreating({ ...creating, lengthIn: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label
+                    className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Rộng (in)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={creating.widthIn}
+                    onChange={(e) =>
+                      setCreating({ ...creating, widthIn: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label
+                    className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Cao (in)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={creating.heightIn}
+                    onChange={(e) =>
+                      setCreating({ ...creating, heightIn: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Cân vỏ thùng (lb)
+                </label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={creating.emptyWeightLb}
+                  onChange={(e) =>
+                    setCreating({ ...creating, emptyWeightLb: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded text-sm"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={creating.active}
+                  onChange={(e) =>
+                    setCreating({ ...creating, active: e.target.checked })
+                  }
+                  className="w-4 h-4"
+                  style={{ accentColor: "var(--accent)" }}
+                />
+                <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+                  Active
+                </span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setCreating(null)}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-semibold rounded"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={create}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-semibold rounded disabled:opacity-50"
+                style={{
+                  backgroundColor: "var(--accent)",
+                  color: "var(--bg-primary)",
+                }}
+              >
+                {saving ? "Đang tạo..." : "Tạo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <div

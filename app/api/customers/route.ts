@@ -1,29 +1,29 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { boxes } from "@/lib/db/schema";
+import { customers } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
 
-const UpdateBoxSchema = z.object({
-  code: z.string().min(1),
+const CreateCustomerSchema = z.object({
+  id: z.string().min(1).regex(/^[a-z0-9_]+$/, "id chỉ dùng a-z, 0-9, _"),
   name: z.string().min(1),
-  lengthIn: z.number().nonnegative(),
-  widthIn: z.number().nonnegative(),
-  heightIn: z.number().nonnegative(),
-  emptyWeightLb: z.number().nonnegative(),
   active: z.boolean(),
 });
 
-const CreateBoxSchema = UpdateBoxSchema;
+const UpdateCustomerSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  active: z.boolean(),
+});
 
 export const GET = withAuth(
   async () => {
     try {
       const rows = await db
         .select()
-        .from(boxes)
-        .orderBy(asc(boxes.code));
+        .from(customers)
+        .orderBy(asc(customers.id));
       return NextResponse.json({ success: true, data: rows });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -40,27 +40,23 @@ export const POST = withAuth(
   async (req) => {
     try {
       const body = await req.json();
-      const parsed = CreateBoxSchema.parse(body);
+      const parsed = CreateCustomerSchema.parse(body);
 
       const existing = await db
-        .select({ code: boxes.code })
-        .from(boxes)
-        .where(eq(boxes.code, parsed.code))
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, parsed.id))
         .limit(1);
       if (existing.length > 0) {
         return NextResponse.json(
-          { success: false, error: `Mã thùng "${parsed.code}" đã tồn tại` },
+          { success: false, error: `Mã khách hàng "${parsed.id}" đã tồn tại` },
           { status: 409 },
         );
       }
 
-      await db.insert(boxes).values({
-        code: parsed.code,
+      await db.insert(customers).values({
+        id: parsed.id,
         name: parsed.name,
-        lengthIn: parsed.lengthIn.toString(),
-        widthIn: parsed.widthIn.toString(),
-        heightIn: parsed.heightIn.toString(),
-        emptyWeightLb: parsed.emptyWeightLb.toString(),
         active: parsed.active,
       });
 
@@ -80,19 +76,12 @@ export const PUT = withAuth(
   async (req) => {
     try {
       const body = await req.json();
-      const parsed = UpdateBoxSchema.parse(body);
+      const parsed = UpdateCustomerSchema.parse(body);
 
       await db
-        .update(boxes)
-        .set({
-          name: parsed.name,
-          lengthIn: parsed.lengthIn.toString(),
-          widthIn: parsed.widthIn.toString(),
-          heightIn: parsed.heightIn.toString(),
-          emptyWeightLb: parsed.emptyWeightLb.toString(),
-          active: parsed.active,
-        })
-        .where(eq(boxes.code, parsed.code));
+        .update(customers)
+        .set({ name: parsed.name, active: parsed.active })
+        .where(eq(customers.id, parsed.id));
 
       return NextResponse.json({ success: true });
     } catch (error: unknown) {

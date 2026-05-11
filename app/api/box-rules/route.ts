@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { boxRules, boxes, products } from "@/lib/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
 
@@ -65,15 +66,19 @@ export const PUT = withAuth(
       const body = await req.json();
       const parsed = UpdateRuleSchema.parse(body);
 
+      // UPSERT: nếu (productId, boxCode) chưa có rule thì INSERT, có rồi thì UPDATE maxQty
       await db
-        .update(boxRules)
-        .set({ maxQty: parsed.maxQty })
-        .where(
-          and(
-            eq(boxRules.productId, parsed.productId),
-            eq(boxRules.boxCode, parsed.boxCode),
-          ),
-        );
+        .insert(boxRules)
+        .values({
+          id: randomUUID(),
+          productId: parsed.productId,
+          boxCode: parsed.boxCode,
+          maxQty: parsed.maxQty,
+        })
+        .onConflictDoUpdate({
+          target: [boxRules.productId, boxRules.boxCode],
+          set: { maxQty: parsed.maxQty },
+        });
 
       return NextResponse.json({ success: true });
     } catch (error: unknown) {
