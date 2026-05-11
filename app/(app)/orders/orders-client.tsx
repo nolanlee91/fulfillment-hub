@@ -320,7 +320,7 @@ function OrdersPageContent({ role }: { role: Role }) {
             <option value="ADDRESS_ERROR">Sai địa chỉ</option>
             <option value="DELAYED">Delay</option>
             <option value="NOTICE_CARD">Notice card</option>
-            <option value="STUCK">Không cập nhật 3 ngày</option>
+            <option value="STUCK">Không cập nhật 3 ngày làm việc</option>
           </select>
         </div>
 

@@ -6,8 +6,25 @@ import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const STUCK_THRESHOLD_DAYS = 3;
-const STUCK_NOTE = `Không có cập nhật trong ${STUCK_THRESHOLD_DAYS} ngày`;
+const STUCK_THRESHOLD_BUSINESS_DAYS = 3;
+const STUCK_NOTE = `Không có cập nhật trong ${STUCK_THRESHOLD_BUSINESS_DAYS} ngày làm việc`;
+
+/**
+ * Trả về timestamp của n ngày làm việc trước `from`, skip Saturday (6) + Sunday (0).
+ *
+ * Ví dụ với from=Thursday: -3 BD = Monday cùng tuần.
+ * Ví dụ với from=Monday: -3 BD = Wednesday tuần trước (skip Sun + Sat).
+ */
+function businessDaysAgo(n: number, from: Date = new Date()): Date {
+  const d = new Date(from);
+  let count = 0;
+  while (count < n) {
+    d.setDate(d.getDate() - 1);
+    const dow = d.getDay(); // 0 = Sun, 6 = Sat
+    if (dow !== 0 && dow !== 6) count += 1;
+  }
+  return d;
+}
 
 async function handler(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
@@ -26,7 +43,7 @@ async function handler(req: NextRequest) {
   }
 
   const now = new Date();
-  const threshold = new Date(now.getTime() - STUCK_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
+  const threshold = businessDaysAgo(STUCK_THRESHOLD_BUSINESS_DAYS, now);
 
   const flagged = await db
     .update(orders)
@@ -53,9 +70,9 @@ async function handler(req: NextRequest) {
   return NextResponse.json({
     success: true,
     flagged: flagged.length,
-    thresholdDays: STUCK_THRESHOLD_DAYS,
+    thresholdBusinessDays: STUCK_THRESHOLD_BUSINESS_DAYS,
     thresholdAt: threshold.toISOString(),
-    message: `Đã đánh dấu ${flagged.length} đơn STUCK (không cập nhật ${STUCK_THRESHOLD_DAYS} ngày).`,
+    message: `Đã đánh dấu ${flagged.length} đơn STUCK (không cập nhật ${STUCK_THRESHOLD_BUSINESS_DAYS} ngày làm việc).`,
   });
 }
 
