@@ -21,6 +21,7 @@ async function getDashboardData() {
     new: 0,
     ready: 0,
     error: 0,
+    errorUpdated: 0,
     exported: 0,
     labeled: 0,
     inTransit: 0,
@@ -33,8 +34,8 @@ async function getDashboardData() {
     stats.total += count;
     if (row.status === "NEW") stats.new = count;
     else if (row.status === "READY") stats.ready = count;
-    else if (row.status === "ERROR" || row.status === "ERROR_UPDATED")
-      stats.error += count;
+    else if (row.status === "ERROR") stats.error = count;
+    else if (row.status === "ERROR_UPDATED") stats.errorUpdated = count;
     else if (row.status === "EXPORTED") stats.exported = count;
     else if (row.status === "LABEL_CREATED") stats.labeled = count;
     else if (row.status === "IN_TRANSIT") stats.inTransit = count;
@@ -566,7 +567,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between overflow-x-auto pb-2 gap-1">
           <PipelineBox label={["Data khách", "Google Sheet"]} />
           <PipelineArrow caption="Đồng bộ" width={88} />
-          <PipelineBox count={stats.new + stats.ready} label="Sẵn sàng" color="#34d399" />
+          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Sẵn sàng" color="#34d399" />
           <PipelineArrow
             captionAbove="Tạo Batch"
             caption="Xuất file upload lên ClickShip & EST"

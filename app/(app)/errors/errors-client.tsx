@@ -28,7 +28,7 @@ export default function ErrorsPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/orders?status=ERROR,ERROR_UPDATED");
+    const res = await fetch("/api/orders?status=ERROR");
     const data = await res.json();
     if (data.success) setOrders(data.data);
     setLoading(false);
