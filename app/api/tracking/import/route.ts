@@ -4,7 +4,7 @@ import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
-import { syncTrackingToSheet } from "@/lib/sync/write-back";
+import { syncTrackingToSheet, type SheetCache } from "@/lib/sync/write-back";
 
 export const maxDuration = 60;
 
@@ -318,17 +318,33 @@ export const POST = withAuth(
         .where(inArray(orders.uniqueKey, missingFromFile));
     }
 
-    // 6. Đẩy tracking về sheet nguồn (fire-and-forget, không block response)
-    //    Cron sync-source-sheets sẽ retry các đơn fail.
-    void Promise.allSettled(
-      updates.map((u) =>
-        syncTrackingToSheet(u.uniqueKey).catch((e) => ({
-          success: false as const,
-          uniqueKey: u.uniqueKey,
-          reason: e instanceof Error ? e.message : String(e),
-        })),
-      ),
-    );
+    // 6. Đẩy tracking về sheet nguồn (await, dùng cache để tránh re-read).
+    //    Block response 5-10s đến khi sync xong → user thấy stats ngay.
+    //    Cron sync-source-sheets sẽ retry các đơn fail trên cùng sheet.
+    const sheetCache: SheetCache = new Map();
+    let sheetSynced = 0;
+    let sheetSkipped = 0;
+    let sheetFailed = 0;
+    const sheetSkipReasons: Record<string, number> = {};
+    const sheetFailSamples: string[] = [];
+    for (const u of updates) {
+      try {
+        const res = await syncTrackingToSheet(u.uniqueKey, sheetCache);
+        if (res.success) sheetSynced += 1;
+        else if (res.skipped) {
+          sheetSkipped += 1;
+          const r = res.reason ?? "unknown";
+          sheetSkipReasons[r] = (sheetSkipReasons[r] || 0) + 1;
+        } else {
+          sheetFailed += 1;
+          if (sheetFailSamples.length < 3) sheetFailSamples.push(`${u.uniqueKey}: ${res.reason}`);
+        }
+      } catch (e) {
+        sheetFailed += 1;
+        const msg = e instanceof Error ? e.message : String(e);
+        if (sheetFailSamples.length < 3) sheetFailSamples.push(`${u.uniqueKey}: ${msg}`);
+      }
+    }
 
     const messageParts = [`${updates.length} đơn có tracking`];
     if (skippedAlreadyLabeled.length > 0) {
@@ -340,6 +356,11 @@ export const POST = withAuth(
     if (notInBatch.length > 0) {
       messageParts.push(`${notInBatch.length} đơn không thuộc batch này (bỏ qua)`);
     }
+    if (updates.length > 0) {
+      messageParts.push(
+        `ghi sheet: ${sheetSynced} OK${sheetSkipped > 0 ? `, ${sheetSkipped} skip` : ""}${sheetFailed > 0 ? `, ${sheetFailed} fail` : ""}`,
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -350,6 +371,13 @@ export const POST = withAuth(
       skipped: skippedAlreadyLabeled.length,
       rejected: missingFromFile.length,
       notInBatch: notInBatch.length,
+      sheetSync: {
+        synced: sheetSynced,
+        skipped: sheetSkipped,
+        failed: sheetFailed,
+        skipReasons: sheetSkipReasons,
+        failSamples: sheetFailSamples,
+      },
       message: `Đã import: ${messageParts.join(", ")}`,
     });
   } catch (error: unknown) {
