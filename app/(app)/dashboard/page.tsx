@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
 import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
-import { sql, desc, asc, isNotNull } from "drizzle-orm";
+import { sql, desc, asc, isNotNull, eq } from "drizzle-orm";
 import { requirePageRole } from "@/lib/auth/current-user";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +23,30 @@ async function getDashboardData() {
     error: 0,
     errorUpdated: 0,
     exported: 0,
+    exportedClickship: 0,
+    exportedEst: 0,
     labeled: 0,
     inTransit: 0,
     delivered: 0,
     failed: 0,
   };
+
+  // Count EXPORTED by platform (qua join batches)
+  const exportedByPlatform = await db
+    .select({
+      platform: batches.platform,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(orders)
+    .leftJoin(batches, eq(orders.batchId, batches.id))
+    .where(eq(orders.status, "EXPORTED"))
+    .groupBy(batches.platform);
+
+  for (const row of exportedByPlatform) {
+    const c = Number(row.count);
+    if (row.platform === "CLICKSHIP") stats.exportedClickship = c;
+    else if (row.platform === "EST") stats.exportedEst = c;
+  }
 
   for (const row of statusCounts) {
     const count = Number(row.count);
@@ -573,8 +592,8 @@ export default async function DashboardPage() {
             caption="Xuất file upload lên ClickShip & EST"
           />
           <BranchFork
-            top={{ label: "ClickShip", color: "#34d399" }}
-            bottom={{ label: "EST", color: "#fbbf24" }}
+            top={{ count: stats.exportedClickship, label: "ClickShip", color: "#34d399" }}
+            bottom={{ count: stats.exportedEst, label: "EST", color: "#fbbf24" }}
             belowLabel={["Đã upload", "chờ label"]}
           />
           <PipelineArrow
