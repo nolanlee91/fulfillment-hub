@@ -151,9 +151,17 @@ export async function syncTrackingToSheet(
     if (data.length < 2) continue;
 
     const header = data[0].map(normalizeHeader);
-    /** Tìm column theo list alias — match alias đầu tiên có trong header. */
-    const findCol = (aliases: readonly string[]) =>
-      header.findIndex((h) => aliases.includes(h));
+    /**
+     * Tìm column. Match theo 2 chiến lược:
+     *   1. Exact match với 1 alias trong list
+     *   2. Prefix match (header.startsWith(alias)) — chấp nhận suffix khác
+     *      vd "cân nặng" alias sẽ match "cân nặng (kg)", "cân nặng (g)", v.v.
+     */
+    const findCol = (aliases: readonly string[]) => {
+      const exact = header.findIndex((h) => aliases.includes(h));
+      if (exact !== -1) return exact;
+      return header.findIndex((h) => aliases.some((a) => h.startsWith(a)));
+    };
 
     const colOrderId = findCol(HEADER_ORDER_ID);
     const colTracking = findCol(HEADER_TRACKING_NUMBER);
@@ -175,7 +183,7 @@ export async function syncTrackingToSheet(
         success: false,
         skipped: true,
         uniqueKey,
-        reason: `Sheet ${cfg.sheetName} thiếu cột: ${missing.join(", ")}`,
+        reason: `Sheet ${cfg.sheetName} thiếu cột: ${missing.join(", ")} | Headers thực tế: [${header.filter(Boolean).join(" | ")}]`,
       };
     }
 
