@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { syncTrackingToSheet } from "@/lib/sync/write-back";
+import { syncTrackingToSheet, type SheetCache } from "@/lib/sync/write-back";
 import { withAuth } from "@/lib/auth/api-guard";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,8 @@ export const GET = withAuth(
       const result = await syncTrackingToSheet(specificKey);
       return NextResponse.json({ success: true, result });
     }
+
+    const sheetCache: SheetCache = new Map();
 
     const candidates = await db
       .select({ uniqueKey: orders.uniqueKey })
@@ -60,7 +62,7 @@ export const GET = withAuth(
 
     for (const c of candidates) {
       try {
-        const res = await syncTrackingToSheet(c.uniqueKey);
+        const res = await syncTrackingToSheet(c.uniqueKey, sheetCache);
         if (res.success) {
           synced += 1;
           if (syncedSamples.length < 5) syncedSamples.push(c.uniqueKey);

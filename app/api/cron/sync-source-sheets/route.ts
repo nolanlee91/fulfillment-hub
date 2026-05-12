@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { syncTrackingToSheet } from "@/lib/sync/write-back";
+import { syncTrackingToSheet, type SheetCache } from "@/lib/sync/write-back";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -54,10 +54,11 @@ async function handler(req: NextRequest) {
   let failed = 0;
   const skipReasons: Record<string, number> = {};
   const failSamples: string[] = [];
+  const sheetCache: SheetCache = new Map();
 
   for (const c of candidates) {
     try {
-      const res = await syncTrackingToSheet(c.uniqueKey);
+      const res = await syncTrackingToSheet(c.uniqueKey, sheetCache);
       if (res.success) synced += 1;
       else if (res.skipped) {
         skipped += 1;

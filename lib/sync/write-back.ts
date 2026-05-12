@@ -5,21 +5,21 @@ import { readSheet, writeBatch } from "@/lib/sheets/client";
 
 const LB_TO_KG = 0.453592;
 
-/** Header names user phải thêm vào sheet (case-insensitive). */
-const HEADER_TRACKING_NUMBER = "tracking number";
-const HEADER_TRACKING_URL = "tracking url";
-const HEADER_SHIP_DATE = "ngày đóng hàng";
-const HEADER_CARRIER = "đơn vị vận chuyển";
-const HEADER_WEIGHT = "cân nặng (kg)";
-const HEADER_ORDER_ID = "mã đơn hàng";
+/** Header names user phải thêm vào sheet (case-insensitive, chấp nhận alias). */
+const HEADER_TRACKING_NUMBER = ["tracking number"];
+const HEADER_TRACKING_URL = ["tracking url"];
+const HEADER_SHIP_DATE = ["ngày đóng hàng"];
+const HEADER_CARRIER = ["đơn vị vận chuyển"];
+const HEADER_WEIGHT = ["cân nặng (kg)", "cân nặng"];
+const HEADER_ORDER_ID = ["mã đơn hàng"];
 
-const REQUIRED_HEADERS = [
-  HEADER_TRACKING_NUMBER,
-  HEADER_TRACKING_URL,
-  HEADER_SHIP_DATE,
-  HEADER_CARRIER,
-  HEADER_WEIGHT,
-] as const;
+const REQUIRED_HEADERS = {
+  trackingNumber: HEADER_TRACKING_NUMBER,
+  trackingUrl: HEADER_TRACKING_URL,
+  shipDate: HEADER_SHIP_DATE,
+  carrier: HEADER_CARRIER,
+  weight: HEADER_WEIGHT,
+} as const;
 
 export interface SyncResult {
   success: boolean;
@@ -66,7 +66,17 @@ function fmtShipDate(d: Date | null): string {
  *
  * Set orders.syncedToSheetAt = NOW khi sync thành công.
  */
-export async function syncTrackingToSheet(uniqueKey: string): Promise<SyncResult> {
+/**
+ * Cache key: `${spreadsheetId}|${sheetName}`. Value: data 2D array.
+ * Caller share Map giữa nhiều syncTrackingToSheet calls để tránh re-read
+ * cùng 1 sheet (Google Sheets API limit 60 reads/phút).
+ */
+export type SheetCache = Map<string, string[][]>;
+
+export async function syncTrackingToSheet(
+  uniqueKey: string,
+  sheetCache?: SheetCache,
+): Promise<SyncResult> {
   // 1. Lấy order + box + product để tính weight
   const rows = await db
     .select({
@@ -132,11 +142,18 @@ export async function syncTrackingToSheet(uniqueKey: string): Promise<SyncResult
 
   // 3. Try từng source_sheet (thường chỉ 1)
   for (const cfg of sheetsCfg) {
-    const data = await readSheet(cfg.spreadsheetId, cfg.sheetName);
+    const cacheKey = `${cfg.spreadsheetId}|${cfg.sheetName}`;
+    let data = sheetCache?.get(cacheKey);
+    if (!data) {
+      data = await readSheet(cfg.spreadsheetId, cfg.sheetName);
+      sheetCache?.set(cacheKey, data);
+    }
     if (data.length < 2) continue;
 
     const header = data[0].map(normalizeHeader);
-    const findCol = (name: string) => header.findIndex((h) => h === name);
+    /** Tìm column theo list alias — match alias đầu tiên có trong header. */
+    const findCol = (aliases: readonly string[]) =>
+      header.findIndex((h) => aliases.includes(h));
 
     const colOrderId = findCol(HEADER_ORDER_ID);
     const colTracking = findCol(HEADER_TRACKING_NUMBER);
@@ -147,12 +164,12 @@ export async function syncTrackingToSheet(uniqueKey: string): Promise<SyncResult
 
     // Skip nếu thiếu cột (user phải thêm trước)
     const missing: string[] = [];
-    if (colOrderId === -1) missing.push(HEADER_ORDER_ID);
-    if (colTracking === -1) missing.push(HEADER_TRACKING_NUMBER);
-    if (colTrackingUrl === -1) missing.push(HEADER_TRACKING_URL);
-    if (colShipDate === -1) missing.push(HEADER_SHIP_DATE);
-    if (colCarrier === -1) missing.push(HEADER_CARRIER);
-    if (colWeight === -1) missing.push(HEADER_WEIGHT);
+    if (colOrderId === -1) missing.push(HEADER_ORDER_ID[0]);
+    if (colTracking === -1) missing.push(HEADER_TRACKING_NUMBER[0]);
+    if (colTrackingUrl === -1) missing.push(HEADER_TRACKING_URL[0]);
+    if (colShipDate === -1) missing.push(HEADER_SHIP_DATE[0]);
+    if (colCarrier === -1) missing.push(HEADER_CARRIER[0]);
+    if (colWeight === -1) missing.push(HEADER_WEIGHT[0]);
     if (missing.length > 0) {
       return {
         success: false,
