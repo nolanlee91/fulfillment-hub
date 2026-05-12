@@ -8,7 +8,7 @@ import { withAuth } from "@/lib/auth/api-guard";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const BATCH_LIMIT = 200;
+const BATCH_LIMIT = 20;
 
 /**
  * Manual trigger sync sheets cho SUPER_ADMIN (mở URL từ browser).

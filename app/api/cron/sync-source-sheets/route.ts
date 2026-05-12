@@ -7,7 +7,7 @@ import { syncTrackingToSheet } from "@/lib/sync/write-back";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const BATCH_LIMIT = 200;
+const BATCH_LIMIT = 30;
 
 async function handler(req: NextRequest) {
   const expected = process.env.CRON_SECRET;

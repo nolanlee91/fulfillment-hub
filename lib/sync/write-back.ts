@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { orders, sourceSheets, boxes, products } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { readSheet, writeRange } from "@/lib/sheets/client";
+import { readSheet, writeBatch } from "@/lib/sheets/client";
 
 const LB_TO_KG = 0.453592;
 
@@ -175,19 +175,18 @@ export async function syncTrackingToSheet(uniqueKey: string): Promise<SyncResult
       continue;
     }
 
-    // Build write payload — 1 update per column (vì các cột không liền kề nhau)
+    // Build write payload — 5 cell trên cùng row, gom 1 batchUpdate call
     const rowNum = rowIndex + 1; // A1 1-indexed
-    const updates: Array<{ range: string; value: string | number }> = [
-      { range: `${colLetter(colTracking)}${rowNum}`, value: order.trackingNumber },
-      { range: `${colLetter(colTrackingUrl)}${rowNum}`, value: order.trackingUrl ?? "" },
-      { range: `${colLetter(colShipDate)}${rowNum}`, value: fmtShipDate(order.shipDate) },
-      { range: `${colLetter(colCarrier)}${rowNum}`, value: order.shippingCarrier ?? "" },
-      { range: `${colLetter(colWeight)}${rowNum}`, value: weightKg },
+    const sheetRef = `'${cfg.sheetName}'`;
+    const updates = [
+      { range: `${sheetRef}!${colLetter(colTracking)}${rowNum}`, value: order.trackingNumber },
+      { range: `${sheetRef}!${colLetter(colTrackingUrl)}${rowNum}`, value: order.trackingUrl ?? "" },
+      { range: `${sheetRef}!${colLetter(colShipDate)}${rowNum}`, value: fmtShipDate(order.shipDate) },
+      { range: `${sheetRef}!${colLetter(colCarrier)}${rowNum}`, value: order.shippingCarrier ?? "" },
+      { range: `${sheetRef}!${colLetter(colWeight)}${rowNum}`, value: weightKg },
     ];
 
-    for (const u of updates) {
-      await writeRange(cfg.spreadsheetId, `'${cfg.sheetName}'!${u.range}`, [[u.value]]);
-    }
+    await writeBatch(cfg.spreadsheetId, updates);
 
     // Mark synced
     await db

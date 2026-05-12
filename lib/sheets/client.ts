@@ -84,6 +84,28 @@ export async function writeRange(
 }
 
 /**
+ * Ghi nhiều range cùng lúc trong 1 spreadsheet — chỉ 1 API call.
+ * Dùng khi cần update nhiều cell rải rác trên cùng 1 sheet.
+ */
+export async function writeBatch(
+  spreadsheetId: string,
+  updates: { range: string; value: string | number | null }[],
+): Promise<void> {
+  if (updates.length === 0) return;
+  const sheets = getSheets();
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data: updates.map((u) => ({
+        range: u.range,
+        values: [[u.value]],
+      })),
+    },
+  });
+}
+
+/**
  * Append rows vào cuối sheet.
  */
 export async function appendRows(
