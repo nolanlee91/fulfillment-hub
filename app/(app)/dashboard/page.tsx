@@ -530,7 +530,11 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Topbar title="Dashboard" subtitle="Tổng quan" />
+      <Topbar
+        title="Dashboard"
+        subtitle="Tổng quan vận hành"
+        description="Theo dõi đơn hàng, batch và pipeline xử lý real-time."
+      />
 
       {/* === KPI strip — 6 cards compact, clickable === */}
       <div className="grid grid-cols-6 gap-3 mb-3">

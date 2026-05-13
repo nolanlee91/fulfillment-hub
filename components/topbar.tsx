@@ -6,13 +6,23 @@ import { useRouter } from "next/navigation";
 interface TopbarProps {
   title: string;
   subtitle?: string;
+  /** Mô tả thêm dưới title (1 câu). Tuỳ chọn. */
+  description?: string;
+  /** 1 từ trong title được highlight màu accent (App Hub style). Tuỳ chọn. */
+  accentWord?: string;
   /** Hiển thị nút "Đồng bộ". Mặc định true. Đặt false cho CUSTOMER. */
   showSync?: boolean;
 }
 
 type Phase = "idle" | "syncing" | "validating";
 
-export function Topbar({ title, subtitle, showSync = true }: TopbarProps) {
+export function Topbar({
+  title,
+  subtitle,
+  description,
+  accentWord,
+  showSync = true,
+}: TopbarProps) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<{
@@ -106,48 +116,58 @@ export function Topbar({ title, subtitle, showSync = true }: TopbarProps) {
       ? { backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#34d399" }
       : message?.type === "error"
         ? { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#fca5a5" }
-        : { backgroundColor: "rgba(59, 130, 246, 0.15)", color: "#60a5fa" };
+        : { backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#fbbf24" };
+
+  const titleNode = accentWord && title.includes(accentWord) ? (
+    <>
+      {title.split(accentWord).map((part, i, arr) => (
+        <span key={i}>
+          {part}
+          {i < arr.length - 1 && (
+            <span className="page-title-accent">{accentWord}</span>
+          )}
+        </span>
+      ))}
+    </>
+  ) : (
+    title
+  );
 
   return (
-    <header
-      className="flex items-center justify-between mb-6 pb-4 border-b"
-      style={{ borderColor: "var(--border)" }}
-    >
-      <div>
-        <p
-          className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1.5"
-          style={{ color: "var(--text-muted)" }}
-        >
-          {subtitle ?? "Tổng quan"}
-        </p>
-        <h2 className="text-[22px] font-bold text-white tracking-tight">{title}</h2>
-      </div>
+    <header className="mb-8">
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <p className="page-eyebrow">{subtitle ?? "Tổng quan"}</p>
+          <h1 className="page-title">{titleNode}</h1>
+          {description && <p className="page-subtitle">{description}</p>}
+        </div>
 
-      <div className="flex items-center gap-2.5">
-        {message && (
-          <div
-            className="px-3 py-1.5 text-xs font-semibold rounded-md max-w-md"
-            style={messageColor}
-          >
-            {message.text}
-          </div>
-        )}
-
-        {showSync && (
-          <button
-            onClick={runSyncAndValidate}
-            disabled={isRunning}
-            className="btn btn-primary"
-            title="Kéo đơn từ Google Sheets về và tự động validate gán thùng"
-          >
-            <span
-              className={`material-symbols-outlined text-[17px] ${isRunning ? "animate-spin" : ""}`}
+        <div className="flex items-center gap-2.5 shrink-0 pt-1">
+          {message && (
+            <div
+              className="px-3 py-1.5 text-xs font-semibold rounded-md max-w-md"
+              style={messageColor}
             >
-              {phase === "validating" ? "verified" : "refresh"}
-            </span>
-            {buttonLabel}
-          </button>
-        )}
+              {message.text}
+            </div>
+          )}
+
+          {showSync && (
+            <button
+              onClick={runSyncAndValidate}
+              disabled={isRunning}
+              className="btn btn-primary"
+              title="Kéo đơn từ Google Sheets về và tự động validate gán thùng"
+            >
+              <span
+                className={`material-symbols-outlined text-[17px] ${isRunning ? "animate-spin" : ""}`}
+              >
+                {phase === "validating" ? "verified" : "refresh"}
+              </span>
+              {buttonLabel}
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

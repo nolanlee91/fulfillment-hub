@@ -55,8 +55,9 @@ function LoginContent() {
           <div
             className="w-11 h-11 rounded-md flex items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, var(--accent), #0ea372)",
-              boxShadow: "0 2px 12px rgba(16,185,129,0.35)",
+              background:
+                "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+              boxShadow: "0 2px 12px rgba(245, 158, 11, 0.35)",
             }}
           >
             <span
@@ -67,14 +68,17 @@ function LoginContent() {
             </span>
           </div>
           <div className="leading-tight">
-            <h1 className="text-lg font-bold text-white tracking-tight">
-              Fulfillment <span style={{ color: "var(--accent)" }}>Hub</span>
+            <h1
+              className="text-lg font-bold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
+              KDEXPRESS
             </h1>
             <p
-              className="text-[10px] mt-0.5 tracking-[0.18em] font-semibold"
-              style={{ color: "var(--text-muted)" }}
+              className="text-[10px] mt-0.5 tracking-[0.12em] font-medium lowercase"
+              style={{ color: "var(--accent)" }}
             >
-              WAREHOUSE 01
+              fulfillment.hub
             </p>
           </div>
         </div>

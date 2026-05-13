@@ -12,11 +12,11 @@
   --text-secondary: #8da4c4;
   --text-muted: #5e7798;
 
-  /* Accent — emerald nhẹ hơn cho enterprise feel */
-  --accent: #10b981;
-  --accent-hover: #0ea372;
-  --accent-bg: rgba(16, 185, 129, 0.08);
-  --accent-strong: rgba(16, 185, 129, 0.18);
+  /* Accent — amber (KDExpress App Hub style) */
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-bg: rgba(245, 158, 11, 0.08);
+  --accent-strong: rgba(245, 158, 11, 0.18);
 
   /* Semantic colors — saturation thấp hơn */
   --color-success: #34d399;
@@ -164,6 +164,65 @@ body {
   margin: 1.25rem 0 0.4rem;
 }
 
+/* === Page section label: "01 LABEL ─────" pattern (App Hub style) === */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin: 24px 0 14px;
+}
+.section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.section-label .section-num {
+  color: var(--text-muted);
+  opacity: 0.55;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+/* === Page title (large, App Hub style) === */
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+.page-title-accent {
+  color: var(--accent);
+}
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+.page-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.page-eyebrow::before {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: var(--border-strong);
+}
+
 /* === Cards === */
 .card {
   background: var(--bg-secondary);
@@ -285,10 +344,10 @@ select {
   border-top: 1px solid var(--border);
 }
 .table-base tbody tr:hover {
-  background: rgba(16, 185, 129, 0.04);
+  background: rgba(245, 158, 11, 0.04);
 }
 .table-base tbody tr.selected {
-  background: rgba(16, 185, 129, 0.08);
+  background: rgba(245, 158, 11, 0.08);
 }
 .table-base tbody td {
   padding: 9px 12px;
