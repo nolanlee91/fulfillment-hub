@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/topbar";
+import { Button, Card } from "@/components/ui";
 
 interface Order {
   uniqueKey: string;
@@ -69,13 +70,7 @@ export default function ErrorsPage() {
       <Topbar title="Đơn lỗi" subtitle="Quản lý" />
 
       {/* Summary */}
-      <div
-        className="rounded-xl p-4 mb-4 border flex items-center justify-between"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <Card className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -108,35 +103,21 @@ export default function ErrorsPage() {
               {message}
             </span>
           )}
-          <button
+          <Button
+            variant="primary"
+            icon="refresh"
+            iconSpin={rechecking}
             onClick={recheckAll}
             disabled={rechecking}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--accent)",
-              color: "var(--bg-primary)",
-            }}
           >
-            <span
-              className="material-symbols-outlined text-[18px]"
-              style={{ animation: rechecking ? "spin 1s linear infinite" : "none" }}
-            >
-              refresh
-            </span>
             {rechecking ? "Đang xử lý..." : "Recheck tất cả"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Error groups summary */}
       {Object.keys(errorGroups).length > 0 && (
-        <div
-          className="rounded-xl p-4 mb-4 border"
-          style={{
-            backgroundColor: "var(--bg-secondary)",
-            borderColor: "var(--border)",
-          }}
-        >
+        <Card className="mb-4">
           <h3
             className="text-[11px] font-bold tracking-widest uppercase mb-3"
             style={{ color: "var(--text-muted)" }}
@@ -164,17 +145,11 @@ export default function ErrorsPage() {
                 </div>
               ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Table */}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="table-shell">
         {loading ? (
           <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
             Đang tải...
@@ -194,14 +169,9 @@ export default function ErrorsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="table-base">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    color: "var(--text-muted)",
-                  }}
-                >
+                <tr>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Order ID
                   </th>
@@ -224,11 +194,7 @@ export default function ErrorsPage() {
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr
-                    key={o.uniqueKey}
-                    className="border-t"
-                    style={{ borderColor: "var(--border)" }}
-                  >
+                  <tr key={o.uniqueKey}>
                     <td className="px-3 py-2 font-mono text-xs font-bold text-white">
                       {o.orderId}
                     </td>
@@ -266,14 +232,6 @@ export default function ErrorsPage() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </>
   );
 }

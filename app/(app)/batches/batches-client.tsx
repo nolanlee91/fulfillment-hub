@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
+import { Card } from "@/components/ui";
 
 interface Batch {
   id: string;
@@ -78,13 +79,7 @@ export default function BatchesPage() {
     <>
       <Topbar title="Lô đóng gói" subtitle="Quản lý" />
 
-      <div
-        className="rounded-xl p-3 mb-4 border flex items-center justify-between"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <Card padding="none" className="mb-4 px-4 py-3 flex items-center justify-between">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
           <span className="font-bold text-white">{batches.length}</span> batch
         </div>
@@ -100,15 +95,9 @@ export default function BatchesPage() {
             {message.text}
           </span>
         )}
-      </div>
+      </Card>
 
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="table-shell">
         {loading ? (
           <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
             Đang tải...
@@ -128,14 +117,9 @@ export default function BatchesPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="table-base">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    color: "var(--text-muted)",
-                  }}
-                >
+                <tr>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Batch ID
                   </th>
@@ -157,11 +141,7 @@ export default function BatchesPage() {
                 {batches.map((b) => {
                   const isEst = b.platform === "EST";
                   return (
-                    <tr
-                      key={b.id}
-                      className="border-t"
-                      style={{ borderColor: "var(--border)" }}
-                    >
+                    <tr key={b.id}>
                       <td className="px-4 py-3 font-mono text-sm font-bold text-white">
                         {b.id}
                       </td>
