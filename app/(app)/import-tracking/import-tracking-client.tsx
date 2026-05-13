@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
+import { Button, Card } from "@/components/ui";
 
 interface Batch {
   id: string;
@@ -41,20 +42,14 @@ export default function ImportTrackingPage() {
     <>
       <Topbar title="Đối soát vận chuyển" subtitle="Quản lý" />
 
-      <div
-        className="rounded-xl mb-4 border overflow-hidden flex"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <Card padding="none" className="mb-4 overflow-hidden flex">
         <TabButton active={tab === "label"} onClick={() => setTab("label")}>
           Tạo label
         </TabButton>
         <TabButton active={tab === "events"} onClick={() => setTab("events")}>
           Sự kiện vận chuyển (APT)
         </TabButton>
-      </div>
+      </Card>
 
       {tab === "label" ? <LabelTab /> : <EventsTab />}
     </>
@@ -141,13 +136,7 @@ function LabelTab() {
 
   return (
     <>
-      <div
-        className="rounded-xl p-6 border mb-4"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <Card padding="lg" className="mb-4">
         <h3 className="font-bold text-lg text-white mb-1">
           Upload file kết quả tạo label
         </h3>
@@ -215,18 +204,15 @@ function LabelTab() {
           </p>
         )}
 
-        <button
+        <Button
+          variant="primary"
+          icon="upload"
           onClick={runImport}
           disabled={!file || !selectedBatch || importing}
-          className="mt-5 flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded disabled:opacity-50"
-          style={{
-            backgroundColor: "var(--accent)",
-            color: "var(--bg-primary)",
-          }}
+          className="mt-5"
         >
-          <span className="material-symbols-outlined text-[18px]">upload</span>
           {importing ? "Đang xử lý..." : "Import label"}
-        </button>
+        </Button>
 
         {error && (
           <div
@@ -239,16 +225,10 @@ function LabelTab() {
             {error}
           </div>
         )}
-      </div>
+      </Card>
 
       {result && (
-        <div
-          className="rounded-xl p-6 border"
-          style={{
-            backgroundColor: "var(--bg-secondary)",
-            borderColor: "var(--border)",
-          }}
-        >
+        <Card padding="lg">
           <h3 className="font-bold text-lg text-white mb-4">Kết quả import</h3>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -260,7 +240,7 @@ function LabelTab() {
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
             {result.message}
           </p>
-        </div>
+        </Card>
       )}
     </>
   );
@@ -305,13 +285,7 @@ function EventsTab() {
 
   return (
     <>
-      <div
-        className="rounded-xl p-6 border mb-4"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <Card padding="lg" className="mb-4">
         <h3 className="font-bold text-lg text-white mb-1">
           Upload file sự kiện vận chuyển
         </h3>
@@ -343,18 +317,15 @@ function EventsTab() {
           </p>
         )}
 
-        <button
+        <Button
+          variant="primary"
+          icon="upload"
           onClick={runImport}
           disabled={!file || importing}
-          className="mt-5 flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded disabled:opacity-50"
-          style={{
-            backgroundColor: "var(--accent)",
-            color: "var(--bg-primary)",
-          }}
+          className="mt-5"
         >
-          <span className="material-symbols-outlined text-[18px]">upload</span>
           {importing ? "Đang xử lý..." : "Cập nhật sự kiện"}
-        </button>
+        </Button>
 
         {error && (
           <div
@@ -367,16 +338,10 @@ function EventsTab() {
             {error}
           </div>
         )}
-      </div>
+      </Card>
 
       {result && (
-        <div
-          className="rounded-xl p-6 border"
-          style={{
-            backgroundColor: "var(--bg-secondary)",
-            borderColor: "var(--border)",
-          }}
-        >
+        <Card padding="lg">
           <h3 className="font-bold text-lg text-white mb-1">Kết quả xử lý</h3>
           <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
             File: <span className="font-mono">{result.filename}</span> • {result.totalEventsInFile} dòng • {result.totalTrackings} tracking unique
@@ -443,7 +408,7 @@ function EventsTab() {
               </p>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </>
   );

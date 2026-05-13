@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
+import { Button } from "@/components/ui";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -218,23 +219,16 @@ export default function UsersClient({
       <Topbar title="Tài khoản" subtitle="Cài đặt" />
 
       <div className="flex justify-end mb-4">
-        <button
+        <Button
+          variant="primary"
+          icon="person_add"
           onClick={() => setCreating({ ...EMPTY_CREATE })}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded"
-          style={{ backgroundColor: "var(--accent)", color: "var(--bg-primary)" }}
         >
-          <span className="material-symbols-outlined text-[18px]">person_add</span>
           Tạo tài khoản
-        </button>
+        </Button>
       </div>
 
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="table-shell">
         {loading ? (
           <div
             className="p-12 text-center"
@@ -244,14 +238,9 @@ export default function UsersClient({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="table-base">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    color: "var(--text-muted)",
-                  }}
-                >
+                <tr>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Username
                   </th>
@@ -282,11 +271,7 @@ export default function UsersClient({
                   const cannotEdit = isSelf || isSuperAdmin;
                   const roleColor = ROLE_COLOR[u.role];
                   return (
-                    <tr
-                      key={u.id}
-                      className="border-t"
-                      style={{ borderColor: "var(--border)" }}
-                    >
+                    <tr key={u.id}>
                       <td className="px-4 py-3 font-mono text-white">
                         {u.username}
                         {isSelf && (
@@ -716,28 +701,12 @@ function ModalActions({
 }) {
   return (
     <div className="flex justify-end gap-3 mt-6">
-      <button
-        onClick={onCancel}
-        disabled={saving}
-        className="px-4 py-2 text-sm font-semibold rounded"
-        style={{
-          backgroundColor: "var(--bg-tertiary)",
-          color: "var(--text-primary)",
-        }}
-      >
+      <Button variant="secondary" onClick={onCancel} disabled={saving}>
         Hủy
-      </button>
-      <button
-        onClick={onSubmit}
-        disabled={saving}
-        className="px-4 py-2 text-sm font-semibold rounded disabled:opacity-50"
-        style={{
-          backgroundColor: "var(--accent)",
-          color: "var(--bg-primary)",
-        }}
-      >
+      </Button>
+      <Button variant="primary" onClick={onSubmit} disabled={saving}>
         {saving ? "Đang xử lý..." : submitLabel}
-      </button>
+      </Button>
     </div>
   );
 }

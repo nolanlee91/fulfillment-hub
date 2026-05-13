@@ -50,13 +50,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab content */}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          borderColor: "var(--border)",
-        }}
-      >
+      <div className="card overflow-hidden">
         {activeTab === "customers" && <CustomerMasterTab />}
         {activeTab === "boxes" && <BoxMasterTab />}
         {activeTab === "products" && <ProductMasterTab />}
