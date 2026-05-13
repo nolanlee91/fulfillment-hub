@@ -55,9 +55,8 @@ function LoginContent() {
           <div
             className="w-11 h-11 rounded-md flex items-center justify-center"
             style={{
-              background:
-                "linear-gradient(135deg, var(--accent), var(--accent-hover))",
-              boxShadow: "0 2px 12px rgba(245, 158, 11, 0.35)",
+              background: "linear-gradient(135deg, #10b981, #0ea372)",
+              boxShadow: "0 2px 12px rgba(16, 185, 129, 0.35)",
             }}
           >
             <span
@@ -76,7 +75,7 @@ function LoginContent() {
             </h1>
             <p
               className="text-[10px] mt-0.5 tracking-[0.12em] font-medium lowercase"
-              style={{ color: "var(--accent)" }}
+              style={{ color: "var(--text-muted)" }}
             >
               fulfillment.hub
             </p>

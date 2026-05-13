@@ -123,9 +123,8 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         <div
           className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
           style={{
-            background:
-              "linear-gradient(135deg, var(--accent), var(--accent-hover))",
-            boxShadow: "0 2px 8px rgba(245, 158, 11, 0.25)",
+            background: "linear-gradient(135deg, #10b981, #0ea372)",
+            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)",
           }}
         >
           <span
@@ -144,7 +143,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
           </h1>
           <p
             className="text-[10px] mt-0.5 tracking-[0.12em] font-medium lowercase"
-            style={{ color: "var(--accent)" }}
+            style={{ color: "var(--text-muted)" }}
           >
             fulfillment.hub
           </p>
