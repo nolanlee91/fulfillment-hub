@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Topbar } from "@/components/topbar";
+import { Button, Card } from "@/components/ui";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 type FlagColor = "red" | "yellow" | null;
@@ -324,12 +325,9 @@ function FlagsContent({
         style={{ height: "calc(100vh - 180px)" }}
       >
         {/* Left panel — list */}
-        <div
-          className="w-[380px] shrink-0 flex flex-col rounded-lg border overflow-hidden"
-          style={{
-            backgroundColor: "var(--bg-secondary)",
-            borderColor: "var(--border)",
-          }}
+        <Card
+          padding="none"
+          className="w-[380px] shrink-0 flex flex-col overflow-hidden"
         >
           {/* Toggle filters */}
           <div
@@ -384,16 +382,10 @@ function FlagsContent({
               ))
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Right panel — detail + chat */}
-        <div
-          className="flex-1 flex flex-col rounded-lg border overflow-hidden"
-          style={{
-            backgroundColor: "var(--bg-secondary)",
-            borderColor: "var(--border)",
-          }}
-        >
+        <Card padding="none" className="flex-1 flex flex-col overflow-hidden">
           {!selectedKey ? (
             <div
               className="flex-1 flex items-center justify-center text-sm"
@@ -551,21 +543,20 @@ function FlagsContent({
                     style={{ minHeight: "44px" }}
                     disabled={sending}
                   />
-                  <button
+                  <Button
+                    variant="primary"
+                    icon="send"
                     onClick={handleSend}
                     disabled={sending || !draft.trim()}
-                    className="btn btn-primary shrink-0"
+                    className="shrink-0"
                   >
-                    <span className="material-symbols-outlined text-[17px]">
-                      send
-                    </span>
                     {sending ? "Đang gửi..." : "Gửi"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </>
           ) : null}
-        </div>
+        </Card>
       </div>
     </>
   );
