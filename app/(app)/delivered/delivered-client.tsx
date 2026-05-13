@@ -4,6 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { Topbar } from "@/components/topbar";
 import { FlagCell } from "@/components/flag-cell";
 import { useFlagMap } from "@/lib/hooks/use-flag-map";
+import {
+  Button,
+  PaymentBadge,
+  FilterBar,
+  FilterField,
+  SearchInput,
+} from "@/components/ui";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -126,12 +133,11 @@ export default function DeliveredClient({ role }: { role: Role }) {
       <Topbar title="Đơn đã giao" subtitle="Quản lý" showSync={!isCustomer} />
 
       {/* Filters */}
-      <div className={`filter-card grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>
+      <FilterBar
+        className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}
+      >
         {!isCustomer && (
-          <div>
-            <label className="filter-label">
-              Khách hàng
-            </label>
+          <FilterField label="Khách hàng">
             <select
               value={filterCustomer}
               onChange={(e) => {
@@ -147,13 +153,10 @@ export default function DeliveredClient({ role }: { role: Role }) {
                 </option>
               ))}
             </select>
-          </div>
+          </FilterField>
         )}
 
-        <div>
-          <label className="filter-label">
-            Sản phẩm
-          </label>
+        <FilterField label="Sản phẩm">
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
@@ -166,12 +169,9 @@ export default function DeliveredClient({ role }: { role: Role }) {
               </option>
             ))}
           </select>
-        </div>
+        </FilterField>
 
-        <div>
-          <label className="filter-label">
-            Thanh toán
-          </label>
+        <FilterField label="Thanh toán">
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
@@ -181,21 +181,16 @@ export default function DeliveredClient({ role }: { role: Role }) {
             <option value="PREPAID">Thường</option>
             <option value="COD">COD</option>
           </select>
-        </div>
+        </FilterField>
 
-        <div className="col-span-2">
-          <label className="filter-label">
-            Tìm kiếm (Order ID, Tên, Phone, Zipcode)
-          </label>
-          <input
-            type="text"
+        <FilterField label="Tìm kiếm (Order ID, Tên, Phone, Zipcode)" className="col-span-2">
+          <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm Order ID, Tên, Phone, Zipcode..."
-            className="filter-search"
           />
-        </div>
-      </div>
+        </FilterField>
+      </FilterBar>
 
       {/* Counter */}
       <div className="action-bar">
@@ -209,15 +204,15 @@ export default function DeliveredClient({ role }: { role: Role }) {
             </span>
             <span>Tỷ lệ giao thành công ổn định</span>
           </div>
-          <button
+          <Button
+            variant="secondary"
+            icon="download"
             onClick={exportFile}
             disabled={exporting || orders.length === 0}
-            className="btn btn-secondary"
             title="Xuất file Excel toàn bộ đơn theo filter hiện tại"
           >
-            <span className="material-symbols-outlined text-[17px]">download</span>
             {exporting ? "Đang xuất..." : "Xuất file"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -311,13 +306,13 @@ export default function DeliveredClient({ role }: { role: Role }) {
                       {o.phone || "—"}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">{o.quantity}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span
-                        className={`payment-${o.paymentMethod} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
-                        title={o.paymentMethod === "COD" ? `Thu hộ: ${o.codAmount ?? "?"}` : ""}
-                      >
+                    <td
+                      className="px-3 py-2 text-center"
+                      title={o.paymentMethod === "COD" ? `Thu hộ: ${o.codAmount ?? "?"}` : undefined}
+                    >
+                      <PaymentBadge method={o.paymentMethod}>
                         {o.paymentMethod === "COD" ? "COD" : "Thường"}
-                      </span>
+                      </PaymentBadge>
                     </td>
                     <td className="px-3 py-2 text-xs">
                       {(() => {
