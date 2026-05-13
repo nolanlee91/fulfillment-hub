@@ -135,6 +135,7 @@ function FlagsContent({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -236,7 +237,7 @@ function FlagsContent({
 
   async function handleResolve() {
     if (!selectedKey || resolving) return;
-    if (!confirm("Gỡ cờ đơn này?")) return;
+    if (!confirm("Gỡ cờ đơn này? (Lịch sử chat vẫn được giữ)")) return;
     setResolving(true);
     setErrorMsg(null);
     try {
@@ -253,6 +254,43 @@ function FlagsContent({
       setErrorMsg((e as Error).message);
     } finally {
       setResolving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedKey || deleting) return;
+    if (
+      !confirm(
+        "Xóa HẲN cờ + toàn bộ tin nhắn của đơn này?\n\nĐơn sẽ biến mất khỏi tab Đơn gắn cờ và không thể khôi phục.",
+      )
+    )
+      return;
+    setDeleting(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/flags/${encodeURIComponent(selectedKey)}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setErrorMsg(json.error || "Lỗi xóa cờ");
+        return;
+      }
+      // Sau khi xóa: clear selection + refetch list
+      setSelectedKey(null);
+      setDetail(null);
+      setDraft("");
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("order");
+      router.replace(
+        `/flags${params.toString() ? `?${params.toString()}` : ""}`,
+        { scroll: false },
+      );
+      await fetchList();
+    } catch (e) {
+      setErrorMsg((e as Error).message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -275,6 +313,7 @@ function FlagsContent({
     isStaff &&
     detail?.flag &&
     detail.flag.currentColor !== null;
+  const canDelete = isStaff && detail?.flag != null;
 
   return (
     <>
@@ -427,18 +466,37 @@ function FlagsContent({
                       Chưa gắn cờ
                     </span>
                   )}
-                  {canResolve && (
-                    <button
-                      onClick={handleResolve}
-                      disabled={resolving}
-                      className="btn btn-secondary text-xs"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        flag_circle
-                      </span>
-                      {resolving ? "Đang gỡ..." : "Gỡ cờ"}
-                    </button>
-                  )}
+                  <div className="flex gap-2">
+                    {canResolve && (
+                      <button
+                        onClick={handleResolve}
+                        disabled={resolving || deleting}
+                        className="btn btn-secondary text-xs"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          flag_circle
+                        </span>
+                        {resolving ? "Đang gỡ..." : "Gỡ cờ"}
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleting || resolving}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors hover:opacity-80"
+                        style={{
+                          backgroundColor: "rgba(239, 68, 68, 0.15)",
+                          color: "#fca5a5",
+                        }}
+                        title="Xóa hẳn cờ + toàn bộ tin nhắn của đơn này"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          delete_forever
+                        </span>
+                        {deleting ? "Đang xóa..." : "Xóa hẳn"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

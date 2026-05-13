@@ -102,3 +102,40 @@ export const GET = withAuth<RouteContext>(async (_req, user, ctx) => {
     );
   }
 });
+
+/**
+ * DELETE /api/flags/[orderUniqueKey]
+ *  → xóa hẳn flag + cascade messages (FK ON DELETE CASCADE).
+ * Chỉ STAFF + SUPER_ADMIN. Customer không xóa được.
+ *
+ * Khác /resolve: resolve giữ lịch sử trong tab "Đơn gắn cờ"; delete đưa đơn về
+ * trạng thái chưa từng gắn cờ.
+ */
+export const DELETE = withAuth<RouteContext>(
+  async (_req, _user, ctx) => {
+    try {
+      const { orderUniqueKey } = await ctx.params;
+
+      const deleted = await db
+        .delete(flags)
+        .where(eq(flags.orderUniqueKey, orderUniqueKey))
+        .returning({ id: flags.id });
+
+      if (deleted.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "Đơn này không có cờ để xóa" },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({ success: true });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 },
+      );
+    }
+  },
+  { roles: ["SUPER_ADMIN", "STAFF"] },
+);
