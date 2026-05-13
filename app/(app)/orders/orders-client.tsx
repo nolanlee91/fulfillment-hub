@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Topbar } from "@/components/topbar";
+import { FlagCell } from "@/components/flag-cell";
+import { useFlagMap } from "@/lib/hooks/use-flag-map";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -91,6 +93,7 @@ export default function OrdersClient({ role }: { role: Role }) {
 function OrdersPageContent({ role }: { role: Role }) {
   const isCustomer = role === "CUSTOMER";
   const searchParams = useSearchParams();
+  const { map: flagMap } = useFlagMap();
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<FilterOption[]>([]);
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
@@ -526,6 +529,9 @@ function OrdersPageContent({ role }: { role: Role }) {
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Tracking
                   </th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Cờ
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -684,6 +690,12 @@ function OrdersPageContent({ role }: { role: Role }) {
                           }
                           return <span style={{ color: "var(--text-muted)" }}>—</span>;
                         })()}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <FlagCell
+                          orderUniqueKey={o.uniqueKey}
+                          color={flagMap.get(o.uniqueKey)}
+                        />
                       </td>
                     </tr>
                   );

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Topbar } from "@/components/topbar";
 import { db } from "@/lib/db";
-import { orders, batches, trackingFiles, syncLogs } from "@/lib/db/schema";
+import { orders, batches, trackingFiles, syncLogs, flags } from "@/lib/db/schema";
 import { sql, desc, asc, isNotNull, eq } from "drizzle-orm";
 import { requirePageRole } from "@/lib/auth/current-user";
 
@@ -153,9 +153,29 @@ async function getDashboardData() {
     .orderBy(desc(orders.attentionAt))
     .limit(5);
 
+  const flagCounts = { red: 0, yellow: 0, resolved: 0 };
+  try {
+    const flagRows = await db
+      .select({
+        color: flags.currentColor,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(flags)
+      .groupBy(flags.currentColor);
+    for (const row of flagRows) {
+      const c = Number(row.count);
+      if (row.color === "red") flagCounts.red = c;
+      else if (row.color === "yellow") flagCounts.yellow = c;
+      else flagCounts.resolved = c;
+    }
+  } catch {
+    // Bảng flags chưa tồn tại (chưa chạy migration) — trả 0 để dashboard không vỡ
+  }
+
   return {
     stats: { ...stats, batches: Number(batchCount?.count ?? 0) },
     attention,
+    flagCounts,
     recentBatches,
     recentPulls,
     aptFiles: {
@@ -501,7 +521,7 @@ const ATTENTION_LABELS: Record<string, string> = {
 
 export default async function DashboardPage() {
   await requirePageRole(["SUPER_ADMIN", "STAFF"]);
-  const { stats, attention, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
+  const { stats, attention, flagCounts, recentBatches, recentPulls, aptFiles, lastSync, recentAttention } =
     await getDashboardData();
 
   const inProgress = stats.total - stats.delivered - stats.failed;
@@ -512,8 +532,8 @@ export default async function DashboardPage() {
     <>
       <Topbar title="Dashboard" subtitle="Tổng quan" />
 
-      {/* === KPI strip — 4 cards compact, clickable === */}
-      <div className="grid grid-cols-4 gap-3 mb-3">
+      {/* === KPI strip — 6 cards compact, clickable === */}
+      <div className="grid grid-cols-6 gap-3 mb-3">
         <KpiCard
           label="Đang xử lý"
           value={inProgress}
@@ -563,6 +583,28 @@ export default async function DashboardPage() {
                 }
               : { label: "không có đơn cần chú ý", value: "✓" }
           }
+        />
+        <KpiCard
+          label="Đơn cờ đỏ"
+          value={flagCounts.red}
+          icon="flag"
+          accent="#ef4444"
+          href="/flags?filter=red"
+          subInfo={{
+            label: flagCounts.red > 0 ? "đơn KDE vừa nhắn" : "không có đơn",
+            value: flagCounts.red > 0 ? "!" : "✓",
+          }}
+        />
+        <KpiCard
+          label="Đơn cờ vàng"
+          value={flagCounts.yellow}
+          icon="flag"
+          accent="#f59e0b"
+          href="/flags?filter=yellow"
+          subInfo={{
+            label: flagCounts.yellow > 0 ? "khách đang chờ" : "không có đơn",
+            value: flagCounts.yellow > 0 ? "!" : "✓",
+          }}
         />
       </div>
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Topbar } from "@/components/topbar";
+import { FlagCell } from "@/components/flag-cell";
+import { useFlagMap } from "@/lib/hooks/use-flag-map";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -42,6 +44,7 @@ function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: strin
 
 export default function FailedClient({ role }: { role: Role }) {
   const isCustomer = role === "CUSTOMER";
+  const { map: flagMap } = useFlagMap();
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<FilterOption[]>([]);
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
@@ -266,6 +269,9 @@ export default function FailedClient({ role }: { role: Role }) {
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Lý do
                   </th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Cờ
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -361,6 +367,12 @@ export default function FailedClient({ role }: { role: Role }) {
                       ) : (
                         <span style={{ color: "var(--text-muted)" }}>—</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <FlagCell
+                        orderUniqueKey={o.uniqueKey}
+                        color={flagMap.get(o.uniqueKey)}
+                      />
                     </td>
                   </tr>
                 ))}

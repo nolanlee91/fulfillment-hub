@@ -33,6 +33,7 @@ const sections: NavSection[] = [
     label: "Quản lý",
     items: [
       { href: "/orders", icon: "inventory_2", label: "Đơn đang xử lý" },
+      { href: "/flags", icon: "flag", label: "Đơn gắn cờ" },
       { href: "/delivered", icon: "task_alt", label: "Đơn đã giao" },
       { href: "/failed", icon: "assignment_return", label: "Đơn thất bại" },
       {

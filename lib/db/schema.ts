@@ -43,6 +43,8 @@ export const userRoleEnum = pgEnum("user_role", [
   "CUSTOMER",
 ]);
 
+export const flagColorEnum = pgEnum("flag_color", ["red", "yellow"]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -257,6 +259,54 @@ export const sessions = pgTable(
   },
   (t) => ({
     userIdx: index("sessions_user_idx").on(t.userId),
+  }),
+);
+
+// ============================================================================
+// FLAGS / FLAG_MESSAGES (chat 2 chiều giữa KDE và customer)
+// ============================================================================
+
+export const flags = pgTable(
+  "flags",
+  {
+    id: text("id").primaryKey(),
+    orderUniqueKey: text("order_unique_key")
+      .notNull()
+      .references(() => orders.uniqueKey, { onDelete: "cascade" }),
+    currentColor: flagColorEnum("current_color"), // NULL = đã gỡ cờ
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    resolvedBy: text("resolved_by").references(() => users.id),
+    resolvedAt: timestamp("resolved_at"),
+    lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orderIdx: uniqueIndex("flags_order_idx").on(t.orderUniqueKey),
+    colorIdx: index("flags_color_idx").on(t.currentColor),
+    lastMsgIdx: index("flags_last_message_idx").on(t.lastMessageAt),
+  }),
+);
+
+export const flagMessages = pgTable(
+  "flag_messages",
+  {
+    id: text("id").primaryKey(),
+    flagId: text("flag_id")
+      .notNull()
+      .references(() => flags.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    userRole: userRoleEnum("user_role").notNull(),
+    userName: text("user_name").notNull(), // snapshot phòng user đổi tên
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    flagIdx: index("flag_messages_flag_idx").on(t.flagId),
+    createdIdx: index("flag_messages_created_idx").on(t.createdAt),
   }),
 );
 
