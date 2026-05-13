@@ -5,6 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { Topbar } from "@/components/topbar";
 import { FlagCell } from "@/components/flag-cell";
 import { useFlagMap } from "@/lib/hooks/use-flag-map";
+import {
+  Button,
+  StatusBadge,
+  AttentionBadge,
+  PaymentBadge,
+  FilterBar,
+  FilterField,
+  SearchInput,
+} from "@/components/ui";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -267,11 +276,10 @@ function OrdersPageContent({ role }: { role: Role }) {
       <Topbar title="Đơn đang xử lý" subtitle="Quản lý" showSync={!isCustomer} />
 
       {/* Filters */}
-      <div className={`filter-card grid gap-3 ${isCustomer ? "grid-cols-6" : "grid-cols-7"}`}>
-        <div>
-          <label className="filter-label">
-            Trạng thái
-          </label>
+      <FilterBar
+        className={`grid gap-3 ${isCustomer ? "grid-cols-6" : "grid-cols-7"}`}
+      >
+        <FilterField label="Trạng thái">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -286,13 +294,10 @@ function OrdersPageContent({ role }: { role: Role }) {
             <option value="LABEL_CREATED">Đã có label</option>
             <option value="IN_TRANSIT">Đang vận chuyển</option>
           </select>
-        </div>
+        </FilterField>
 
         {!isCustomer && (
-          <div>
-            <label className="filter-label">
-              Khách hàng
-            </label>
+          <FilterField label="Khách hàng">
             <select
               value={filterCustomer}
               onChange={(e) => {
@@ -308,13 +313,10 @@ function OrdersPageContent({ role }: { role: Role }) {
                 </option>
               ))}
             </select>
-          </div>
+          </FilterField>
         )}
 
-        <div>
-          <label className="filter-label">
-            Sản phẩm
-          </label>
+        <FilterField label="Sản phẩm">
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
@@ -327,12 +329,9 @@ function OrdersPageContent({ role }: { role: Role }) {
               </option>
             ))}
           </select>
-        </div>
+        </FilterField>
 
-        <div>
-          <label className="filter-label">
-            Thanh toán
-          </label>
+        <FilterField label="Thanh toán">
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
@@ -342,12 +341,9 @@ function OrdersPageContent({ role }: { role: Role }) {
             <option value="PREPAID">Thường</option>
             <option value="COD">COD</option>
           </select>
-        </div>
+        </FilterField>
 
-        <div>
-          <label className="filter-label">
-            Cần chú ý
-          </label>
+        <FilterField label="Cần chú ý">
           <select
             value={filterAttention}
             onChange={(e) => setFilterAttention(e.target.value)}
@@ -360,21 +356,16 @@ function OrdersPageContent({ role }: { role: Role }) {
             <option value="NOTICE_CARD">Notice card</option>
             <option value="STUCK">Không cập nhật 3 ngày làm việc</option>
           </select>
-        </div>
+        </FilterField>
 
-        <div className="col-span-2">
-          <label className="filter-label">
-            Tìm kiếm (Order ID, Tên, Phone, Zipcode)
-          </label>
-          <input
-            type="text"
+        <FilterField label="Tìm kiếm (Order ID, Tên, Phone, Zipcode)" className="col-span-2">
+          <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm Order ID, Tên, Phone, Zipcode..."
-            className="filter-search"
           />
-        </div>
-      </div>
+        </FilterField>
+      </FilterBar>
 
       {/* Action bar */}
       <div className="action-bar">
@@ -421,35 +412,33 @@ function OrdersPageContent({ role }: { role: Role }) {
               {message}
             </span>
           )}
-          <button
+          <Button
+            variant="secondary"
+            icon="download"
             onClick={exportFile}
             disabled={exporting || orders.length === 0}
-            className="btn btn-secondary"
             title="Xuất file Excel toàn bộ đơn theo filter hiện tại"
           >
-            <span className="material-symbols-outlined text-[17px]">download</span>
             {exporting ? "Đang xuất..." : "Xuất file"}
-          </button>
+          </Button>
           {!isCustomer && (
             <>
-              <button
+              <Button
+                variant="danger"
+                icon="delete"
                 onClick={deleteSelected}
                 disabled={selectedKeys.size === 0 || deleting || creating}
-                className="btn btn-danger"
               >
-                <span className="material-symbols-outlined text-[17px]">delete</span>
                 {deleting ? "Đang xóa..." : "Xóa"}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                icon="auto_awesome_motion"
                 onClick={createBatch}
                 disabled={selectedKeys.size === 0 || creating || deleting}
-                className="btn btn-primary"
               >
-                <span className="material-symbols-outlined text-[17px]">
-                  auto_awesome_motion
-                </span>
                 {creating ? "Đang tạo..." : "Tạo Batch"}
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -596,17 +585,17 @@ function OrdersPageContent({ role }: { role: Role }) {
                       <td className="px-3 py-2 text-right font-mono">
                         {o.quantity}
                       </td>
-                      <td className="px-3 py-2 text-center">
-                        <span
-                          className={`payment-${o.paymentMethod} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
-                          title={
-                            o.paymentMethod === "COD"
-                              ? `Thu hộ: ${o.codAmount ?? "?"}${o.note ? `\n${o.note}` : ""}`
-                              : o.note || ""
-                          }
-                        >
+                      <td
+                        className="px-3 py-2 text-center"
+                        title={
+                          o.paymentMethod === "COD"
+                            ? `Thu hộ: ${o.codAmount ?? "?"}${o.note ? `\n${o.note}` : ""}`
+                            : o.note || ""
+                        }
+                      >
+                        <PaymentBadge method={o.paymentMethod}>
                           {o.paymentMethod === "COD" ? "COD" : "Thường"}
-                        </span>
+                        </PaymentBadge>
                       </td>
                       {!isCustomer && (
                         <td className="px-3 py-2 text-center">
@@ -626,11 +615,9 @@ function OrdersPageContent({ role }: { role: Role }) {
                         </td>
                       )}
                       <td className="px-3 py-2 text-center">
-                        <span
-                          className={`status-${o.status} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
-                        >
+                        <StatusBadge status={o.status}>
                           {STATUS_LABELS[o.status]}
-                        </span>
+                        </StatusBadge>
                       </td>
                       {!isCustomer && (
                         <td className="px-3 py-2 text-xs">
@@ -647,12 +634,11 @@ function OrdersPageContent({ role }: { role: Role }) {
                           )}
                         </td>
                       )}
-                      <td className="px-3 py-2 text-center">
-                        {o.attentionReason ? (
-                          <span
-                            className={`attention-${o.attentionReason} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
-                            title={
-                              [
+                      <td
+                        className="px-3 py-2 text-center"
+                        title={
+                          o.attentionReason
+                            ? [
                                 o.attentionNote,
                                 o.attentionAt
                                   ? `Lúc: ${new Date(o.attentionAt).toLocaleString("vi-VN")}`
@@ -660,10 +646,13 @@ function OrdersPageContent({ role }: { role: Role }) {
                               ]
                                 .filter(Boolean)
                                 .join("\n")
-                            }
-                          >
+                            : undefined
+                        }
+                      >
+                        {o.attentionReason ? (
+                          <AttentionBadge reason={o.attentionReason}>
                             {ATTENTION_LABELS[o.attentionReason]}
-                          </span>
+                          </AttentionBadge>
                         ) : (
                           <span style={{ color: "var(--text-muted)" }}>—</span>
                         )}
