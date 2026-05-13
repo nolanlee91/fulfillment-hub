@@ -10,7 +10,20 @@ import { SESSION_COOKIE } from "@/lib/auth/constants";
  * Cron endpoints (/api/cron/*) bypass auth — chúng dùng Bearer CRON_SECRET.
  * /api/auth/* (login/logout) cũng bypass.
  */
+const CANONICAL_HOST = "app-fulfillment.kdexpress.ca";
+
 export function proxy(request: NextRequest) {
+  const host = request.headers.get("host") ?? "";
+
+  // Redirect domain cũ (Railway *.up.railway.app, alias khác) → canonical
+  // Bỏ qua localhost để dev không bị bounce lên prod.
+  if (host && host !== CANONICAL_HOST && !host.startsWith("localhost")) {
+    return NextResponse.redirect(
+      `https://${CANONICAL_HOST}${request.nextUrl.pathname}${request.nextUrl.search}`,
+      308
+    );
+  }
+
   const sid = request.cookies.get(SESSION_COOKIE)?.value;
   const { pathname } = request.nextUrl;
 
