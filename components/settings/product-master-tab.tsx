@@ -59,6 +59,10 @@ export function ProductMasterTab() {
 
   async function save() {
     if (!editing) return;
+    if (!editing.name.trim()) {
+      alert("Tên sản phẩm không được để trống");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/products", {
@@ -66,6 +70,7 @@ export function ProductMasterTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editing.id,
+          name: editing.name.trim(),
           unitWeightLb: Number(editing.unitWeightLb) || 0,
           active: editing.active,
         }),
@@ -384,16 +389,37 @@ export function ProductMasterTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-white mb-1">
-              Sửa <span style={{ color: "var(--accent)" }}>{editing.name}</span>
+              Sửa sản phẩm{" "}
+              <span className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>
+                {editing.id}
+              </span>
             </h3>
             <p
               className="text-xs mb-4"
               style={{ color: "var(--text-muted)" }}
             >
-              {editing.customerId}
+              Khách hàng: {editing.customerId}
             </p>
 
             <div className="space-y-3">
+              <div>
+                <label
+                  className="text-[11px] font-bold tracking-widest uppercase block mb-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Tên hiển thị <span style={{ color: "var(--accent)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editing.name}
+                  onChange={(e) =>
+                    setEditing({ ...editing, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded text-sm"
+                  placeholder="VD: Fitgum Acai"
+                />
+              </div>
+
               <div>
                 <label
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"

@@ -7,6 +7,7 @@ import { withAuth } from "@/lib/auth/api-guard";
 
 const UpdateProductSchema = z.object({
   id: z.string().min(1),
+  name: z.string().min(1, "Tên sản phẩm không được để trống"),
   unitWeightLb: z.number().nonnegative(),
   active: z.boolean(),
 });
@@ -97,6 +98,7 @@ export const PUT = withAuth(
       await db
         .update(products)
         .set({
+          name: parsed.name,
           unitWeightLb: parsed.unitWeightLb.toString(),
           active: parsed.active,
         })
