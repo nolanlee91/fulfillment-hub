@@ -12,7 +12,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const PADDING_MAP = {
-  default: "p-4",
+  default: "p-5",
   lg: "p-6",
   none: "",
 };

@@ -163,20 +163,26 @@ export function Sidebar({ user }: { user: CurrentUser }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-all"
+                    className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.025)]"
                     style={{
                       color: isActive
-                        ? "var(--accent)"
+                        ? "var(--text-primary)"
                         : "var(--text-secondary)",
                       backgroundColor: isActive
-                        ? "var(--accent-bg)"
+                        ? "var(--bg-tertiary)"
                         : "transparent",
                       fontWeight: isActive ? 600 : 500,
+                      boxShadow: isActive
+                        ? "inset 3px 0 0 var(--accent)"
+                        : "none",
                     }}
                   >
                     <span
-                      className="material-symbols-outlined text-[19px]"
+                      className="material-symbols-outlined text-[18px]"
                       style={{
+                        color: isActive
+                          ? "var(--accent)"
+                          : "var(--text-muted)",
                         fontVariationSettings: isActive
                           ? '"FILL" 1, "wght" 500'
                           : '"FILL" 0, "wght" 400',
