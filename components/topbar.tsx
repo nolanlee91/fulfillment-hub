@@ -116,7 +116,7 @@ export function Topbar({
       ? { backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#34d399" }
       : message?.type === "error"
         ? { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#fca5a5" }
-        : { backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#fbbf24" };
+        : { backgroundColor: "rgba(96, 165, 250, 0.15)", color: "#60a5fa" };
 
   const titleNode = accentWord && title.includes(accentWord) ? (
     <>

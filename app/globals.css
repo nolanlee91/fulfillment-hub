@@ -12,11 +12,11 @@
   --text-secondary: #8da4c4;
   --text-muted: #5e7798;
 
-  /* Accent — amber (KDExpress App Hub style) */
-  --accent: #f59e0b;
-  --accent-hover: #d97706;
-  --accent-bg: rgba(245, 158, 11, 0.08);
-  --accent-strong: rgba(245, 158, 11, 0.18);
+  /* Accent — emerald (match KDExpress logo, logistics-tech) */
+  --accent: #10b981;
+  --accent-hover: #0d9669;
+  --accent-bg: rgba(16, 185, 129, 0.08);
+  --accent-strong: rgba(16, 185, 129, 0.18);
 
   /* Semantic colors — saturation thấp hơn */
   --color-success: #34d399;
