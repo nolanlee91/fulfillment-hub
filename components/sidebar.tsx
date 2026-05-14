@@ -200,39 +200,79 @@ export function Sidebar({ user }: { user: CurrentUser }) {
       </nav>
 
       <div
+        className="border-t pt-2 pb-2"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <div className="sidebar-section-label">Cá nhân</div>
+        <Link
+          href="/account"
+          className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.025)]"
+          style={{
+            color:
+              pathname === "/account" || pathname.startsWith("/account/")
+                ? "var(--text-primary)"
+                : "var(--text-secondary)",
+            backgroundColor:
+              pathname === "/account" || pathname.startsWith("/account/")
+                ? "var(--bg-tertiary)"
+                : "transparent",
+            fontWeight:
+              pathname === "/account" || pathname.startsWith("/account/")
+                ? 600
+                : 500,
+            boxShadow:
+              pathname === "/account" || pathname.startsWith("/account/")
+                ? "inset 3px 0 0 var(--accent)"
+                : "none",
+          }}
+        >
+          <span
+            className="material-symbols-outlined text-[18px]"
+            style={{
+              color:
+                pathname === "/account" || pathname.startsWith("/account/")
+                  ? "var(--accent)"
+                  : "var(--text-muted)",
+              fontVariationSettings:
+                pathname === "/account" || pathname.startsWith("/account/")
+                  ? '"FILL" 1, "wght" 500'
+                  : '"FILL" 0, "wght" 400',
+            }}
+          >
+            account_circle
+          </span>
+          Tài khoản của tôi
+        </Link>
+      </div>
+
+      <div
         className="px-4 py-3 border-t"
         style={{ borderColor: "var(--border)" }}
       >
         <div className="flex items-center gap-3">
-          <Link
-            href="/account"
-            title="Tài khoản của tôi"
-            className="flex items-center gap-3 flex-1 min-w-0 rounded-md p-1 -m-1 transition-colors hover:bg-[var(--bg-tertiary)]"
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+            style={{
+              backgroundColor: "var(--accent)",
+              color: "var(--bg-primary)",
+            }}
           >
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{
-                backgroundColor: "var(--accent)",
-                color: "var(--bg-primary)",
-              }}
+            {initial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-xs font-bold text-white truncate"
+              title={user.name}
             >
-              {initial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-xs font-bold text-white truncate"
-                title={user.name}
-              >
-                {user.name}
-              </p>
-              <p
-                className="text-[10px] tracking-wider truncate"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {ROLE_LABEL[user.role]}
-              </p>
-            </div>
-          </Link>
+              {user.name}
+            </p>
+            <p
+              className="text-[10px] tracking-wider truncate"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {ROLE_LABEL[user.role]}
+            </p>
+          </div>
           <button
             onClick={handleLogout}
             disabled={loggingOut}
