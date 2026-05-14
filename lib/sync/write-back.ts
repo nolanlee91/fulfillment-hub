@@ -200,11 +200,14 @@ export async function syncTrackingToSheet(
       continue;
     }
 
-    // Build write payload — 5 cell trên cùng row, gom 1 batchUpdate call
+    // Build write payload — 5 cell trên cùng row, gom 1 batchUpdate call.
+    // Prefix tracking number bằng `'` để Sheets ép kiểu text (chuỗi 16 chữ số
+    // không bị auto-parse thành scientific notation 1,0313E+15). Apostrophe
+    // đứng đầu cell sẽ bị Sheets ẩn khi hiển thị + copy ra ngoài.
     const rowNum = rowIndex + 1; // A1 1-indexed
     const sheetRef = `'${cfg.sheetName}'`;
     const updates = [
-      { range: `${sheetRef}!${colLetter(colTracking)}${rowNum}`, value: order.trackingNumber },
+      { range: `${sheetRef}!${colLetter(colTracking)}${rowNum}`, value: `'${order.trackingNumber}` },
       { range: `${sheetRef}!${colLetter(colTrackingUrl)}${rowNum}`, value: order.trackingUrl ?? "" },
       { range: `${sheetRef}!${colLetter(colShipDate)}${rowNum}`, value: fmtShipDate(order.shipDate) },
       { range: `${sheetRef}!${colLetter(colCarrier)}${rowNum}`, value: order.shippingCarrier ?? "" },
