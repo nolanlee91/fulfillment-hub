@@ -78,6 +78,7 @@ export default function UsersClient({
   const [creating, setCreating] = useState<CreateDraft | null>(null);
   const [editing, setEditing] = useState<EditDraft | null>(null);
   const [resetting, setResetting] = useState<ResetDraft | null>(null);
+  const [resetDone, setResetDone] = useState<{ username: string; password: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -185,14 +186,26 @@ export default function UsersClient({
       });
       const data = await res.json();
       if (data.success) {
+        setResetDone({ username: resetting.username, password: resetting.password });
         setResetting(null);
-        alert(`Đã đặt password mới cho "${resetting.username}". User cần đăng nhập lại.`);
       } else {
         alert("Lỗi: " + data.error);
       }
     } finally {
       setSaving(false);
     }
+  }
+
+  function generateRandomPassword(): string {
+    const lower = "abcdefghijkmnpqrstuvwxyz";
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const digits = "23456789";
+    const symbols = "!@#$%&*";
+    const all = lower + upper + digits + symbols;
+    const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
+    const chars = [pick(lower), pick(upper), pick(digits), pick(symbols)];
+    for (let i = 0; i < 8; i++) chars.push(pick(all));
+    return chars.sort(() => Math.random() - 0.5).join("");
   }
 
   function startEdit(u: UserRow) {
@@ -611,16 +624,32 @@ export default function UsersClient({
           </p>
 
           <Field label="Password mới" required>
-            <input
-              type="text"
-              value={resetting.password}
-              onChange={(e) =>
-                setResetting({ ...resetting, password: e.target.value })
-              }
-              placeholder=">= 8 ký tự"
-              className="w-full px-3 py-2 rounded text-sm font-mono"
-              autoFocus
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={resetting.password}
+                onChange={(e) =>
+                  setResetting({ ...resetting, password: e.target.value })
+                }
+                placeholder=">= 8 ký tự"
+                className="flex-1 px-3 py-2 rounded text-sm font-mono"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setResetting({ ...resetting, password: generateRandomPassword() })
+                }
+                className="px-3 py-2 rounded text-xs font-semibold whitespace-nowrap"
+                style={{
+                  backgroundColor: "var(--accent-bg)",
+                  color: "var(--accent)",
+                }}
+                title="Sinh password ngẫu nhiên 12 ký tự"
+              >
+                Tạo ngẫu nhiên
+              </button>
+            </div>
           </Field>
 
           <ModalActions
@@ -629,6 +658,48 @@ export default function UsersClient({
             saving={saving}
             submitLabel="Đặt password mới"
           />
+        </Modal>
+      )}
+
+      {resetDone && (
+        <Modal title="Đã đặt password mới" onClose={() => setResetDone(null)}>
+          <p
+            className="text-xs mb-3"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Copy password bên dưới rồi gửi cho{" "}
+            <span className="font-mono" style={{ color: "var(--text-primary)" }}>
+              {resetDone.username}
+            </span>{" "}
+            qua kênh an toàn (Zalo, Telegram, gặp trực tiếp...). User cần đăng
+            nhập lại với password mới và nên đổi password sau lần đầu đăng nhập.
+          </p>
+
+          <div
+            className="rounded p-3 font-mono text-base break-all"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              color: "var(--text-primary)",
+              borderLeft: "3px solid var(--accent)",
+            }}
+          >
+            {resetDone.password}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                navigator.clipboard.writeText(resetDone.password);
+              }}
+              icon="content_copy"
+            >
+              Copy
+            </Button>
+            <Button variant="primary" onClick={() => setResetDone(null)}>
+              Đóng
+            </Button>
+          </div>
         </Modal>
       )}
     </>

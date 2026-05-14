@@ -204,29 +204,35 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         style={{ borderColor: "var(--border)" }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-            style={{
-              backgroundColor: "var(--accent)",
-              color: "var(--bg-primary)",
-            }}
+          <Link
+            href="/account"
+            title="Tài khoản của tôi"
+            className="flex items-center gap-3 flex-1 min-w-0 rounded-md p-1 -m-1 transition-colors hover:bg-[var(--bg-tertiary)]"
           >
-            {initial}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className="text-xs font-bold text-white truncate"
-              title={user.name}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              style={{
+                backgroundColor: "var(--accent)",
+                color: "var(--bg-primary)",
+              }}
             >
-              {user.name}
-            </p>
-            <p
-              className="text-[10px] tracking-wider truncate"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {ROLE_LABEL[user.role]}
-            </p>
-          </div>
+              {initial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-xs font-bold text-white truncate"
+                title={user.name}
+              >
+                {user.name}
+              </p>
+              <p
+                className="text-[10px] tracking-wider truncate"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {ROLE_LABEL[user.role]}
+              </p>
+            </div>
+          </Link>
           <button
             onClick={handleLogout}
             disabled={loggingOut}
