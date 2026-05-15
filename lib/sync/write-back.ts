@@ -282,7 +282,13 @@ export async function syncTrackingBatch(
       // chữ số bị parse thành scientific notation (mất precision).
       const planned: PlannedUpdate[] = [
         { range: `${sheetRef}!${colLetter(hdr.colTracking)}${rowNum}`, value: `'${o.trackingNumber}` },
-        { range: `${sheetRef}!${colLetter(hdr.colTrackingUrl)}${rowNum}`, value: o.trackingUrl ?? "" },
+        {
+          range: `${sheetRef}!${colLetter(hdr.colTrackingUrl)}${rowNum}`,
+          // EST/COD file không có cột URL → DB null → fallback build Canada Post URL.
+          value:
+            o.trackingUrl ||
+            `https://www.canadapost.ca/track-reperage/en#/search?searchFor=${encodeURIComponent(o.trackingNumber!)}`,
+        },
         { range: `${sheetRef}!${colLetter(hdr.colShipDate)}${rowNum}`, value: fmtShipDate(o.shipDate) },
         { range: `${sheetRef}!${colLetter(hdr.colCarrier)}${rowNum}`, value: o.shippingCarrier ?? "" },
         { range: `${sheetRef}!${colLetter(hdr.colWeight)}${rowNum}`, value: weightKg },
