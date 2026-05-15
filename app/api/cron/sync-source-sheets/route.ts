@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { syncTrackingToSheet, type SheetCache } from "@/lib/sync/write-back";
+import { and, isNull, sql } from "drizzle-orm";
+import { syncTrackingBatch } from "@/lib/sync/write-back";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const BATCH_LIMIT = 30;
+const BATCH_LIMIT = 100;
 
 async function handler(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
@@ -49,41 +49,17 @@ async function handler(req: NextRequest) {
     });
   }
 
-  let synced = 0;
-  let skipped = 0;
-  let failed = 0;
-  const skipReasons: Record<string, number> = {};
-  const failSamples: string[] = [];
-  const sheetCache: SheetCache = new Map();
-
-  for (const c of candidates) {
-    try {
-      const res = await syncTrackingToSheet(c.uniqueKey, sheetCache);
-      if (res.success) synced += 1;
-      else if (res.skipped) {
-        skipped += 1;
-        const r = res.reason ?? "unknown";
-        skipReasons[r] = (skipReasons[r] || 0) + 1;
-      } else {
-        failed += 1;
-        if (failSamples.length < 5) failSamples.push(`${c.uniqueKey}: ${res.reason}`);
-      }
-    } catch (e) {
-      failed += 1;
-      const msg = e instanceof Error ? e.message : String(e);
-      if (failSamples.length < 5) failSamples.push(`${c.uniqueKey}: ${msg}`);
-    }
-  }
+  const res = await syncTrackingBatch(candidates.map((c) => c.uniqueKey));
 
   return NextResponse.json({
     success: true,
     scanned: candidates.length,
-    synced,
-    skipped,
-    failed,
-    skipReasons,
-    failSamples,
-    message: `Đã quét ${candidates.length} đơn: synced ${synced}, skipped ${skipped}, failed ${failed}.`,
+    synced: res.synced,
+    skipped: res.skipped,
+    failed: res.failed,
+    skipReasons: res.skipReasons,
+    failSamples: res.failSamples,
+    message: `Đã quét ${candidates.length} đơn: synced ${res.synced}, skipped ${res.skipped}, failed ${res.failed}.`,
   });
 }
 

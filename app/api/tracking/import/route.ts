@@ -4,7 +4,7 @@ import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
-import { syncTrackingToSheet, type SheetCache } from "@/lib/sync/write-back";
+import { syncTrackingBatch } from "@/lib/sync/write-back";
 
 export const maxDuration = 60;
 
@@ -318,33 +318,14 @@ export const POST = withAuth(
         .where(inArray(orders.uniqueKey, missingFromFile));
     }
 
-    // 6. Đẩy tracking về sheet nguồn (await, dùng cache để tránh re-read).
-    //    Block response 5-10s đến khi sync xong → user thấy stats ngay.
+    // 6. Đẩy tracking về sheet nguồn — 1 batchUpdate/spreadsheet.
     //    Cron sync-source-sheets sẽ retry các đơn fail trên cùng sheet.
-    const sheetCache: SheetCache = new Map();
-    let sheetSynced = 0;
-    let sheetSkipped = 0;
-    let sheetFailed = 0;
-    const sheetSkipReasons: Record<string, number> = {};
-    const sheetFailSamples: string[] = [];
-    for (const u of updates) {
-      try {
-        const res = await syncTrackingToSheet(u.uniqueKey, sheetCache);
-        if (res.success) sheetSynced += 1;
-        else if (res.skipped) {
-          sheetSkipped += 1;
-          const r = res.reason ?? "unknown";
-          sheetSkipReasons[r] = (sheetSkipReasons[r] || 0) + 1;
-        } else {
-          sheetFailed += 1;
-          if (sheetFailSamples.length < 3) sheetFailSamples.push(`${u.uniqueKey}: ${res.reason}`);
-        }
-      } catch (e) {
-        sheetFailed += 1;
-        const msg = e instanceof Error ? e.message : String(e);
-        if (sheetFailSamples.length < 3) sheetFailSamples.push(`${u.uniqueKey}: ${msg}`);
-      }
-    }
+    const sheetRes = await syncTrackingBatch(updates.map((u) => u.uniqueKey));
+    const sheetSynced = sheetRes.synced;
+    const sheetSkipped = sheetRes.skipped;
+    const sheetFailed = sheetRes.failed;
+    const sheetSkipReasons = sheetRes.skipReasons;
+    const sheetFailSamples = sheetRes.failSamples;
 
     const messageParts = [`${updates.length} đơn có tracking`];
     if (skippedAlreadyLabeled.length > 0) {
