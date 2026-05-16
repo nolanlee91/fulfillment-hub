@@ -80,6 +80,29 @@ interface FilterOption {
   name: string;
 }
 
+const AVATAR_COLORS = [
+  { bg: "rgba(16,185,129,0.15)",  text: "#34d399" },
+  { bg: "rgba(59,130,246,0.15)",  text: "#60a5fa" },
+  { bg: "rgba(139,92,246,0.15)",  text: "#a78bfa" },
+  { bg: "rgba(14,165,233,0.15)",  text: "#38bdf8" },
+  { bg: "rgba(20,184,166,0.15)",  text: "#2dd4bf" },
+  { bg: "rgba(249,115,22,0.15)",  text: "#fb923c" },
+  { bg: "rgba(236,72,153,0.15)",  text: "#f472b6" },
+  { bg: "rgba(245,158,11,0.15)",  text: "#fbbf24" },
+];
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 const STATUS_LABELS: Record<string, string> = {
   NEW: "Mới",
   READY: "Sẵn sàng",
@@ -585,11 +608,23 @@ function OrdersPageContent({ role }: { role: Role }) {
                       >
                         {o.productName}
                       </td>
-                      <td
-                        className="px-3 py-2"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {o.name || "—"}
+                      <td className="px-3 py-2">
+                        {o.name ? (
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                              style={(() => {
+                                const c = getAvatarColor(o.name);
+                                return { background: c.bg, color: c.text };
+                              })()}
+                            >
+                              {getInitials(o.name)}
+                            </div>
+                            <span style={{ color: "var(--text-primary)" }}>{o.name}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
                       </td>
                       <td
                         className="px-3 py-2 text-xs"
