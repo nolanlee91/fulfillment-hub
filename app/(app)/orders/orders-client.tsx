@@ -273,31 +273,44 @@ function OrdersPageContent({ role }: { role: Role }) {
     ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
     : productOpts;
 
+  const STATUS_TABS = [
+    { value: "",               label: "Tất cả",      dot: null },
+    { value: "NEW",            label: "Mới",          dot: "var(--color-info)" },
+    { value: "READY",          label: "Sẵn sàng",     dot: "var(--color-success)" },
+    { value: "ERROR",          label: "Lỗi",          dot: "var(--color-danger)" },
+    { value: "ERROR_UPDATED",  label: "Đã sửa",       dot: "var(--color-warning)" },
+    { value: "EXPORTED",       label: "Đã xuất",      dot: "var(--color-slate)" },
+    { value: "LABEL_CREATED",  label: "Có label",     dot: "var(--color-purple)" },
+    { value: "IN_TRANSIT",     label: "Đang giao",    dot: "var(--color-sky)" },
+  ];
+
   return (
     <>
       <Topbar title="Đơn đang xử lý" subtitle="Quản lý" showSync={!isCustomer} />
 
-      {/* Filters */}
-      <FilterBar
-        className={`grid gap-3 ${isCustomer ? "grid-cols-6" : "grid-cols-7"}`}
-      >
-        <FilterField label="Trạng thái">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="filter-input"
+      {/* Status tabs */}
+      <div className="status-tabs-bar">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            className={`status-tab${filterStatus === tab.value ? " active" : ""}`}
+            onClick={() => setFilterStatus(tab.value)}
           >
-            <option value="">Tất cả</option>
-            <option value="READY">Sẵn sàng</option>
-            <option value="ERROR">Lỗi</option>
-            <option value="ERROR_UPDATED">Đã cập nhật</option>
-            <option value="NEW">Mới</option>
-            <option value="EXPORTED">Đã upload/chờ label</option>
-            <option value="LABEL_CREATED">Đã có label</option>
-            <option value="IN_TRANSIT">Đang vận chuyển</option>
-          </select>
-        </FilterField>
+            {tab.dot && (
+              <span
+                className="status-tab-dot"
+                style={{ background: tab.dot }}
+              />
+            )}
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
+      {/* Secondary filters */}
+      <FilterBar
+        className={`grid gap-3 ${isCustomer ? "grid-cols-5" : "grid-cols-6"}`}
+      >
         {!isCustomer && (
           <FilterField label="Khách hàng">
             <select
@@ -360,11 +373,11 @@ function OrdersPageContent({ role }: { role: Role }) {
           </select>
         </FilterField>
 
-        <FilterField label="Tìm kiếm (Order ID, Tên, Phone, Zipcode)" className="col-span-2">
+        <FilterField label="Tìm kiếm" className="col-span-2">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm Order ID, Tên, Phone, Zipcode..."
+            placeholder="Order ID, Tên, Phone, Zipcode..."
           />
         </FilterField>
       </FilterBar>
