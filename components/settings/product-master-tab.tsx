@@ -134,23 +134,17 @@ export function ProductMasterTab() {
         <button
           onClick={() => setCreating({ ...EMPTY_PRODUCT })}
           disabled={activeCustomers.length === 0}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ backgroundColor: "var(--accent)", color: "var(--bg-primary)" }}
+          className="btn btn-primary"
           title={activeCustomers.length === 0 ? "Cần tạo khách hàng trước" : ""}
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
+          <span className="material-symbols-outlined text-[17px]">add</span>
           Tạo Sản phẩm
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="table-base">
           <thead>
-            <tr
-              style={{
-                backgroundColor: "var(--bg-tertiary)",
-                color: "var(--text-muted)",
-              }}
-            >
+            <tr>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                 Khách hàng
               </th>
@@ -232,7 +226,7 @@ export function ProductMasterTab() {
       {creating && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={() => !saving && setCreating(null)}
         >
           <div
@@ -347,28 +341,8 @@ export function ProductMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setCreating(null)}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-semibold rounded"
-                style={{
-                  backgroundColor: "var(--bg-tertiary)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={create}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-semibold rounded disabled:opacity-50"
-                style={{
-                  backgroundColor: "var(--accent)",
-                  color: "var(--bg-primary)",
-                }}
-              >
-                {saving ? "Đang tạo..." : "Tạo"}
-              </button>
+              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
+              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Đang tạo..." : "Tạo"}</button>
             </div>
           </div>
         </div>
@@ -377,7 +351,7 @@ export function ProductMasterTab() {
       {editing && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={() => !saving && setEditing(null)}
         >
           <div
@@ -456,28 +430,8 @@ export function ProductMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setEditing(null)}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-semibold rounded"
-                style={{
-                  backgroundColor: "var(--bg-tertiary)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-semibold rounded disabled:opacity-50"
-                style={{
-                  backgroundColor: "var(--accent)",
-                  color: "var(--bg-primary)",
-                }}
-              >
-                {saving ? "Đang lưu..." : "Lưu"}
-              </button>
+              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
+              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Đang lưu..." : "Lưu"}</button>
             </div>
           </div>
         </div>

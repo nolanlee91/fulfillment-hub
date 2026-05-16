@@ -475,16 +475,10 @@ function FlagsContent({
                       <button
                         onClick={handleDelete}
                         disabled={deleting || resolving}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors hover:opacity-80"
-                        style={{
-                          backgroundColor: "rgba(239, 68, 68, 0.15)",
-                          color: "#fca5a5",
-                        }}
+                        className="btn btn-danger"
                         title="Xóa hẳn cờ + toàn bộ tin nhắn của đơn này"
                       >
-                        <span className="material-symbols-outlined text-[16px]">
-                          delete_forever
-                        </span>
+                        <span className="material-symbols-outlined text-[16px]">delete_forever</span>
                         {deleting ? "Đang xóa..." : "Xóa hẳn"}
                       </button>
                     )}
@@ -607,7 +601,8 @@ function FlagListRow({
       className="w-full text-left px-4 py-3 border-b transition-colors"
       style={{
         borderColor: "var(--border)",
-        backgroundColor: selected ? "var(--accent-bg)" : "transparent",
+        backgroundColor: selected ? "var(--bg-tertiary)" : "transparent",
+        boxShadow: selected ? "inset 2px 0 0 var(--accent)" : "none",
       }}
     >
       <div className="flex items-start gap-3">

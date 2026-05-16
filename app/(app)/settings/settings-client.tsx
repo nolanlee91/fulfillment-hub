@@ -24,25 +24,16 @@ export default function SettingsPage() {
       <Topbar title="Cấu hình" subtitle="Cài đặt" />
 
       {/* Tab navigation */}
-      <div
-        className="flex gap-1 mb-4 p-1 rounded-lg"
-        style={{ backgroundColor: "var(--bg-secondary)", width: "fit-content" }}
-      >
+      <div className="status-tabs-bar mb-4" style={{ width: "fit-content" }}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded transition-colors"
-              style={{
-                backgroundColor: isActive ? "var(--accent-bg)" : "transparent",
-                color: isActive ? "var(--accent)" : "var(--text-secondary)",
-              }}
+              className={`status-tab${isActive ? " active" : ""}`}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {tab.icon}
-              </span>
+              <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
               {tab.label}
             </button>
           );
