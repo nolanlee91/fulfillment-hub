@@ -37,12 +37,6 @@ const sections: NavSection[] = [
       { href: "/delivered", icon: "task_alt", label: "Đơn đã giao" },
       { href: "/failed", icon: "assignment_return", label: "Đơn thất bại" },
       {
-        href: "/errors",
-        icon: "report_problem",
-        label: "Đơn lỗi",
-        roles: ["SUPER_ADMIN", "STAFF"],
-      },
-      {
         href: "/batches",
         icon: "package_2",
         label: "Lô đóng gói",

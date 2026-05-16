@@ -133,6 +133,7 @@ function OrdersPageContent({ role }: { role: Role }) {
   const [loading, setLoading] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
+  const [listKey, setListKey] = useState(0);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -159,7 +160,10 @@ function OrdersPageContent({ role }: { role: Role }) {
 
     const res = await fetch(`/api/orders?${params.toString()}`);
     const data = await res.json();
-    if (data.success) setOrders(data.data);
+    if (data.success) {
+      setOrders(data.data);
+      setListKey((k) => k + 1);
+    }
     setLoading(false);
   }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, search]);
 
@@ -557,15 +561,18 @@ function OrdersPageContent({ role }: { role: Role }) {
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {orders.map((o) => {
+              <tbody key={listKey}>
+                {orders.map((o, index) => {
                   const isSelected = selectedKeys.has(o.uniqueKey);
                   return (
                     <tr
                       key={o.uniqueKey}
-                      className={isSelected ? "selected" : ""}
+                      className={`row-animate${isSelected ? " selected" : ""}`}
+                      style={{
+                        cursor: "pointer",
+                        animationDelay: `${Math.min(index, 12) * 25}ms`,
+                      }}
                       onClick={() => setDrawerOrder(o)}
-                      style={{ cursor: "pointer" }}
                     >
                       {!isCustomer && (
                         <td
