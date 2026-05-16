@@ -81,6 +81,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
+  const [listKey, setListKey] = useState(0);
 
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
@@ -98,7 +99,10 @@ export default function DeliveredClient({ role }: { role: Role }) {
 
     const res = await fetch(`/api/orders?${params.toString()}`);
     const data = await res.json();
-    if (data.success) setOrders(data.data);
+    if (data.success) {
+      setOrders(data.data);
+      setListKey((k) => k + 1);
+    }
     setLoading(false);
   }, [filterCustomer, filterProduct, filterPayment, search]);
 
@@ -244,12 +248,13 @@ export default function DeliveredClient({ role }: { role: Role }) {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Cờ</th>
                 </tr>
               </thead>
-              <tbody>
-                {orders.map((o) => (
+              <tbody key={listKey}>
+                {orders.map((o, index) => (
                   <tr
                     key={o.uniqueKey}
+                    className="row-animate"
+                    style={{ cursor: "pointer", animationDelay: `${Math.min(index, 12) * 25}ms` }}
                     onClick={() => setDrawerOrder({ ...o, lastTrackingEvent: null, lastTrackingAt: null })}
-                    style={{ cursor: "pointer" }}
                   >
                     <td className="px-3 py-2 font-mono text-xs font-bold text-white">{o.orderId}</td>
                     {!isCustomer && (
