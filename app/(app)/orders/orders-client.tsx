@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Topbar } from "@/components/topbar";
 import { FlagCell } from "@/components/flag-cell";
 import { useFlagMap } from "@/lib/hooks/use-flag-map";
+import { OrderDrawer, type DrawerOrder } from "@/components/order-drawer";
 import {
   Button,
   StatusBadge,
@@ -108,6 +109,7 @@ function OrdersPageContent({ role }: { role: Role }) {
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -444,6 +446,12 @@ function OrdersPageContent({ role }: { role: Role }) {
         </div>
       </div>
 
+      <OrderDrawer
+        order={drawerOrder}
+        onClose={() => setDrawerOrder(null)}
+        role={role}
+      />
+
       {/* Table */}
       <div className="table-shell">
         {loading ? (
@@ -527,9 +535,17 @@ function OrdersPageContent({ role }: { role: Role }) {
                 {orders.map((o) => {
                   const isSelected = selectedKeys.has(o.uniqueKey);
                   return (
-                    <tr key={o.uniqueKey} className={isSelected ? "selected" : ""}>
+                    <tr
+                      key={o.uniqueKey}
+                      className={isSelected ? "selected" : ""}
+                      onClick={() => setDrawerOrder(o)}
+                      style={{ cursor: "pointer" }}
+                    >
                       {!isCustomer && (
-                        <td className="px-3 py-2 text-center">
+                        <td
+                          className="px-3 py-2 text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -657,7 +673,10 @@ function OrdersPageContent({ role }: { role: Role }) {
                           <span style={{ color: "var(--text-muted)" }}>—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs">
+                      <td
+                        className="px-3 py-2 text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {(() => {
                           const url = buildTrackingUrl(o);
                           if (url) {
@@ -680,7 +699,10 @@ function OrdersPageContent({ role }: { role: Role }) {
                           return <span style={{ color: "var(--text-muted)" }}>—</span>;
                         })()}
                       </td>
-                      <td className="px-3 py-2 text-center">
+                      <td
+                        className="px-3 py-2 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <FlagCell
                           orderUniqueKey={o.uniqueKey}
                           color={flagMap.get(o.uniqueKey)}
