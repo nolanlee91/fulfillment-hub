@@ -248,7 +248,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
                 {orders.map((o) => (
                   <tr
                     key={o.uniqueKey}
-                    onClick={() => setDrawerOrder(o)}
+                    onClick={() => setDrawerOrder({ ...o, lastTrackingEvent: null, lastTrackingAt: null })}
                     style={{ cursor: "pointer" }}
                   >
                     <td className="px-3 py-2 font-mono text-xs font-bold text-white">{o.orderId}</td>
