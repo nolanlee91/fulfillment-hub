@@ -27,16 +27,23 @@ export interface DrawerOrder {
   quantity: number;
   paymentMethod: PaymentMethod;
   codAmount: string | null;
-  note: string | null;
-  status: OrderStatus;
-  boxCode: string | null;
-  errorNote: string | null;
-  batchId: string | null;
+  note?: string | null;
+  // Tracking
   trackingNumber: string | null;
   trackingUrl: string | null;
-  attentionReason: AttentionReason | null;
-  attentionAt: string | null;
-  attentionNote: string | null;
+  // Processing-only fields (orders page)
+  status?: OrderStatus;
+  boxCode?: string | null;
+  errorNote?: string | null;
+  batchId?: string | null;
+  attentionReason?: AttentionReason | null;
+  attentionAt?: string | null;
+  attentionNote?: string | null;
+  // Delivered-specific
+  deliveredAt?: string | null;
+  // Failed-specific
+  lastTrackingEvent?: string | null;
+  lastTrackingAt?: string | null;
 }
 
 function buildTrackingUrl(o: Pick<DrawerOrder, "trackingUrl" | "trackingNumber">): string | null {
@@ -52,10 +59,7 @@ function DrawerRow({ label, children }: { label: string; children: React.ReactNo
     return null;
   }
   return (
-    <div
-      className="flex gap-3 py-2.5 border-b"
-      style={{ borderColor: "var(--border)" }}
-    >
+    <div className="flex gap-3 py-2.5 border-b" style={{ borderColor: "var(--border)" }}>
       <span
         className="text-[11px] font-semibold uppercase tracking-[0.12em] shrink-0 w-24 pt-0.5"
         style={{ color: "var(--text-muted)" }}
@@ -71,13 +75,17 @@ function DrawerRow({ label, children }: { label: string; children: React.ReactNo
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p
-      className="text-[10px] font-semibold uppercase tracking-[0.16em] mt-5 mb-1"
-      style={{ color: "var(--text-muted)" }}
-    >
+    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] mt-5 mb-1" style={{ color: "var(--text-muted)" }}>
       {children}
     </p>
   );
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleString("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
 export function OrderDrawer({
@@ -109,9 +117,9 @@ export function OrderDrawer({
     order.province,
     order.zipcode,
     order.country && order.country !== "CA" ? order.country : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  ].filter(Boolean).join(", ");
+
+  const hasOpsSection = isAdmin && (order.boxCode || order.batchId);
 
   return (
     <>
@@ -129,7 +137,7 @@ export function OrderDrawer({
             <span className="font-mono text-sm font-bold" style={{ color: "var(--text-primary)" }}>
               {order.orderId}
             </span>
-            <StatusBadge status={order.status} />
+            {order.status && <StatusBadge status={order.status} />}
             {order.attentionReason && <AttentionBadge reason={order.attentionReason} />}
           </div>
           <button
@@ -170,7 +178,27 @@ export function OrderDrawer({
           </DrawerRow>
           {order.note && <DrawerRow label="Ghi chú">{order.note}</DrawerRow>}
 
-          {isAdmin && (
+          {/* Tracking — luôn hiển thị nếu có */}
+          {trackingUrl && (
+            <>
+              <SectionLabel>Tracking</SectionLabel>
+              <DrawerRow label="Số tracking">
+                <a
+                  href={trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-mono hover:underline"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {order.trackingNumber ?? "Track"}
+                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                </a>
+              </DrawerRow>
+            </>
+          )}
+
+          {/* Vận hành (admin) — box + batch, chỉ khi có */}
+          {hasOpsSection && (
             <>
               <SectionLabel>Vận hành</SectionLabel>
               <DrawerRow label="Box">
@@ -181,72 +209,76 @@ export function OrderDrawer({
                   >
                     {order.boxCode}
                   </span>
-                ) : (
-                  "—"
-                )}
+                ) : "—"}
               </DrawerRow>
               <DrawerRow label="Batch">
                 {order.batchId ? (
                   <span className="font-mono text-[11px]" style={{ color: "var(--text-secondary)" }}>
                     {order.batchId}
                   </span>
-                ) : (
-                  "—"
-                )}
-              </DrawerRow>
-              <DrawerRow label="Tracking">
-                {trackingUrl ? (
-                  <a
-                    href={trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono hover:underline"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    {order.trackingNumber ?? "Track"}
-                    <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                  </a>
-                ) : (
-                  "—"
-                )}
+                ) : "—"}
               </DrawerRow>
             </>
           )}
 
+          {/* Giao hàng thành công */}
+          {order.deliveredAt && (
+            <>
+              <SectionLabel>Giao hàng</SectionLabel>
+              <div
+                className="rounded-lg p-3 text-[12px] leading-relaxed flex items-center gap-2"
+                style={{ background: "rgba(16,185,129,0.08)", color: "#34d399", border: "1px solid rgba(16,185,129,0.2)" }}
+              >
+                <span className="material-symbols-outlined text-[15px]">check_circle</span>
+                Giao thành công lúc {fmtDate(order.deliveredAt)}
+              </div>
+            </>
+          )}
+
+          {/* Thất bại / trả về */}
+          {order.lastTrackingEvent && (
+            <>
+              <SectionLabel>Lý do thất bại</SectionLabel>
+              <div
+                className="rounded-lg p-3 text-[12px] leading-relaxed"
+                style={{ background: "rgba(249,115,22,0.08)", color: "#fb923c", border: "1px solid rgba(249,115,22,0.2)" }}
+              >
+                {order.lastTrackingEvent}
+                {order.lastTrackingAt && (
+                  <p className="text-[11px] mt-1 opacity-70">{fmtDate(order.lastTrackingAt)}</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Lỗi dữ liệu */}
           {order.errorNote && (
             <>
               <SectionLabel>Lỗi dữ liệu</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed"
-                style={{
-                  background: "rgba(239,68,68,0.08)",
-                  color: "#fca5a5",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                }}
+                style={{ background: "rgba(239,68,68,0.08)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.2)" }}
               >
                 {order.errorNote}
               </div>
             </>
           )}
 
+          {/* Cần chú ý */}
           {order.attentionReason && (order.attentionNote || order.attentionAt) && (
             <>
               <SectionLabel>Cần chú ý</SectionLabel>
               {order.attentionNote && (
                 <div
                   className="rounded-lg p-3 text-[12px] leading-relaxed"
-                  style={{
-                    background: "rgba(251,191,36,0.08)",
-                    color: "#fbbf24",
-                    border: "1px solid rgba(251,191,36,0.2)",
-                  }}
+                  style={{ background: "rgba(251,191,36,0.08)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}
                 >
                   {order.attentionNote}
                 </div>
               )}
               {order.attentionAt && (
                 <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>
-                  Ghi nhận lúc {new Date(order.attentionAt).toLocaleString("vi-VN")}
+                  Ghi nhận lúc {fmtDate(order.attentionAt)}
                 </p>
               )}
             </>

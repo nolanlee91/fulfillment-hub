@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Topbar } from "@/components/topbar";
 import { FlagCell } from "@/components/flag-cell";
 import { useFlagMap } from "@/lib/hooks/use-flag-map";
+import { OrderDrawer, type DrawerOrder } from "@/components/order-drawer";
 import {
   Button,
   PaymentBadge,
@@ -49,6 +50,29 @@ function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: strin
   return null;
 }
 
+const AVATAR_COLORS = [
+  { bg: "rgba(16,185,129,0.15)",  text: "#34d399" },
+  { bg: "rgba(59,130,246,0.15)",  text: "#60a5fa" },
+  { bg: "rgba(139,92,246,0.15)",  text: "#a78bfa" },
+  { bg: "rgba(14,165,233,0.15)",  text: "#38bdf8" },
+  { bg: "rgba(20,184,166,0.15)",  text: "#2dd4bf" },
+  { bg: "rgba(249,115,22,0.15)",  text: "#fb923c" },
+  { bg: "rgba(236,72,153,0.15)",  text: "#f472b6" },
+  { bg: "rgba(245,158,11,0.15)",  text: "#fbbf24" },
+];
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 export default function FailedClient({ role }: { role: Role }) {
   const isCustomer = role === "CUSTOMER";
   const { map: flagMap } = useFlagMap();
@@ -57,6 +81,7 @@ export default function FailedClient({ role }: { role: Role }) {
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
 
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
@@ -78,9 +103,7 @@ export default function FailedClient({ role }: { role: Role }) {
     setLoading(false);
   }, [filterCustomer, filterProduct, filterPayment, search]);
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+  useEffect(() => { loadOrders(); }, [loadOrders]);
 
   useEffect(() => {
     fetch("/api/orders", { method: "POST" })
@@ -133,62 +156,44 @@ export default function FailedClient({ role }: { role: Role }) {
     <>
       <Topbar title="Đơn thất bại" subtitle="Quản lý" showSync={!isCustomer} />
 
+      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} />
+
       {/* Filters */}
-      <FilterBar
-        className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}
-      >
+      <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>
         {!isCustomer && (
           <FilterField label="Khách hàng">
             <select
               value={filterCustomer}
-              onChange={(e) => {
-                setFilterCustomer(e.target.value);
-                setFilterProduct("");
-              }}
+              onChange={(e) => { setFilterCustomer(e.target.value); setFilterProduct(""); }}
               className="filter-input"
             >
               <option value="">Tất cả</option>
               {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </FilterField>
         )}
-
         <FilterField label="Sản phẩm">
-          <select
-            value={filterProduct}
-            onChange={(e) => setFilterProduct(e.target.value)}
-            className="filter-input"
-          >
+          <select value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} className="filter-input">
             <option value="">Tất cả</option>
             {filteredProducts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </FilterField>
-
         <FilterField label="Thanh toán">
-          <select
-            value={filterPayment}
-            onChange={(e) => setFilterPayment(e.target.value)}
-            className="filter-input"
-          >
+          <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)} className="filter-input">
             <option value="">Tất cả</option>
             <option value="PREPAID">Thường</option>
             <option value="COD">COD</option>
           </select>
         </FilterField>
-
-        <FilterField label="Tìm kiếm (Order ID, Tên, Phone, Zipcode)" className="col-span-2">
+        <FilterField label="Tìm kiếm" className="col-span-2">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm Order ID, Tên, Phone, Zipcode..."
+            placeholder="Order ID, Tên, Phone, Zipcode..."
           />
         </FilterField>
       </FilterBar>
@@ -210,7 +215,6 @@ export default function FailedClient({ role }: { role: Role }) {
             icon="download"
             onClick={exportFile}
             disabled={exporting || orders.length === 0}
-            title="Xuất file Excel toàn bộ đơn theo filter hiện tại"
           >
             {exporting ? "Đang xuất..." : "Xuất file"}
           </Button>
@@ -220,90 +224,64 @@ export default function FailedClient({ role }: { role: Role }) {
       {/* Table */}
       <div className="table-shell">
         {loading ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-            Đang tải...
-          </div>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>Đang tải...</div>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-            Chưa có đơn nào thất bại.
-          </div>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>Chưa có đơn nào thất bại.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="table-base">
               <thead>
                 <tr>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Order ID
-                  </th>
-                  {!isCustomer && (
-                    <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                      Khách
-                    </th>
-                  )}
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Sản phẩm
-                  </th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Tên
-                  </th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Địa chỉ
-                  </th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Phone
-                  </th>
-                  <th className="text-right px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    SL
-                  </th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Thanh toán
-                  </th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Tracking
-                  </th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Lý do
-                  </th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Cờ
-                  </th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Order ID</th>
+                  {!isCustomer && <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Khách</th>}
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Sản phẩm</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Tên</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Địa chỉ</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Phone</th>
+                  <th className="text-right px-3 py-3 text-[11px] font-bold tracking-widest uppercase">SL</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Thanh toán</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Tracking</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Lý do</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Cờ</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr key={o.uniqueKey}>
-                    <td className="px-3 py-2 font-mono text-xs font-bold text-white">
-                      {o.orderId}
-                    </td>
+                  <tr
+                    key={o.uniqueKey}
+                    onClick={() => setDrawerOrder(o)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td className="px-3 py-2 font-mono text-xs font-bold text-white">{o.orderId}</td>
                     {!isCustomer && (
-                      <td className="px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>
-                        {o.customerId}
-                      </td>
+                      <td className="px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>{o.customerId}</td>
                     )}
-                    <td className="px-3 py-2" style={{ color: "var(--text-secondary)" }}>
-                      {o.productName}
-                    </td>
-                    <td className="px-3 py-2" style={{ color: "var(--text-primary)" }}>
-                      {o.name || "—"}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {o.addressLine1 && (
-                        <div className="truncate max-w-[220px]" title={o.addressLine1}>
-                          {o.addressLine1}
+                    <td className="px-3 py-2" style={{ color: "var(--text-secondary)" }}>{o.productName}</td>
+                    <td className="px-3 py-2">
+                      {o.name ? (
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                            style={(() => { const c = getAvatarColor(o.name); return { background: c.bg, color: c.text }; })()}
+                          >
+                            {getInitials(o.name)}
+                          </div>
+                          <span style={{ color: "var(--text-primary)" }}>{o.name}</span>
                         </div>
+                      ) : (
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {o.addressLine1 && (
+                        <div className="truncate max-w-[220px]" title={o.addressLine1}>{o.addressLine1}</div>
                       )}
                       <div style={{ color: "var(--text-muted)" }}>
                         {[o.city, o.province, o.zipcode].filter(Boolean).join(", ")}
                         {o.country && o.country !== "CA" ? ` · ${o.country}` : ""}
                       </div>
                     </td>
-                    <td
-                      className="px-3 py-2 font-mono text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
+                    <td className="px-3 py-2 font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
                       {o.phone || "—"}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">{o.quantity}</td>
@@ -315,7 +293,7 @@ export default function FailedClient({ role }: { role: Role }) {
                         {o.paymentMethod === "COD" ? "COD" : "Thường"}
                       </PaymentBadge>
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
                       {(() => {
                         const url = buildTrackingUrl(o);
                         if (url) {
@@ -326,22 +304,16 @@ export default function FailedClient({ role }: { role: Role }) {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 font-mono hover:underline"
                               style={{ color: "var(--accent)" }}
-                              title={o.trackingNumber ?? undefined}
                             >
                               {o.trackingNumber ?? "Track"}
-                              <span className="material-symbols-outlined text-[14px]">
-                                open_in_new
-                              </span>
+                              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                             </a>
                           );
                         }
                         return <span style={{ color: "var(--text-muted)" }}>—</span>;
                       })()}
                     </td>
-                    <td
-                      className="px-3 py-2 text-xs"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
+                    <td className="px-3 py-2 text-xs" style={{ color: "var(--text-secondary)" }}>
                       {o.lastTrackingEvent ? (
                         <div>
                           <div className="truncate max-w-[260px]" title={o.lastTrackingEvent}>
@@ -350,11 +322,8 @@ export default function FailedClient({ role }: { role: Role }) {
                           {o.lastTrackingAt && (
                             <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                               {new Date(o.lastTrackingAt).toLocaleString("vi-VN", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
+                                day: "2-digit", month: "2-digit", year: "numeric",
+                                hour: "2-digit", minute: "2-digit",
                               })}
                             </div>
                           )}
@@ -363,11 +332,8 @@ export default function FailedClient({ role }: { role: Role }) {
                         <span style={{ color: "var(--text-muted)" }}>—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <FlagCell
-                        orderUniqueKey={o.uniqueKey}
-                        color={flagMap.get(o.uniqueKey)}
-                      />
+                    <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <FlagCell orderUniqueKey={o.uniqueKey} color={flagMap.get(o.uniqueKey)} />
                     </td>
                   </tr>
                 ))}
