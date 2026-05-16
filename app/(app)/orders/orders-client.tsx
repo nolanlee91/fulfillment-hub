@@ -538,8 +538,8 @@ function OrdersPageContent({ role }: { role: Role }) {
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Địa chỉ
                   </th>
-                  <th className="text-right px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    SL
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Số lượng
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Thanh toán
@@ -634,7 +634,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                           {o.country && o.country !== "CA" ? ` · ${o.country}` : ""}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono">
+                      <td className="px-3 py-2 text-center font-mono">
                         {o.quantity}
                       </td>
                       <td
