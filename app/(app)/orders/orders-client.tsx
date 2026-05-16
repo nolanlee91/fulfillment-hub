@@ -538,9 +538,6 @@ function OrdersPageContent({ role }: { role: Role }) {
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Địa chỉ
                   </th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Phone
-                  </th>
                   <th className="text-right px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     SL
                   </th>
@@ -636,12 +633,6 @@ function OrdersPageContent({ role }: { role: Role }) {
                           {[o.city, o.province, o.zipcode].filter(Boolean).join(", ")}
                           {o.country && o.country !== "CA" ? ` · ${o.country}` : ""}
                         </div>
-                      </td>
-                      <td
-                        className="px-3 py-2 font-mono text-xs"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {o.phone || "—"}
                       </td>
                       <td className="px-3 py-2 text-right font-mono">
                         {o.quantity}
