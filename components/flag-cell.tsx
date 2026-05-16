@@ -15,7 +15,7 @@ interface FlagCellProps {
 
 const COLOR_MAP: Record<string, { bg: string; fg: string; label: string }> = {
   red: { bg: "rgba(239, 68, 68, 0.15)", fg: "#ef4444", label: "Cờ đỏ" },
-  yellow: { bg: "rgba(245, 158, 11, 0.15)", fg: "#f59e0b", label: "Cờ vàng" },
+  yellow: { bg: "rgba(250, 204, 21, 0.15)", fg: "#facc15", label: "Cờ vàng" },
   resolved: { bg: "rgba(107, 114, 128, 0.15)", fg: "#9ca3af", label: "Đã gỡ" },
   none: { bg: "transparent", fg: "var(--text-muted)", label: "Gắn cờ" },
 };

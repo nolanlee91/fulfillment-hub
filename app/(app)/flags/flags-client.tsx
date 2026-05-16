@@ -643,7 +643,7 @@ function FlagListRow({
 
 function FlagDot({ color }: { color: FlagColor }) {
   const bg =
-    color === "red" ? "#ef4444" : color === "yellow" ? "#f59e0b" : "#6b7280";
+    color === "red" ? "#ef4444" : color === "yellow" ? "#facc15" : "#6b7280";
   return (
     <span
       className="inline-flex items-center justify-center w-7 h-7 rounded-full shrink-0 mt-0.5"
@@ -674,7 +674,7 @@ function FlagBadge({ color }: { color: FlagColor }) {
       </span>
     );
   }
-  const bg = color === "red" ? "#ef4444" : "#f59e0b";
+  const bg = color === "red" ? "#ef4444" : "#facc15";
   const label = color === "red" ? "Cờ đỏ" : "Cờ vàng";
   return (
     <span

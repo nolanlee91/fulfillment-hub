@@ -235,8 +235,8 @@ export function OrderDrawer({
             </>
           )}
 
-          {/* Thất bại / trả về */}
-          {order.lastTrackingEvent && (
+          {/* Thất bại / trả về — chỉ show khi status là FAILED hoặc không có status (trang failed) */}
+          {(!order.status || order.status === "FAILED") && order.lastTrackingEvent && (
             <>
               <SectionLabel>Lý do thất bại</SectionLabel>
               <div
