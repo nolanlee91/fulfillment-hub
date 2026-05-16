@@ -543,19 +543,9 @@ function OrdersPageContent({ role }: { role: Role }) {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Thanh toán
                   </th>
-                  {!isCustomer && (
-                    <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                      Box
-                    </th>
-                  )}
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Trạng thái
                   </th>
-                  {!isCustomer && (
-                    <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                      Batch
-                    </th>
-                  )}
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Cần chú ý
                   </th>
@@ -661,43 +651,11 @@ function OrdersPageContent({ role }: { role: Role }) {
                           {o.paymentMethod === "COD" ? "COD" : "Thường"}
                         </PaymentBadge>
                       </td>
-                      {!isCustomer && (
-                        <td className="px-3 py-2 text-center">
-                          {o.boxCode ? (
-                            <span
-                              className="px-2 py-0.5 rounded text-xs font-bold"
-                              style={{
-                                backgroundColor: "var(--accent-bg)",
-                                color: "var(--accent)",
-                              }}
-                            >
-                              {o.boxCode}
-                            </span>
-                          ) : (
-                            <span style={{ color: "var(--text-muted)" }}>—</span>
-                          )}
-                        </td>
-                      )}
                       <td className="px-3 py-2 text-center">
                         <StatusBadge status={o.status}>
                           {STATUS_LABELS[o.status]}
                         </StatusBadge>
                       </td>
-                      {!isCustomer && (
-                        <td className="px-3 py-2 text-xs">
-                          {o.batchId ? (
-                            <span
-                              className="font-mono text-[11px]"
-                              style={{ color: "var(--text-secondary)" }}
-                              title={o.batchId}
-                            >
-                              {o.batchId}
-                            </span>
-                          ) : (
-                            <span style={{ color: "var(--text-muted)" }}>—</span>
-                          )}
-                        </td>
-                      )}
                       <td
                         className="px-3 py-2 text-center"
                         title={
