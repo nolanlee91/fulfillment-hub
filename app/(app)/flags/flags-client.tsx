@@ -331,27 +331,12 @@ function FlagsContent({
         >
           {/* Toggle filters */}
           <div
-            className="px-4 py-3 border-b flex flex-wrap gap-3"
+            className="px-3 py-2.5 border-b flex gap-2"
             style={{ borderColor: "var(--border)" }}
           >
-            <FilterCheckbox
-              label="Cờ đỏ"
-              dotColor="#ef4444"
-              checked={showRed}
-              onChange={setShowRed}
-            />
-            <FilterCheckbox
-              label="Cờ vàng"
-              dotColor="#f59e0b"
-              checked={showYellow}
-              onChange={setShowYellow}
-            />
-            <FilterCheckbox
-              label="Đã gỡ"
-              dotColor="#6b7280"
-              checked={showResolved}
-              onChange={setShowResolved}
-            />
+            <FlagToggle label="Cờ đỏ"    color="#ef4444" checked={showRed}      onChange={setShowRed} />
+            <FlagToggle label="Cờ vàng"  color="#facc15" checked={showYellow}   onChange={setShowYellow} />
+            <FlagToggle label="Đã gỡ"    color="#6b7280" checked={showResolved} onChange={setShowResolved} />
           </div>
 
           {/* List items */}
@@ -411,78 +396,54 @@ function FlagsContent({
             <>
               {/* Header: order info */}
               <div
-                className="px-5 py-4 border-b flex items-start justify-between gap-4"
+                className="px-5 py-3.5 border-b flex items-center justify-between gap-4"
                 style={{ borderColor: "var(--border)" }}
               >
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm flex-1">
-                  <InfoRow label="Mã đơn" value={detail.order.orderId} />
-                  <InfoRow
-                    label="Khách hàng"
-                    value={detail.order.customerName ?? detail.order.customerId}
-                  />
-                  <InfoRow
-                    label="Sản phẩm"
-                    value={detail.order.productName ?? detail.order.productId}
-                  />
-                  <InfoRow
-                    label="Tracking"
-                    value={
-                      detail.order.trackingNumber ? (
-                        trackingUrl ? (
-                          <a
-                            href={trackingUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:underline"
-                            style={{ color: "var(--accent)" }}
-                          >
-                            {detail.order.trackingNumber}
-                          </a>
-                        ) : (
-                          detail.order.trackingNumber
-                        )
-                      ) : (
-                        <span style={{ color: "var(--text-muted)" }}>—</span>
-                      )
-                    }
-                  />
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {detail.flag ? (
-                    <FlagBadge color={detail.flag.currentColor} />
-                  ) : (
-                    <span
-                      className="text-[11px]"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      Chưa gắn cờ
+                {/* Info chips — hàng ngang */}
+                <div className="flex items-center gap-5 flex-wrap flex-1 min-w-0">
+                  <InfoChip label="Mã đơn">
+                    <span className="font-mono font-bold" style={{ color: "var(--text-primary)" }}>
+                      {detail.order.orderId}
                     </span>
+                  </InfoChip>
+                  <InfoChip label="Khách hàng">
+                    {detail.order.customerName ?? detail.order.customerId}
+                  </InfoChip>
+                  <InfoChip label="Sản phẩm">
+                    {detail.order.productName ?? detail.order.productId}
+                  </InfoChip>
+                  {detail.order.trackingNumber && (
+                    <InfoChip label="Tracking">
+                      {trackingUrl ? (
+                        <a href={trackingUrl} target="_blank" rel="noreferrer"
+                          className="font-mono hover:underline inline-flex items-center gap-1"
+                          style={{ color: "var(--accent)" }}>
+                          {detail.order.trackingNumber}
+                          <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                        </a>
+                      ) : (
+                        <span className="font-mono">{detail.order.trackingNumber}</span>
+                      )}
+                    </InfoChip>
                   )}
-                  <div className="flex gap-2">
-                    {canResolve && (
-                      <button
-                        onClick={handleResolve}
-                        disabled={resolving || deleting}
-                        className="btn btn-secondary text-xs"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">
-                          flag_circle
-                        </span>
-                        {resolving ? "Đang gỡ..." : "Gỡ cờ"}
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={handleDelete}
-                        disabled={deleting || resolving}
-                        className="btn btn-danger"
-                        title="Xóa hẳn cờ + toàn bộ tin nhắn của đơn này"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete_forever</span>
-                        {deleting ? "Đang xóa..." : "Xóa hẳn"}
-                      </button>
-                    )}
-                  </div>
+                </div>
+
+                {/* Badge + actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {detail.flag && <FlagBadge color={detail.flag.currentColor} />}
+                  {canResolve && (
+                    <button onClick={handleResolve} disabled={resolving || deleting} className="btn btn-secondary">
+                      <span className="material-symbols-outlined text-[16px]">flag_circle</span>
+                      {resolving ? "Đang gỡ..." : "Gỡ cờ"}
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button onClick={handleDelete} disabled={deleting || resolving} className="btn btn-danger"
+                      title="Xóa hẳn cờ + toàn bộ tin nhắn của đơn này">
+                      <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                      {deleting ? "Đang xóa..." : "Xóa hẳn"}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -556,31 +517,33 @@ function FlagsContent({
   );
 }
 
-function FilterCheckbox({
+function FlagToggle({
   label,
-  dotColor,
+  color,
   checked,
   onChange,
 }: {
   label: string;
-  dotColor: string;
+  color: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="accent-current"
-      />
+    <button
+      onClick={() => onChange(!checked)}
+      className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-[12px] font-semibold cursor-pointer select-none transition-all"
+      style={{
+        border: `1px solid ${checked ? color + "55" : "var(--border)"}`,
+        background: checked ? color + "18" : "transparent",
+        color: checked ? color : "var(--text-muted)",
+      }}
+    >
       <span
-        className="inline-block w-2 h-2 rounded-full"
-        style={{ backgroundColor: dotColor }}
+        className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ background: color }}
       />
-      <span style={{ color: "var(--text-secondary)" }}>{label}</span>
-    </label>
+      {label}
+    </button>
   );
 }
 
@@ -695,20 +658,14 @@ function FlagBadge({ color }: { color: FlagColor }) {
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoChip({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p
-        className="text-[10px] uppercase tracking-wider font-semibold"
-        style={{ color: "var(--text-muted)" }}
-      >
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "var(--text-muted)" }}>
         {label}
       </p>
-      <p
-        className="text-sm font-medium mt-0.5"
-        style={{ color: "var(--text-primary)" }}
-      >
-        {value}
+      <p className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+        {children}
       </p>
     </div>
   );
