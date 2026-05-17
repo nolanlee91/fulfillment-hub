@@ -333,8 +333,8 @@ export default function UsersClient({
                           <span
                             className="px-2 py-0.5 rounded text-[10px] font-bold"
                             style={{
-                              backgroundColor: "rgba(16, 185, 129, 0.15)",
-                              color: "#34d399",
+                              backgroundColor: "rgba(74, 222, 128, 0.10)",
+                              color: "#4ade80",
                             }}
                           >
                             ON

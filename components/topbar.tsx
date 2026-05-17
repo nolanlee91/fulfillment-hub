@@ -113,7 +113,7 @@ export function Topbar({
 
   const messageColor =
     message?.type === "success"
-      ? { backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#34d399" }
+      ? { backgroundColor: "rgba(74, 222, 128, 0.10)", color: "#4ade80" }
       : message?.type === "error"
         ? { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#fca5a5" }
         : { backgroundColor: "rgba(96, 165, 250, 0.15)", color: "#60a5fa" };

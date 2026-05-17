@@ -227,7 +227,7 @@ export function OrderDrawer({
               <SectionLabel>Giao hàng</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed flex items-center gap-2"
-                style={{ background: "rgba(16,185,129,0.08)", color: "#34d399", border: "1px solid rgba(16,185,129,0.2)" }}
+                style={{ background: "rgba(74,222,128,0.07)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.14)" }}
               >
                 <span className="material-symbols-outlined text-[15px]">check_circle</span>
                 Giao thành công lúc {fmtDate(order.deliveredAt)}

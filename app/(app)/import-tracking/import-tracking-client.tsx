@@ -426,7 +426,7 @@ function ResultCard({
   hint: string;
 }) {
   const palette: Record<string, { bg: string; fg: string; border: string }> = {
-    emerald: { bg: "rgba(16, 185, 129, 0.08)", fg: "#34d399", border: "#10b981" },
+    emerald: { bg: "rgba(74, 222, 128, 0.08)", fg: "#4ade80", border: "#4ade80" },
     red: { bg: "rgba(239, 68, 68, 0.08)", fg: "#f87171", border: "#ef4444" },
     slate: { bg: "rgba(100, 116, 139, 0.08)", fg: "#94a3b8", border: "#94a3b8" },
     teal: { bg: "rgba(20, 184, 166, 0.08)", fg: "#2dd4bf", border: "#14b8a6" },

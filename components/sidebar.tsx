@@ -117,8 +117,8 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         <div
           className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
           style={{
-            background: "linear-gradient(135deg, #10b981, #0ea372)",
-            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)",
+            background: "linear-gradient(135deg, #5ea1ff, #3b82f6)",
+            boxShadow: "0 2px 8px rgba(94, 161, 255, 0.2)",
           }}
         >
           <span

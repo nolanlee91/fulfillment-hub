@@ -55,8 +55,8 @@ function LoginContent() {
           <div
             className="w-11 h-11 rounded-md flex items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, #10b981, #0ea372)",
-              boxShadow: "0 2px 12px rgba(16, 185, 129, 0.35)",
+              background: "linear-gradient(135deg, #5ea1ff, #3b82f6)",
+              boxShadow: "0 2px 12px rgba(94, 161, 255, 0.25)",
             }}
           >
             <span

@@ -632,13 +632,13 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between overflow-x-auto pb-2 gap-1">
           <PipelineBox label={["Data khách", "Google Sheet"]} />
           <PipelineArrow caption="Đồng bộ" width={88} />
-          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Sẵn sàng" color="#34d399" />
+          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Sẵn sàng" color="#4ade80" />
           <PipelineArrow
             captionAbove="Tạo Batch"
             caption="Xuất file upload lên ClickShip & EST"
           />
           <BranchFork
-            top={{ count: stats.exportedClickship, label: "ClickShip", color: "#34d399" }}
+            top={{ count: stats.exportedClickship, label: "ClickShip", color: "#4ade80" }}
             bottom={{ count: stats.exportedEst, label: "EST", color: "#fbbf24" }}
             belowLabel={["Đã upload", "chờ label"]}
           />
@@ -748,8 +748,8 @@ export default async function DashboardPage() {
                             style={{
                               backgroundColor: b.platform === "EST"
                                 ? "rgba(245, 158, 11, 0.15)"
-                                : "rgba(16, 185, 129, 0.15)",
-                              color: b.platform === "EST" ? "#fbbf24" : "#34d399",
+                                : "rgba(74, 222, 128, 0.10)",
+                              color: b.platform === "EST" ? "#fbbf24" : "#4ade80",
                             }}
                           >
                             {b.platform}

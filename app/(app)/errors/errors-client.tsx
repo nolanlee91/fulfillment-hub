@@ -96,8 +96,8 @@ export default function ErrorsPage() {
             <span
               className="text-xs px-3 py-1.5 rounded font-semibold"
               style={{
-                backgroundColor: "rgba(16, 185, 129, 0.15)",
-                color: "#34d399",
+                backgroundColor: "rgba(74, 222, 128, 0.10)",
+                color: "#4ade80",
               }}
             >
               {message}

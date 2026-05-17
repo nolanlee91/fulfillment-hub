@@ -50,7 +50,7 @@ function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: strin
 }
 
 const AVATAR_COLORS = [
-  { bg: "rgba(16,185,129,0.15)",  text: "#34d399" },
+  { bg: "rgba(94,161,255,0.15)",  text: "#7ab2ff" },
   { bg: "rgba(59,130,246,0.15)",  text: "#60a5fa" },
   { bg: "rgba(139,92,246,0.15)",  text: "#a78bfa" },
   { bg: "rgba(14,165,233,0.15)",  text: "#38bdf8" },
