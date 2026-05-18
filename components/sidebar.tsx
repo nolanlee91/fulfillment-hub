@@ -117,13 +117,13 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         <div
           className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
           style={{
-            background: "linear-gradient(135deg, #5ea1ff, #3b82f6)",
-            boxShadow: "0 2px 8px rgba(94, 161, 255, 0.2)",
+            background: "linear-gradient(135deg, #4ade80, #22c55e)",
+            boxShadow: "0 2px 8px rgba(74, 222, 128, 0.2)",
           }}
         >
           <span
             className="material-symbols-outlined text-[18px]"
-            style={{ color: "var(--bg-primary)" }}
+            style={{ color: "#052e16" }}
           >
             local_shipping
           </span>
