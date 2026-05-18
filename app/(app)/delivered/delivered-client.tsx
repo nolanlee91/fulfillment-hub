@@ -255,7 +255,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
                     style={{ cursor: "pointer", animationDelay: `${Math.min(index, 12) * 25}ms` }}
                     onClick={() => setDrawerOrder({ ...o, lastTrackingEvent: null, lastTrackingAt: null })}
                   >
-                    <td className="px-3 py-2 font-mono text-xs font-bold text-white">{o.orderId}</td>
+                    <td className="px-3 py-2 font-mono" style={{ color: "var(--text-primary)" }}>{o.orderId}</td>
                     {!isCustomer && (
                       <td className="px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>{o.customerId}</td>
                     )}

@@ -585,7 +585,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                           />
                         </td>
                       )}
-                      <td className="px-3 py-2 font-mono text-xs font-bold text-white">
+                      <td className="px-3 py-2 font-mono" style={{ color: "var(--text-primary)" }}>
                         {o.orderId}
                       </td>
                       {!isCustomer && (
