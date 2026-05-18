@@ -74,17 +74,17 @@ export default function ErrorsPage() {
         <div className="flex items-center gap-4">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(239, 68, 68, 0.15)" }}
+            style={{ backgroundColor: "rgba(220, 38, 38, 0.10)" }}
           >
             <span
               className="material-symbols-outlined text-2xl"
-              style={{ color: "#f87171" }}
+              style={{ color: "#dc2626" }}
             >
               report_problem
             </span>
           </div>
           <div>
-            <p className="text-2xl font-bold text-white">{orders.length}</p>
+            <p className="text-2xl font-bold">{orders.length}</p>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               orders need attention
             </p>
@@ -96,8 +96,8 @@ export default function ErrorsPage() {
             <span
               className="text-xs px-3 py-1.5 rounded font-semibold"
               style={{
-                backgroundColor: "rgba(74, 222, 128, 0.10)",
-                color: "#4ade80",
+                backgroundColor: "rgba(22, 163, 74, 0.10)",
+                color: "#15803d",
               }}
             >
               {message}
@@ -136,8 +136,8 @@ export default function ErrorsPage() {
                   <span
                     className="font-mono font-bold px-2 py-0.5 rounded"
                     style={{
-                      backgroundColor: "rgba(239, 68, 68, 0.15)",
-                      color: "#f87171",
+                      backgroundColor: "rgba(220, 38, 38, 0.10)",
+                      color: "#dc2626",
                     }}
                   >
                     {count}
@@ -162,7 +162,7 @@ export default function ErrorsPage() {
             >
               check_circle
             </span>
-            <p className="mt-3 font-semibold text-white">No error orders!</p>
+            <p className="mt-3 font-semibold">No error orders!</p>
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
               All orders have been validated successfully.
             </p>
@@ -195,7 +195,7 @@ export default function ErrorsPage() {
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.uniqueKey}>
-                    <td className="px-3 py-2 font-mono text-xs font-bold text-white">
+                    <td className="px-3 py-2 font-mono text-xs font-bold">
                       {o.orderId}
                     </td>
                     <td
@@ -221,7 +221,7 @@ export default function ErrorsPage() {
                     </td>
                     <td
                       className="px-3 py-2 text-xs font-medium"
-                      style={{ color: "#f87171" }}
+                      style={{ color: "#dc2626" }}
                     >
                       {o.errorNote}
                     </td>

@@ -175,7 +175,7 @@ export function ProductMasterTab() {
                 >
                   {p.customerId}
                 </td>
-                <td className="px-4 py-3 font-bold text-white">{p.name}</td>
+                <td className="px-4 py-3 font-bold">{p.name}</td>
                 <td
                   className="px-4 py-3 text-right font-mono"
                   style={{ color: "var(--text-secondary)" }}
@@ -187,8 +187,8 @@ export function ProductMasterTab() {
                     <span
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
-                        backgroundColor: "rgba(74, 222, 128, 0.10)",
-                        color: "#4ade80",
+                        backgroundColor: "rgba(22, 163, 74, 0.10)",
+                        color: "#15803d",
                       }}
                     >
                       ON
@@ -198,7 +198,7 @@ export function ProductMasterTab() {
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
                         backgroundColor: "rgba(100, 116, 139, 0.2)",
-                        color: "#94a3b8",
+                        color: "#475569",
                       }}
                     >
                       OFF
@@ -237,7 +237,7 @@ export function ProductMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">New Product</h3>
+            <h3 className="text-lg font-bold mb-4">New Product</h3>
 
             <div className="space-y-3">
               <div>
@@ -362,7 +362,7 @@ export function ProductMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-1">
+            <h3 className="text-lg font-bold mb-1">
               Edit Product{" "}
               <span className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>
                 {editing.id}

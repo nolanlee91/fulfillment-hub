@@ -226,7 +226,7 @@ export function OrderDrawer({
               <SectionLabel>Delivery</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed flex items-center gap-2"
-                style={{ background: "rgba(74,222,128,0.07)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.14)" }}
+                style={{ background: "rgba(22, 163, 74, 0.08)", color: "#15803d", border: "1px solid rgba(22, 163, 74, 0.18)" }}
               >
                 <span className="material-symbols-outlined text-[15px]">check_circle</span>
                 Delivered at {fmtDate(order.deliveredAt)}
@@ -240,7 +240,7 @@ export function OrderDrawer({
               <SectionLabel>Failure Reason</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed"
-                style={{ background: "rgba(249,115,22,0.08)", color: "#fb923c", border: "1px solid rgba(249,115,22,0.2)" }}
+                style={{ background: "rgba(249,115,22,0.08)", color: "#c2410c", border: "1px solid rgba(249,115,22,0.2)" }}
               >
                 {order.lastTrackingEvent}
                 {order.lastTrackingAt && (
@@ -256,7 +256,7 @@ export function OrderDrawer({
               <SectionLabel>Data Error</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed"
-                style={{ background: "rgba(239,68,68,0.08)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.2)" }}
+                style={{ background: "rgba(220, 38, 38, 0.08)", color: "#b91c1c", border: "1px solid rgba(220, 38, 38, 0.20)" }}
               >
                 {order.errorNote}
               </div>
@@ -270,7 +270,7 @@ export function OrderDrawer({
               {order.attentionNote && (
                 <div
                   className="rounded-lg p-3 text-[12px] leading-relaxed"
-                  style={{ background: "rgba(251,191,36,0.08)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}
+                  style={{ background: "rgba(251,191,36,0.08)", color: "#a16207", border: "1px solid rgba(251,191,36,0.2)" }}
                 >
                   {order.attentionNote}
                 </div>

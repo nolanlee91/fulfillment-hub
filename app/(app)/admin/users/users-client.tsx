@@ -62,9 +62,9 @@ const ROLE_LABEL: Record<Role, string> = {
 };
 
 const ROLE_COLOR: Record<Role, { bg: string; fg: string }> = {
-  SUPER_ADMIN: { bg: "rgba(168, 85, 247, 0.15)", fg: "#c084fc" },
-  STAFF: { bg: "rgba(59, 130, 246, 0.15)", fg: "#60a5fa" },
-  CUSTOMER: { bg: "rgba(245, 158, 11, 0.15)", fg: "#fbbf24" },
+  SUPER_ADMIN: { bg: "rgba(124, 58, 237, 0.10)", fg: "#6d28d9" },
+  STAFF: { bg: "rgba(37, 99, 235, 0.10)", fg: "#1d4ed8" },
+  CUSTOMER: { bg: "rgba(217, 119, 6, 0.10)", fg: "#a16207" },
 };
 
 export default function UsersClient({
@@ -285,7 +285,7 @@ export default function UsersClient({
                   const roleColor = ROLE_COLOR[u.role];
                   return (
                     <tr key={u.id}>
-                      <td className="px-4 py-3 font-mono text-white">
+                      <td className="px-4 py-3 font-mono">
                         {u.username}
                         {isSelf && (
                           <span
@@ -333,8 +333,8 @@ export default function UsersClient({
                           <span
                             className="px-2 py-0.5 rounded text-[10px] font-bold"
                             style={{
-                              backgroundColor: "rgba(74, 222, 128, 0.10)",
-                              color: "#4ade80",
+                              backgroundColor: "rgba(22, 163, 74, 0.10)",
+                              color: "#15803d",
                             }}
                           >
                             ON
@@ -343,8 +343,8 @@ export default function UsersClient({
                           <span
                             className="px-2 py-0.5 rounded text-[10px] font-bold"
                             style={{
-                              backgroundColor: "rgba(239, 68, 68, 0.15)",
-                              color: "#f87171",
+                              backgroundColor: "rgba(220, 38, 38, 0.10)",
+                              color: "#dc2626",
                             }}
                           >
                             OFF
@@ -385,7 +385,7 @@ export default function UsersClient({
                             className="px-3 py-1 text-xs font-semibold rounded disabled:opacity-30 disabled:cursor-not-allowed"
                             style={{
                               backgroundColor: "rgba(245, 158, 11, 0.15)",
-                              color: "#fbbf24",
+                              color: "#a16207",
                             }}
                             title={
                               isSelf
@@ -499,7 +499,7 @@ export default function UsersClient({
                 {activeCustomers.length === 0 && (
                   <p
                     className="text-[10px] mt-1"
-                    style={{ color: "#f87171" }}
+                    style={{ color: "#dc2626" }}
                   >
                     No active customers — create one in Settings → Customer Master
                   </p>
@@ -729,7 +729,7 @@ function Modal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold text-white mb-4">{title}</h3>
+        <h3 className="text-lg font-bold mb-4">{title}</h3>
         {children}
       </div>
     </div>

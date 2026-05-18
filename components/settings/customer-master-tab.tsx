@@ -149,7 +149,7 @@ export function CustomerMasterTab() {
                 className="border-t"
                 style={{ borderColor: "var(--border)" }}
               >
-                <td className="px-4 py-3 font-mono text-white">{c.id}</td>
+                <td className="px-4 py-3 font-mono">{c.id}</td>
                 <td
                   className="px-4 py-3 font-bold"
                   style={{ color: "var(--text-primary)" }}
@@ -161,8 +161,8 @@ export function CustomerMasterTab() {
                     <span
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
-                        backgroundColor: "rgba(74, 222, 128, 0.10)",
-                        color: "#4ade80",
+                        backgroundColor: "rgba(22, 163, 74, 0.10)",
+                        color: "#15803d",
                       }}
                     >
                       ON
@@ -172,7 +172,7 @@ export function CustomerMasterTab() {
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
                         backgroundColor: "rgba(100, 116, 139, 0.2)",
-                        color: "#94a3b8",
+                        color: "#475569",
                       }}
                     >
                       OFF
@@ -224,7 +224,7 @@ export function CustomerMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">New Customer</h3>
+            <h3 className="text-lg font-bold mb-4">New Customer</h3>
 
             <div className="space-y-3">
               <div>
@@ -310,7 +310,7 @@ export function CustomerMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-1">
+            <h3 className="text-lg font-bold mb-1">
               Edit Customer <span style={{ color: "var(--accent)" }}>{editing.id}</span>
             </h3>
 

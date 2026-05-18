@@ -159,7 +159,7 @@ export function BoxMasterTab() {
                 className="border-t"
                 style={{ borderColor: "var(--border)" }}
               >
-                <td className="px-4 py-3 font-bold text-white">{box.code}</td>
+                <td className="px-4 py-3 font-bold">{box.code}</td>
                 <td
                   className="px-4 py-3"
                   style={{ color: "var(--text-secondary)" }}
@@ -195,8 +195,8 @@ export function BoxMasterTab() {
                     <span
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
-                        backgroundColor: "rgba(74, 222, 128, 0.10)",
-                        color: "#4ade80",
+                        backgroundColor: "rgba(22, 163, 74, 0.10)",
+                        color: "#15803d",
                       }}
                     >
                       ON
@@ -206,7 +206,7 @@ export function BoxMasterTab() {
                       className="px-2 py-0.5 rounded text-[10px] font-bold"
                       style={{
                         backgroundColor: "rgba(100, 116, 139, 0.2)",
-                        color: "#94a3b8",
+                        color: "#475569",
                       }}
                     >
                       OFF
@@ -245,7 +245,7 @@ export function BoxMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">New Box</h3>
+            <h3 className="text-lg font-bold mb-4">New Box</h3>
 
             <div className="space-y-3">
               <div>
@@ -393,7 +393,7 @@ export function BoxMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">
+            <h3 className="text-lg font-bold mb-4">
               Edit Box <span style={{ color: "var(--accent)" }}>{editing.code}</span>
             </h3>
 

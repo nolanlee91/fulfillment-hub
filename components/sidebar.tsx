@@ -102,23 +102,25 @@ export function Sidebar({ user }: { user: CurrentUser }) {
 
   const initial = (user.name || user.username).charAt(0).toUpperCase();
 
+  const accountActive = pathname === "/account" || pathname.startsWith("/account/");
+
   return (
     <aside
       className="fixed left-0 top-0 h-full w-60 flex flex-col z-20 border-r"
       style={{
-        backgroundColor: "var(--bg-secondary)",
-        borderColor: "var(--border)",
+        backgroundColor: "var(--sidebar-bg)",
+        borderColor: "var(--sidebar-border)",
       }}
     >
       <div
         className="px-5 py-5 border-b flex items-center gap-2.5"
-        style={{ borderColor: "var(--border)" }}
+        style={{ borderColor: "var(--sidebar-border)" }}
       >
         <div
           className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
           style={{
             background: "linear-gradient(135deg, #4ade80, #22c55e)",
-            boxShadow: "0 2px 8px rgba(74, 222, 128, 0.2)",
+            boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)",
           }}
         >
           <span
@@ -131,13 +133,13 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         <div className="leading-tight">
           <h1
             className="text-[15px] font-bold tracking-tight"
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: "var(--sidebar-text)" }}
           >
             KDEXPRESS
           </h1>
           <p
             className="text-[10px] mt-0.5 tracking-[0.12em] font-medium lowercase"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "var(--sidebar-text-muted)" }}
           >
             fulfillment.hub
           </p>
@@ -157,13 +159,13 @@ export function Sidebar({ user }: { user: CurrentUser }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.025)]"
+                    className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]"
                     style={{
                       color: isActive
-                        ? "var(--text-primary)"
-                        : "var(--text-secondary)",
+                        ? "var(--sidebar-text)"
+                        : "var(--sidebar-text-secondary)",
                       backgroundColor: isActive
-                        ? "var(--bg-tertiary)"
+                        ? "var(--sidebar-surface)"
                         : "transparent",
                       fontWeight: isActive ? 600 : 500,
                       boxShadow: isActive
@@ -176,7 +178,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
                       style={{
                         color: isActive
                           ? "var(--accent)"
-                          : "var(--text-muted)",
+                          : "var(--sidebar-text-muted)",
                         fontVariationSettings: isActive
                           ? '"FILL" 1, "wght" 500'
                           : '"FILL" 0, "wght" 400',
@@ -195,42 +197,26 @@ export function Sidebar({ user }: { user: CurrentUser }) {
 
       <div
         className="border-t pt-2 pb-2"
-        style={{ borderColor: "var(--border)" }}
+        style={{ borderColor: "var(--sidebar-border)" }}
       >
         <div className="sidebar-section-label">Account</div>
         <Link
           href="/account"
-          className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.025)]"
+          className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]"
           style={{
-            color:
-              pathname === "/account" || pathname.startsWith("/account/")
-                ? "var(--text-primary)"
-                : "var(--text-secondary)",
-            backgroundColor:
-              pathname === "/account" || pathname.startsWith("/account/")
-                ? "var(--bg-tertiary)"
-                : "transparent",
-            fontWeight:
-              pathname === "/account" || pathname.startsWith("/account/")
-                ? 600
-                : 500,
-            boxShadow:
-              pathname === "/account" || pathname.startsWith("/account/")
-                ? "inset 3px 0 0 var(--accent)"
-                : "none",
+            color: accountActive ? "var(--sidebar-text)" : "var(--sidebar-text-secondary)",
+            backgroundColor: accountActive ? "var(--sidebar-surface)" : "transparent",
+            fontWeight: accountActive ? 600 : 500,
+            boxShadow: accountActive ? "inset 3px 0 0 var(--accent)" : "none",
           }}
         >
           <span
             className="material-symbols-outlined text-[18px]"
             style={{
-              color:
-                pathname === "/account" || pathname.startsWith("/account/")
-                  ? "var(--accent)"
-                  : "var(--text-muted)",
-              fontVariationSettings:
-                pathname === "/account" || pathname.startsWith("/account/")
-                  ? '"FILL" 1, "wght" 500'
-                  : '"FILL" 0, "wght" 400',
+              color: accountActive ? "var(--accent)" : "var(--sidebar-text-muted)",
+              fontVariationSettings: accountActive
+                ? '"FILL" 1, "wght" 500'
+                : '"FILL" 0, "wght" 400',
             }}
           >
             account_circle
@@ -241,28 +227,29 @@ export function Sidebar({ user }: { user: CurrentUser }) {
 
       <div
         className="px-4 py-3 border-t"
-        style={{ borderColor: "var(--border)" }}
+        style={{ borderColor: "var(--sidebar-border)" }}
       >
         <div className="flex items-center gap-3">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
             style={{
               backgroundColor: "var(--accent)",
-              color: "var(--bg-primary)",
+              color: "#ffffff",
             }}
           >
             {initial}
           </div>
           <div className="flex-1 min-w-0">
             <p
-              className="text-xs font-bold text-white truncate"
+              className="text-xs font-semibold truncate"
+              style={{ color: "var(--sidebar-text)" }}
               title={user.name}
             >
               {user.name}
             </p>
             <p
               className="text-[10px] tracking-wider truncate"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: "var(--sidebar-text-muted)" }}
             >
               {ROLE_LABEL[user.role]}
             </p>
@@ -271,8 +258,8 @@ export function Sidebar({ user }: { user: CurrentUser }) {
             onClick={handleLogout}
             disabled={loggingOut}
             title="Sign out"
-            className="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--bg-tertiary)] shrink-0"
-            style={{ color: "var(--text-muted)" }}
+            className="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--sidebar-surface)] shrink-0"
+            style={{ color: "var(--sidebar-text-muted)" }}
           >
             <span className="material-symbols-outlined text-[18px]">
               {loggingOut ? "hourglass_empty" : "logout"}

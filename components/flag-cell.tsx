@@ -14,10 +14,10 @@ interface FlagCellProps {
 }
 
 const COLOR_MAP: Record<string, { bg: string; fg: string; label: string }> = {
-  red: { bg: "rgba(239, 68, 68, 0.15)", fg: "#ef4444", label: "Cờ đỏ" },
-  yellow: { bg: "rgba(250, 204, 21, 0.15)", fg: "#facc15", label: "Cờ vàng" },
-  resolved: { bg: "rgba(107, 114, 128, 0.15)", fg: "#9ca3af", label: "Đã gỡ" },
-  none: { bg: "transparent", fg: "var(--text-muted)", label: "Gắn cờ" },
+  red: { bg: "rgba(220, 38, 38, 0.10)", fg: "#dc2626", label: "Red flag" },
+  yellow: { bg: "rgba(202, 138, 4, 0.12)", fg: "#ca8a04", label: "Yellow flag" },
+  resolved: { bg: "rgba(100, 116, 139, 0.12)", fg: "#64748b", label: "Resolved" },
+  none: { bg: "transparent", fg: "var(--text-muted)", label: "Flag" },
 };
 
 export function FlagCell({ orderUniqueKey, color }: FlagCellProps) {

@@ -113,10 +113,10 @@ export function Topbar({
 
   const messageColor =
     message?.type === "success"
-      ? { backgroundColor: "rgba(74, 222, 128, 0.10)", color: "#4ade80" }
+      ? { backgroundColor: "rgba(22, 163, 74, 0.10)", color: "#15803d" }
       : message?.type === "error"
-        ? { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#fca5a5" }
-        : { backgroundColor: "rgba(96, 165, 250, 0.15)", color: "#60a5fa" };
+        ? { backgroundColor: "rgba(220, 38, 38, 0.10)", color: "#b91c1c" }
+        : { backgroundColor: "rgba(96, 165, 250, 0.15)", color: "#1d4ed8" };
 
   const titleNode = accentWord && title.includes(accentWord) ? (
     <>

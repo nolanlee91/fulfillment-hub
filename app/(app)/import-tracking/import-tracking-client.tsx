@@ -137,7 +137,7 @@ function LabelTab() {
   return (
     <>
       <Card padding="lg" className="mb-4">
-        <h3 className="font-bold text-lg text-white mb-1">
+        <h3 className="font-bold text-lg mb-1">
           Upload label result file
         </h3>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
@@ -218,8 +218,8 @@ function LabelTab() {
           <div
             className="mt-4 px-4 py-2.5 rounded text-sm font-semibold"
             style={{
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              color: "#f87171",
+              backgroundColor: "rgba(220, 38, 38, 0.10)",
+              color: "#dc2626",
             }}
           >
             {error}
@@ -229,7 +229,7 @@ function LabelTab() {
 
       {result && (
         <Card padding="lg">
-          <h3 className="font-bold text-lg text-white mb-4">Import Results</h3>
+          <h3 className="font-bold text-lg mb-4">Import Results</h3>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <ResultCard label="Tracked" value={result.matched} accent="emerald" hint="Orders confirmed" />
@@ -286,7 +286,7 @@ function EventsTab() {
   return (
     <>
       <Card padding="lg" className="mb-4">
-        <h3 className="font-bold text-lg text-white mb-1">
+        <h3 className="font-bold text-lg mb-1">
           Upload shipping events file
         </h3>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
@@ -331,8 +331,8 @@ function EventsTab() {
           <div
             className="mt-4 px-4 py-2.5 rounded text-sm font-semibold"
             style={{
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              color: "#f87171",
+              backgroundColor: "rgba(220, 38, 38, 0.10)",
+              color: "#dc2626",
             }}
           >
             {error}
@@ -342,7 +342,7 @@ function EventsTab() {
 
       {result && (
         <Card padding="lg">
-          <h3 className="font-bold text-lg text-white mb-1">Processing Results</h3>
+          <h3 className="font-bold text-lg mb-1">Processing Results</h3>
           <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
             File: <span className="font-mono">{result.filename}</span> • {result.totalEventsInFile} rows • {result.totalTrackings} unique trackings
           </p>
@@ -364,7 +364,7 @@ function EventsTab() {
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 Orders matched in DB
               </p>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold">
                 {result.totalMatched}
                 <span className="text-sm ml-1" style={{ color: "var(--text-muted)" }}>
                   / {result.totalTrackings}
@@ -396,7 +396,7 @@ function EventsTab() {
               className="mt-4 px-4 py-3 rounded text-xs"
               style={{
                 backgroundColor: "rgba(245, 158, 11, 0.08)",
-                color: "#fbbf24",
+                color: "#a16207",
                 border: "1px solid rgba(245, 158, 11, 0.2)",
               }}
             >
@@ -426,12 +426,12 @@ function ResultCard({
   hint: string;
 }) {
   const palette: Record<string, { bg: string; fg: string; border: string }> = {
-    emerald: { bg: "rgba(74, 222, 128, 0.08)", fg: "#4ade80", border: "#4ade80" },
-    red: { bg: "rgba(239, 68, 68, 0.08)", fg: "#f87171", border: "#ef4444" },
-    slate: { bg: "rgba(100, 116, 139, 0.08)", fg: "#94a3b8", border: "#94a3b8" },
-    teal: { bg: "rgba(20, 184, 166, 0.08)", fg: "#2dd4bf", border: "#14b8a6" },
-    sky: { bg: "rgba(14, 165, 233, 0.08)", fg: "#38bdf8", border: "#0ea5e9" },
-    orange: { bg: "rgba(249, 115, 22, 0.08)", fg: "#fb923c", border: "#f97316" },
+    emerald: { bg: "rgba(74, 222, 128, 0.08)", fg: "#15803d", border: "#15803d" },
+    red: { bg: "rgba(220, 38, 38, 0.08)", fg: "#dc2626", border: "#ef4444" },
+    slate: { bg: "rgba(100, 116, 139, 0.08)", fg: "#475569", border: "#475569" },
+    teal: { bg: "rgba(20, 184, 166, 0.08)", fg: "#0f766e", border: "#14b8a6" },
+    sky: { bg: "rgba(14, 165, 233, 0.08)", fg: "#0369a1", border: "#0ea5e9" },
+    orange: { bg: "rgba(249, 115, 22, 0.08)", fg: "#c2410c", border: "#f97316" },
   };
   const c = palette[accent];
   return (

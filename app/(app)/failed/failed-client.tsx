@@ -51,14 +51,14 @@ function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: strin
 }
 
 const AVATAR_COLORS = [
-  { bg: "rgba(94,161,255,0.15)",  text: "#7ab2ff" },
-  { bg: "rgba(59,130,246,0.15)",  text: "#60a5fa" },
-  { bg: "rgba(139,92,246,0.15)",  text: "#a78bfa" },
-  { bg: "rgba(14,165,233,0.15)",  text: "#38bdf8" },
-  { bg: "rgba(20,184,166,0.15)",  text: "#2dd4bf" },
-  { bg: "rgba(249,115,22,0.15)",  text: "#fb923c" },
-  { bg: "rgba(236,72,153,0.15)",  text: "#f472b6" },
-  { bg: "rgba(245,158,11,0.15)",  text: "#fbbf24" },
+  { bg: "rgba(37,99,235,0.10)",   text: "#1d4ed8" },
+  { bg: "rgba(59,130,246,0.10)",  text: "#1d4ed8" },
+  { bg: "rgba(124,58,237,0.10)",  text: "#6d28d9" },
+  { bg: "rgba(2,132,199,0.10)",   text: "#0369a1" },
+  { bg: "rgba(13,148,136,0.10)",  text: "#0f766e" },
+  { bg: "rgba(234,88,12,0.10)",   text: "#c2410c" },
+  { bg: "rgba(219,39,119,0.10)",  text: "#be185d" },
+  { bg: "rgba(217,119,6,0.10)",   text: "#a16207" },
 ];
 
 function getInitials(name: string): string {
@@ -205,7 +205,7 @@ export default function FailedClient({ role }: { role: Role }) {
       {/* Counter */}
       <div className="action-bar">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          <span className="font-bold text-white">{orders.length}</span> failed / returned orders
+          <span className="font-bold">{orders.length}</span> failed / returned orders
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>

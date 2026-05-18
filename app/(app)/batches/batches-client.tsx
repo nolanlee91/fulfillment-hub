@@ -81,15 +81,15 @@ export default function BatchesPage() {
 
       <Card padding="none" className="mb-4 px-4 py-3 flex items-center justify-between">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          <span className="font-bold text-white">{batches.length}</span> batch
+          <span className="font-bold">{batches.length}</span> batch
         </div>
         {message && (
           <span
             className="text-xs px-3 py-1.5 rounded font-semibold"
             style={
               message.type === "success"
-                ? { backgroundColor: "rgba(74, 222, 128, 0.10)", color: "#4ade80" }
-                : { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#f87171" }
+                ? { backgroundColor: "rgba(22, 163, 74, 0.10)", color: "#15803d" }
+                : { backgroundColor: "rgba(220, 38, 38, 0.10)", color: "#dc2626" }
             }
           >
             {message.text}
@@ -110,7 +110,7 @@ export default function BatchesPage() {
             >
               package_2
             </span>
-            <p className="mt-3 font-semibold text-white">No batches yet</p>
+            <p className="mt-3 font-semibold">No batches yet</p>
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
               Go to Orders → select READY orders → click &quot;Create Batch&quot;
             </p>
@@ -142,7 +142,7 @@ export default function BatchesPage() {
                   const isEst = b.platform === "EST";
                   return (
                     <tr key={b.id}>
-                      <td className="px-4 py-3 font-mono text-sm font-bold text-white">
+                      <td className="px-4 py-3 font-mono text-sm font-bold">
                         {b.id}
                       </td>
                       <td className="px-4 py-3 text-center">

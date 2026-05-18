@@ -130,9 +130,9 @@ export default function AccountClient({
               style={{
                 backgroundColor:
                   message.type === "success"
-                    ? "rgba(74, 222, 128, 0.10)"
-                    : "rgba(239, 68, 68, 0.12)",
-                color: message.type === "success" ? "#4ade80" : "#fca5a5",
+                    ? "rgba(22, 163, 74, 0.10)"
+                    : "rgba(220, 38, 38, 0.10)",
+                color: message.type === "success" ? "#15803d" : "#b91c1c",
               }}
             >
               {message.text}

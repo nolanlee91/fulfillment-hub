@@ -622,7 +622,7 @@ export default async function DashboardPage() {
             >
               Order Processing Flow
             </p>
-            <h3 className="text-sm font-semibold text-white">Status Pipeline</h3>
+            <h3 className="text-sm font-semibold">Status Pipeline</h3>
           </div>
           <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
             <span className="live-dot" />
@@ -632,14 +632,14 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between overflow-x-auto pb-2 gap-1">
           <PipelineBox label={["Customer Data", "Google Sheets"]} />
           <PipelineArrow caption="Sync" width={88} />
-          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Ready" color="#4ade80" />
+          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Ready" color="#15803d" />
           <PipelineArrow
             captionAbove="Create Batch"
             caption="Export file to upload to ClickShip & EST"
           />
           <BranchFork
-            top={{ count: stats.exportedClickship, label: "ClickShip", color: "#4ade80" }}
-            bottom={{ count: stats.exportedEst, label: "EST", color: "#fbbf24" }}
+            top={{ count: stats.exportedClickship, label: "ClickShip", color: "#15803d" }}
+            bottom={{ count: stats.exportedEst, label: "EST", color: "#a16207" }}
             belowLabel={["Uploaded", "awaiting label"]}
           />
           <PipelineArrow
@@ -654,14 +654,14 @@ export default async function DashboardPage() {
           <PipelineBox
             count={stats.labeled + stats.inTransit}
             label={["Orders to", "process"]}
-            color="#60a5fa"
+            color="#1d4ed8"
           />
           <BranchFork
-            top={{ count: stats.labeled, label: "Labeled", color: "#a78bfa" }}
-            bottom={{ count: stats.inTransit, label: "In Transit", color: "#38bdf8", pulse: true }}
+            top={{ count: stats.labeled, label: "Labeled", color: "#6d28d9" }}
+            bottom={{ count: stats.inTransit, label: "In Transit", color: "#0369a1", pulse: true }}
             bottomSpur={
               attention.total > 0
-                ? { count: attention.total, label: "Needs Attention", color: "#f472b6", pulse: true }
+                ? { count: attention.total, label: "Needs Attention", color: "#be185d", pulse: true }
                 : undefined
             }
           />
@@ -701,7 +701,7 @@ export default async function DashboardPage() {
               >
                 Recent Activity
               </p>
-              <h3 className="text-sm font-semibold text-white">Latest Batches</h3>
+              <h3 className="text-sm font-semibold">Latest Batches</h3>
             </div>
             <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
               {stats.batches} batches total
@@ -738,7 +738,7 @@ export default async function DashboardPage() {
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-mono font-semibold text-white truncate">
+                      <p className="text-sm font-mono font-semibold truncate">
                         {b.id}
                       </p>
                       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
@@ -748,8 +748,8 @@ export default async function DashboardPage() {
                             style={{
                               backgroundColor: b.platform === "EST"
                                 ? "rgba(245, 158, 11, 0.15)"
-                                : "rgba(74, 222, 128, 0.10)",
-                              color: b.platform === "EST" ? "#fbbf24" : "#4ade80",
+                                : "rgba(22, 163, 74, 0.10)",
+                              color: b.platform === "EST" ? "#a16207" : "#15803d",
                             }}
                           >
                             {b.platform}
@@ -782,7 +782,7 @@ export default async function DashboardPage() {
               >
                 System
               </p>
-              <h3 className="text-sm font-semibold text-white">Live activity</h3>
+              <h3 className="text-sm font-semibold">Live activity</h3>
             </div>
             <span className="live-dot" />
           </div>
@@ -861,7 +861,7 @@ export default async function DashboardPage() {
             >
               Tracking ingest
             </p>
-            <h3 className="text-sm font-semibold text-white">Recent File Pulls</h3>
+            <h3 className="text-sm font-semibold">Recent File Pulls</h3>
           </div>
           <div className="text-right text-xs" style={{ color: "var(--text-muted)" }}>
             <p>
@@ -897,7 +897,7 @@ export default async function DashboardPage() {
                   {p.filename.replace("APT_0001031358_", "").replace(".csv", "")}
                 </p>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-[18px] font-bold text-white leading-none">
+                  <span className="text-[18px] font-bold leading-none">
                     {p.totalUpdated}
                   </span>
                   <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
@@ -936,7 +936,7 @@ function ActivityRow({ icon, iconColor, title, detail, time }: ActivityRowProps)
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-medium text-white">{title}</p>
+        <p className="text-[12px] font-medium">{title}</p>
         <p className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
           {detail} · {time}
         </p>

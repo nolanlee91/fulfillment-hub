@@ -334,8 +334,8 @@ function FlagsContent({
             className="px-3 py-2.5 border-b flex gap-2"
             style={{ borderColor: "var(--border)" }}
           >
-            <FlagToggle label="Red Flag"   color="#ef4444" checked={showRed}      onChange={setShowRed} />
-            <FlagToggle label="Yellow Flag" color="#facc15" checked={showYellow}   onChange={setShowYellow} />
+            <FlagToggle label="Red Flag"   color="#dc2626" checked={showRed}      onChange={setShowRed} />
+            <FlagToggle label="Yellow Flag" color="#ca8a04" checked={showYellow}   onChange={setShowYellow} />
             <FlagToggle label="Resolved"  color="#6b7280" checked={showResolved} onChange={setShowResolved} />
           </div>
 
@@ -388,7 +388,7 @@ function FlagsContent({
           ) : detailError ? (
             <div
               className="flex-1 flex items-center justify-center text-sm"
-              style={{ color: "#fca5a5" }}
+              style={{ color: "#b91c1c" }}
             >
               {detailError}
             </div>
@@ -479,8 +479,8 @@ function FlagsContent({
                   <div
                     className="mb-2 px-3 py-1.5 text-xs rounded"
                     style={{
-                      backgroundColor: "rgba(239, 68, 68, 0.15)",
-                      color: "#fca5a5",
+                      backgroundColor: "rgba(220, 38, 38, 0.10)",
+                      color: "#b91c1c",
                     }}
                   >
                     {errorMsg}
@@ -605,7 +605,7 @@ function FlagListRow({
 
 function FlagDot({ color }: { color: FlagColor }) {
   const bg =
-    color === "red" ? "#ef4444" : color === "yellow" ? "#facc15" : "#6b7280";
+    color === "red" ? "#dc2626" : color === "yellow" ? "#ca8a04" : "#6b7280";
   return (
     <span
       className="inline-flex items-center justify-center w-7 h-7 rounded-full shrink-0 mt-0.5"
@@ -636,7 +636,7 @@ function FlagBadge({ color }: { color: FlagColor }) {
       </span>
     );
   }
-  const bg = color === "red" ? "#ef4444" : "#facc15";
+  const bg = color === "red" ? "#dc2626" : "#ca8a04";
   const label = color === "red" ? "Red" : "Yellow";
   return (
     <span
@@ -678,7 +678,7 @@ function ChatBubble({
   isMine: boolean;
 }) {
   const isCustomer = message.userRole === "CUSTOMER";
-  const accentColor = isCustomer ? "#f59e0b" : "#ef4444";
+  const accentColor = isCustomer ? "#a16207" : "#dc2626";
 
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>

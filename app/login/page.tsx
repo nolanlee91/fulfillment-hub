@@ -55,7 +55,7 @@ function LoginContent() {
           <div
             className="w-11 h-11 rounded-md flex items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, #4ade80, #22c55e)",
+              background: "linear-gradient(135deg, #15803d, #22c55e)",
               boxShadow: "0 2px 12px rgba(74, 222, 128, 0.25)",
             }}
           >
@@ -83,7 +83,7 @@ function LoginContent() {
         </div>
 
         <div className="card p-6">
-          <h2 className="text-sm font-semibold text-white mb-4">Sign In</h2>
+          <h2 className="text-sm font-semibold mb-4">Sign In</h2>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
@@ -116,7 +116,7 @@ function LoginContent() {
               <div
                 className="text-xs px-3 py-2 rounded font-medium"
                 style={{
-                  backgroundColor: "rgba(239, 68, 68, 0.12)",
+                  backgroundColor: "rgba(220, 38, 38, 0.10)",
                   color: "var(--color-danger)",
                 }}
               >

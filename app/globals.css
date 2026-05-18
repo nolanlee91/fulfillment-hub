@@ -1,41 +1,51 @@
 @import "tailwindcss";
 
 :root {
-  /* === Surfaces — neutral graphite dark === */
-  --bg-primary:   #0a0a0b;
-  --bg-secondary: #111214;
-  --bg-tertiary:  #18191c;
-  --bg-elevated:  #202226;
+  /* === Surfaces — warm light === */
+  --bg-primary:   #f6f4ef;   /* page bg, warm off-white */
+  --bg-secondary: #ffffff;   /* card, drawer, modal */
+  --bg-tertiary:  #f3f4f6;   /* input, button-secondary, table hover */
+  --bg-elevated:  #ffffff;   /* hover/elevated */
 
-  /* === Borders — near-invisible === */
-  --border:        rgba(255, 255, 255, 0.04);
-  --border-strong: rgba(255, 255, 255, 0.07);
+  /* === Borders === */
+  --border:        rgba(15, 23, 42, 0.06);
+  --border-strong: rgba(15, 23, 42, 0.10);
 
-  /* === Text === */
-  --text-primary:   #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted:     #6b7280;
+  /* === Text (on light bg) === */
+  --text-primary:   #0f172a;   /* slate-900 */
+  --text-secondary: #475569;   /* slate-600 */
+  --text-muted:     #64748b;   /* slate-500 */
 
-  /* === Accent — UI interaction blue === */
-  --accent:        #5ea1ff;
-  --accent-hover:  #7ab2ff;
-  --accent-bg:     rgba(94, 161, 255, 0.08);
-  --accent-strong: rgba(94, 161, 255, 0.18);
+  /* === Sidebar — dark graphite (luôn dark) === */
+  --sidebar-bg:              #111315;
+  --sidebar-surface:         #171a1f;
+  --sidebar-elevated:        #1c2026;
+  --sidebar-border:          rgba(255, 255, 255, 0.06);
+  --sidebar-border-strong:   rgba(255, 255, 255, 0.10);
+  --sidebar-text:            #e5e7eb;
+  --sidebar-text-secondary:  #9ca3af;
+  --sidebar-text-muted:      #6b7280;
 
-  /* === Brand — KDE green (logo, success only, KHÔNG dùng cho UI accent) === */
-  --brand:         #4ade80;
+  /* === Accent — UI interaction (blue, fintech) === */
+  --accent:        #4f8cff;
+  --accent-hover:  #3b82f6;
+  --accent-bg:     rgba(79, 140, 255, 0.08);
+  --accent-strong: rgba(79, 140, 255, 0.20);
 
-  /* === Semantic — green for success states === */
-  --color-success: #4ade80;
-  --color-info:    #60a5fa;
-  --color-warning: #fbbf24;
-  --color-danger:  #f87171;
-  --color-purple:  #a78bfa;
-  --color-sky:     #38bdf8;
-  --color-teal:    #2dd4bf;
-  --color-orange:  #fb923c;
-  --color-pink:    #f472b6;
-  --color-slate:   #9ca3af;
+  /* === Brand — KDE green (logo + success only) === */
+  --brand:         #16a34a;
+
+  /* === Semantic colors (darker for light bg) === */
+  --color-success: #16a34a;
+  --color-info:    #2563eb;
+  --color-warning: #d97706;
+  --color-danger:  #dc2626;
+  --color-purple:  #7c3aed;
+  --color-sky:     #0284c7;
+  --color-teal:    #0d9488;
+  --color-orange:  #ea580c;
+  --color-pink:    #db2777;
+  --color-slate:   #64748b;
 
   /* === Layout === */
   --radius-sm: 6px;
@@ -43,8 +53,8 @@
   --radius-lg: 12px;
   --radius-xl: 14px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
 
   --transition-fast: 110ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 160ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -81,91 +91,91 @@ body {
 }
 
 .status-NEW {
-  background: rgba(96, 165, 250, 0.08);
-  color: #93c5fd;
-  border: 1px solid rgba(96, 165, 250, 0.14);
+  background: rgba(2, 132, 199, 0.08);
+  color: #0369a1;
+  border: 1px solid rgba(2, 132, 199, 0.18);
 }
 .status-READY {
-  background: rgba(74, 222, 128, 0.08);
-  color: #4ade80;
-  border: 1px solid rgba(74, 222, 128, 0.14);
+  background: rgba(22, 163, 74, 0.10);
+  color: #15803d;
+  border: 1px solid rgba(22, 163, 74, 0.22);
 }
 .status-ERROR {
-  background: rgba(248, 113, 113, 0.08);
-  color: #fca5a5;
-  border: 1px solid rgba(248, 113, 113, 0.14);
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.18);
 }
 .status-ERROR_UPDATED {
-  background: rgba(251, 191, 36, 0.08);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.14);
+  background: rgba(217, 119, 6, 0.10);
+  color: #a16207;
+  border: 1px solid rgba(217, 119, 6, 0.20);
 }
 .status-EXPORTED {
-  background: rgba(107, 114, 128, 0.10);
-  color: #9ca3af;
-  border: 1px solid rgba(107, 114, 128, 0.16);
+  background: rgba(100, 116, 139, 0.10);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.20);
 }
 .status-LABEL_CREATED {
-  background: rgba(167, 139, 250, 0.08);
-  color: #a78bfa;
-  border: 1px solid rgba(167, 139, 250, 0.14);
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
+  border: 1px solid rgba(124, 58, 237, 0.18);
 }
 .status-IN_TRANSIT {
-  background: rgba(96, 165, 250, 0.08);
-  color: #60a5fa;
-  border: 1px solid rgba(96, 165, 250, 0.14);
+  background: rgba(59, 130, 246, 0.08);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.18);
 }
 .status-DELIVERED {
-  background: rgba(45, 212, 191, 0.08);
-  color: #2dd4bf;
-  border: 1px solid rgba(45, 212, 191, 0.14);
+  background: rgba(13, 148, 136, 0.10);
+  color: #0f766e;
+  border: 1px solid rgba(13, 148, 136, 0.20);
 }
 .status-FAILED {
-  background: rgba(249, 115, 22, 0.08);
-  color: #fb923c;
-  border: 1px solid rgba(249, 115, 22, 0.14);
+  background: rgba(234, 88, 12, 0.10);
+  color: #c2410c;
+  border: 1px solid rgba(234, 88, 12, 0.20);
 }
 
 /* === Attention badges === */
 .attention-ADDRESS_ERROR {
-  background: rgba(248, 113, 113, 0.08);
-  color: #fca5a5;
-  border: 1px solid rgba(248, 113, 113, 0.14);
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.18);
 }
 .attention-DELAYED {
-  background: rgba(251, 191, 36, 0.08);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.14);
+  background: rgba(217, 119, 6, 0.10);
+  color: #a16207;
+  border: 1px solid rgba(217, 119, 6, 0.20);
 }
 .attention-NOTICE_CARD {
-  background: rgba(236, 72, 153, 0.08);
-  color: #f472b6;
-  border: 1px solid rgba(236, 72, 153, 0.14);
+  background: rgba(219, 39, 119, 0.08);
+  color: #be185d;
+  border: 1px solid rgba(219, 39, 119, 0.18);
 }
 .attention-STUCK {
-  background: rgba(107, 114, 128, 0.10);
-  color: #9ca3af;
-  border: 1px solid rgba(107, 114, 128, 0.16);
+  background: rgba(100, 116, 139, 0.10);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.20);
 }
 
 /* === Payment === */
 .payment-PREPAID {
-  background: rgba(156, 163, 175, 0.08);
-  color: #d1d5db;
-  border: 1px solid rgba(156, 163, 175, 0.14);
+  background: rgba(100, 116, 139, 0.08);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.16);
 }
 .payment-COD {
-  background: rgba(251, 191, 36, 0.08);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.14);
+  background: rgba(217, 119, 6, 0.10);
+  color: #a16207;
+  border: 1px solid rgba(217, 119, 6, 0.20);
 }
 
-/* === Sidebar section label === */
+/* === Sidebar (dark, sử dụng sidebar tokens) === */
 .sidebar-section-label {
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--sidebar-text-muted);
   text-transform: uppercase;
   padding: 0 1.25rem;
   margin: 1.5rem 0 0.5rem;
@@ -178,7 +188,7 @@ body {
   gap: 12px;
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--text-muted);
   text-transform: uppercase;
   margin: 32px 0 18px;
@@ -191,14 +201,14 @@ body {
 }
 .section-label .section-num {
   color: var(--text-muted);
-  opacity: 0.5;
+  opacity: 0.6;
   font-size: 10px;
   letter-spacing: 0.12em;
 }
 
 /* === Page title === */
 .page-title {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: -0.025em;
   color: var(--text-primary);
@@ -218,7 +228,7 @@ body {
   gap: 8px;
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--text-muted);
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -235,25 +245,26 @@ body {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  transition: border-color var(--transition-base);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 .card-interactive {
   cursor: pointer;
 }
 .card-interactive:hover {
   border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 /* === Form controls === */
 input, select, textarea {
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 input:hover, select:hover, textarea:hover {
-  border-color: var(--border-strong);
+  border-color: rgba(15, 23, 42, 0.16);
 }
 input:focus, select:focus, textarea:focus {
   outline: none;
@@ -262,6 +273,9 @@ input:focus, select:focus, textarea:focus {
 }
 select {
   cursor: pointer;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
 }
 
 /* === Buttons === */
@@ -276,7 +290,7 @@ select {
   font-weight: 500;
   letter-spacing: 0.01em;
   border: 1px solid transparent;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
   cursor: pointer;
   user-select: none;
 }
@@ -285,35 +299,36 @@ select {
   cursor: not-allowed;
 }
 .btn-primary {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   color: var(--text-primary);
-  border-color: var(--accent-strong);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--bg-elevated);
+  background: var(--accent-bg);
   border-color: var(--accent);
 }
 .btn-primary .material-symbols-outlined {
   color: var(--accent);
 }
 .btn-secondary {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   color: var(--text-secondary);
   border-color: var(--border-strong);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--bg-elevated);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--bg-tertiary);
+  border-color: rgba(15, 23, 42, 0.14);
   color: var(--text-primary);
 }
 .btn-danger {
-  background: transparent;
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.2);
+  background: var(--bg-secondary);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.25);
 }
 .btn-danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.06);
-  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(220, 38, 38, 0.06);
+  border-color: rgba(220, 38, 38, 0.5);
 }
 
 /* === Tables === */
@@ -351,10 +366,10 @@ select {
   border-top: 1px solid var(--border);
 }
 .table-base tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(15, 23, 42, 0.025);
 }
 .table-base tbody tr.selected {
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(79, 140, 255, 0.05);
 }
 .table-base tbody tr.selected td:first-child {
   box-shadow: inset 2px 0 0 var(--accent);
@@ -362,6 +377,7 @@ select {
 .table-base tbody td {
   padding: 12px 16px;
   vertical-align: middle;
+  color: var(--text-primary);
 }
 
 /* === Filter card === */
@@ -390,7 +406,7 @@ select {
   width: 100%;
   padding: 7px 10px 7px 32px;
   font-size: 13px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>");
   background-repeat: no-repeat;
   background-position: 10px center;
 }
@@ -429,22 +445,21 @@ select {
   color: var(--accent);
 }
 
-/* === Live dot === */
+/* === Live dot (success green) === */
 .live-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--color-success);
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
   animation: live-pulse 2s ease-in-out infinite;
 }
 @keyframes live-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15); }
-  50%       { box-shadow: 0 0 0 5px rgba(74, 222, 128, 0.06); }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
+  50%       { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.06); }
 }
 
-/* Generic pulse */
 @keyframes pipeline-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.45; transform: scale(1.25); }
@@ -529,7 +544,7 @@ select {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(15, 23, 42, 0.35);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: drawerFadeIn 160ms ease;
@@ -539,11 +554,11 @@ select {
   top: 0;
   right: 0;
   height: 100%;
-  width: 440px;
+  width: 460px;
   z-index: 50;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-strong);
-  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.6);
+  box-shadow: -12px 0 48px rgba(15, 23, 42, 0.15);
   display: flex;
   flex-direction: column;
   animation: drawerSlideIn 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -561,10 +576,10 @@ select {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.12);
   border-radius: 8px;
   border: 2px solid var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(15, 23, 42, 0.20);
 }
