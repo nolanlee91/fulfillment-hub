@@ -168,15 +168,9 @@ export default function BatchesPage() {
                         <button
                           onClick={() => exportBatch(b)}
                           disabled={exporting === b.id}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded disabled:opacity-50"
-                          style={{
-                            backgroundColor: "var(--accent)",
-                            color: "var(--bg-primary)",
-                          }}
+                          className="btn btn-primary"
                         >
-                          <span className="material-symbols-outlined text-[16px]">
-                            download
-                          </span>
+                          <span className="material-symbols-outlined text-[16px]">download</span>
                           {exporting === b.id ? "Downloading..." : isEst ? "Download CSV" : "Download Excel"}
                         </button>
                       </td>

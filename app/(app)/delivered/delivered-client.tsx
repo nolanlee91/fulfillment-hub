@@ -302,8 +302,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 font-mono hover:underline"
-                              style={{ color: "var(--accent)" }}
+                              className="tracking-link"
                             >
                               {o.trackingNumber ?? "Track"}
                               <span className="material-symbols-outlined text-[14px]">open_in_new</span>

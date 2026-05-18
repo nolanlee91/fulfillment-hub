@@ -213,19 +213,19 @@ function KpiCard({ label, value, icon, accent, href, subInfo }: KpiCardProps) {
     >
       <div className="flex items-start justify-between mb-2">
         <p
-          className="text-[10px] font-bold tracking-[0.14em] uppercase"
+          className="text-[10px] font-medium tracking-[0.1em] uppercase"
           style={{ color: "var(--text-muted)" }}
         >
           {label}
         </p>
         <span
-          className="material-symbols-outlined text-[20px] transition-opacity"
-          style={{ color: accent, opacity: 0.6 }}
+          className="material-symbols-outlined text-[18px] transition-opacity"
+          style={{ color: accent, opacity: 0.7 }}
         >
           {icon}
         </span>
       </div>
-      <p className="text-[28px] font-bold leading-none tracking-tight" style={{ color: accent }}>
+      <p className="text-[28px] font-semibold leading-none tracking-tight" style={{ color: "var(--text-primary)" }}>
         {value.toLocaleString()}
       </p>
       {subInfo && (

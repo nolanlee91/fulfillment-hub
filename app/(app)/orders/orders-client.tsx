@@ -415,7 +415,7 @@ function OrdersPageContent({ role }: { role: Role }) {
           <span>
             <span className="font-bold text-white">{orders.length}</span> orders
             {readyCount > 0 && (
-              <span className="ml-2" style={{ color: "var(--accent)" }}>
+              <span className="ml-2" style={{ color: "var(--color-success)" }}>
                 · {readyCount} ready
               </span>
             )}
@@ -517,7 +517,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                         }}
                         onChange={toggleSelectAll}
                         className="w-4 h-4 cursor-pointer"
-                        style={{ accentColor: "var(--accent)" }}
+                        style={{ accentColor: "var(--text-secondary)" }}
                       />
                     </th>
                   )}
@@ -581,7 +581,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                             checked={isSelected}
                             onChange={() => toggleSelect(o.uniqueKey)}
                             className="w-4 h-4 cursor-pointer"
-                            style={{ accentColor: "var(--accent)" }}
+                            style={{ accentColor: "var(--text-secondary)" }}
                           />
                         </td>
                       )}
@@ -689,8 +689,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 font-mono hover:underline"
-                                style={{ color: "var(--accent)" }}
+                                className="tracking-link"
                                 title={o.trackingNumber ?? undefined}
                               >
                                 {o.trackingNumber ?? "Track"}

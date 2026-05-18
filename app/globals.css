@@ -8,22 +8,25 @@
   --bg-elevated:  #202226;
 
   /* === Borders — near-invisible === */
-  --border:        rgba(255, 255, 255, 0.05);
-  --border-strong: rgba(255, 255, 255, 0.08);
+  --border:        rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.07);
 
   /* === Text === */
   --text-primary:   #f3f4f6;
   --text-secondary: #9ca3af;
   --text-muted:     #6b7280;
 
-  /* === Accent — fresh green (brand) === */
-  --accent:        #4ade80;
-  --accent-hover:  #6ee7a0;
-  --accent-bg:     rgba(74, 222, 128, 0.08);
-  --accent-strong: rgba(74, 222, 128, 0.18);
+  /* === Accent — UI interaction blue === */
+  --accent:        #5ea1ff;
+  --accent-hover:  #7ab2ff;
+  --accent-bg:     rgba(94, 161, 255, 0.08);
+  --accent-strong: rgba(94, 161, 255, 0.18);
 
-  /* === Semantic — muted, not neon === */
-  --color-success: #34d399;
+  /* === Brand — KDE green (logo, success only, KHÔNG dùng cho UI accent) === */
+  --brand:         #4ade80;
+
+  /* === Semantic — green for success states === */
+  --color-success: #4ade80;
   --color-info:    #60a5fa;
   --color-warning: #fbbf24;
   --color-danger:  #f87171;
@@ -405,6 +408,27 @@ select {
   min-height: 54px;
 }
 
+/* === Tracking link — muted default, accent on hover === */
+.tracking-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+.tracking-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.tracking-link .material-symbols-outlined {
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+.tracking-link:hover .material-symbols-outlined {
+  color: var(--accent);
+}
+
 /* === Live dot === */
 .live-dot {
   display: inline-block;
@@ -412,12 +436,12 @@ select {
   height: 6px;
   border-radius: 50%;
   background: var(--color-success);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
   animation: live-pulse 2s ease-in-out infinite;
 }
 @keyframes live-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18); }
-  50%       { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.07); }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15); }
+  50%       { box-shadow: 0 0 0 5px rgba(74, 222, 128, 0.06); }
 }
 
 /* Generic pulse */

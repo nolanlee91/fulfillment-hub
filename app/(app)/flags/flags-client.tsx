@@ -416,8 +416,7 @@ function FlagsContent({
                     <InfoChip label="Tracking">
                       {trackingUrl ? (
                         <a href={trackingUrl} target="_blank" rel="noreferrer"
-                          className="font-mono hover:underline inline-flex items-center gap-1"
-                          style={{ color: "var(--accent)" }}>
+                          className="tracking-link">
                           {detail.order.trackingNumber}
                           <span className="material-symbols-outlined text-[12px]">open_in_new</span>
                         </a>
