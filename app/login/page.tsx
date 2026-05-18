@@ -36,10 +36,10 @@ function LoginContent() {
         router.push(next);
         router.refresh();
       } else {
-        setError(data.error ?? "Đăng nhập thất bại");
+        setError(data.error ?? "Sign in failed");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Lỗi kết nối");
+      setError(err instanceof Error ? err.message : "Connection error");
     } finally {
       setSubmitting(false);
     }
@@ -83,11 +83,11 @@ function LoginContent() {
         </div>
 
         <div className="card p-6">
-          <h2 className="text-sm font-semibold text-white mb-4">Đăng nhập</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">Sign In</h2>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="filter-label">Tên đăng nhập</label>
+              <label className="filter-label">Username</label>
               <input
                 type="text"
                 autoComplete="username"
@@ -100,7 +100,7 @@ function LoginContent() {
             </div>
 
             <div>
-              <label className="filter-label">Mật khẩu</label>
+              <label className="filter-label">Password</label>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -129,7 +129,7 @@ function LoginContent() {
               disabled={submitting || !username || !password}
               className="btn btn-primary w-full justify-center mt-4"
             >
-              {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
+              {submitting ? "Signing in..." : "Sign In"}
             </button>
           </form>
         </div>

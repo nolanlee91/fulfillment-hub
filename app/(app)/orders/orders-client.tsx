@@ -61,10 +61,10 @@ interface Order {
 }
 
 const ATTENTION_LABELS: Record<string, string> = {
-  ADDRESS_ERROR: "Sai địa chỉ",
-  DELAYED: "Delay",
-  NOTICE_CARD: "Notice card",
-  STUCK: "Không cập nhật",
+  ADDRESS_ERROR: "Address Error",
+  DELAYED: "Delayed",
+  NOTICE_CARD: "Notice Card",
+  STUCK: "No Updates",
 };
 
 function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: string | null }): string | null {
@@ -104,15 +104,15 @@ function getAvatarColor(name: string) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  NEW: "Mới",
-  READY: "Sẵn sàng",
-  ERROR: "Lỗi",
-  ERROR_UPDATED: "Đã cập nhật",
-  EXPORTED: "Đã upload/chờ label",
-  LABEL_CREATED: "Đã có label",
-  IN_TRANSIT: "Đang vận chuyển",
-  DELIVERED: "Đã giao",
-  FAILED: "Thất bại",
+  NEW: "New",
+  READY: "Ready",
+  ERROR: "Error",
+  ERROR_UPDATED: "Updated",
+  EXPORTED: "Exported",
+  LABEL_CREATED: "Label Created",
+  IN_TRANSIT: "In Transit",
+  DELIVERED: "Delivered",
+  FAILED: "Failed",
 };
 
 export default function OrdersClient({ role }: { role: Role }) {
@@ -204,7 +204,7 @@ function OrdersPageContent({ role }: { role: Role }) {
 
   async function createBatch() {
     if (selectedKeys.size === 0) return;
-    if (!confirm(`Tạo batch cho ${selectedKeys.size} đơn? (Đơn không phải READY sẽ bị bỏ qua)`)) return;
+    if (!confirm(`Create batch for ${selectedKeys.size} orders? (Non-READY orders will be skipped)`)) return;
 
     setCreating(true);
     setMessage(null);
@@ -222,7 +222,7 @@ function OrdersPageContent({ role }: { role: Role }) {
         setSelectedKeys(new Set());
         await loadOrders();
       } else {
-        setMessage("Lỗi: " + data.error);
+        setMessage("Error: " + data.error);
       }
     } finally {
       setCreating(false);
@@ -244,8 +244,8 @@ function OrdersPageContent({ role }: { role: Role }) {
 
       const res = await fetch(`/api/orders/export?${params.toString()}`);
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Lỗi không xác định" }));
-        alert("Lỗi xuất file: " + (data.error || res.statusText));
+        const data = await res.json().catch(() => ({ error: "Unknown error" }));
+        alert("Export failed: " + (data.error || res.statusText));
         return;
       }
       const blob = await res.blob();
@@ -266,7 +266,7 @@ function OrdersPageContent({ role }: { role: Role }) {
 
   async function deleteSelected() {
     if (selectedKeys.size === 0) return;
-    if (!confirm(`Xóa ${selectedKeys.size} đơn? Hành động này không thể hoàn tác.`)) return;
+    if (!confirm(`Delete ${selectedKeys.size} orders? This action cannot be undone.`)) return;
 
     setDeleting(true);
     setMessage(null);
@@ -284,7 +284,7 @@ function OrdersPageContent({ role }: { role: Role }) {
         setSelectedKeys(new Set());
         await loadOrders();
       } else {
-        setMessage("Lỗi: " + data.error);
+        setMessage("Error: " + data.error);
       }
     } finally {
       setDeleting(false);
@@ -301,19 +301,19 @@ function OrdersPageContent({ role }: { role: Role }) {
     : productOpts;
 
   const STATUS_TABS = [
-    { value: "",               label: "Tất cả",      dot: null },
-    { value: "NEW",            label: "Mới",          dot: "var(--color-info)" },
-    { value: "READY",          label: "Sẵn sàng",     dot: "var(--color-success)" },
-    { value: "ERROR",          label: "Lỗi",          dot: "var(--color-danger)" },
-    { value: "ERROR_UPDATED",  label: "Đã sửa",       dot: "var(--color-warning)" },
-    { value: "EXPORTED",       label: "Đã xuất",      dot: "var(--color-slate)" },
-    { value: "LABEL_CREATED",  label: "Có label",     dot: "var(--color-purple)" },
-    { value: "IN_TRANSIT",     label: "Đang giao",    dot: "var(--color-sky)" },
+    { value: "",               label: "All",          dot: null },
+    { value: "NEW",            label: "New",          dot: "var(--color-info)" },
+    { value: "READY",          label: "Ready",        dot: "var(--color-success)" },
+    { value: "ERROR",          label: "Error",        dot: "var(--color-danger)" },
+    { value: "ERROR_UPDATED",  label: "Updated",      dot: "var(--color-warning)" },
+    { value: "EXPORTED",       label: "Exported",     dot: "var(--color-slate)" },
+    { value: "LABEL_CREATED",  label: "Label",        dot: "var(--color-purple)" },
+    { value: "IN_TRANSIT",     label: "In Transit",   dot: "var(--color-sky)" },
   ];
 
   return (
     <>
-      <Topbar title="Đơn đang xử lý" subtitle="Quản lý" showSync={!isCustomer} />
+      <Topbar title="Active Orders" subtitle="Operations" showSync={!isCustomer} />
 
       {/* Status tabs */}
       <div className="status-tabs-bar">
@@ -339,7 +339,7 @@ function OrdersPageContent({ role }: { role: Role }) {
         className={`grid gap-3 ${isCustomer ? "grid-cols-5" : "grid-cols-6"}`}
       >
         {!isCustomer && (
-          <FilterField label="Khách hàng">
+          <FilterField label="Customer">
             <select
               value={filterCustomer}
               onChange={(e) => {
@@ -348,7 +348,7 @@ function OrdersPageContent({ role }: { role: Role }) {
               }}
               className="filter-input"
             >
-              <option value="">Tất cả</option>
+              <option value="">All</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -358,13 +358,13 @@ function OrdersPageContent({ role }: { role: Role }) {
           </FilterField>
         )}
 
-        <FilterField label="Sản phẩm">
+        <FilterField label="Product">
           <select
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
             className="filter-input"
           >
-            <option value="">Tất cả</option>
+            <option value="">All</option>
             {filteredProducts.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -373,38 +373,38 @@ function OrdersPageContent({ role }: { role: Role }) {
           </select>
         </FilterField>
 
-        <FilterField label="Thanh toán">
+        <FilterField label="Payment">
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
             className="filter-input"
           >
-            <option value="">Tất cả</option>
-            <option value="PREPAID">Thường</option>
+            <option value="">All</option>
+            <option value="PREPAID">Prepaid</option>
             <option value="COD">COD</option>
           </select>
         </FilterField>
 
-        <FilterField label="Cần chú ý">
+        <FilterField label="Attention">
           <select
             value={filterAttention}
             onChange={(e) => setFilterAttention(e.target.value)}
             className="filter-input"
           >
-            <option value="">Tất cả</option>
-            <option value="any">Có flag (mọi loại)</option>
-            <option value="ADDRESS_ERROR">Sai địa chỉ</option>
-            <option value="DELAYED">Delay</option>
-            <option value="NOTICE_CARD">Notice card</option>
-            <option value="STUCK">Không cập nhật 3 ngày làm việc</option>
+            <option value="">All</option>
+            <option value="any">Any Flag</option>
+            <option value="ADDRESS_ERROR">Address Error</option>
+            <option value="DELAYED">Delayed</option>
+            <option value="NOTICE_CARD">Notice Card</option>
+            <option value="STUCK">No updates (3 business days)</option>
           </select>
         </FilterField>
 
-        <FilterField label="Tìm kiếm" className="col-span-2">
+        <FilterField label="Search" className="col-span-2">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Order ID, Tên, Phone, Zipcode..."
+            placeholder="Order ID, Name, Phone, Zipcode..."
           />
         </FilterField>
       </FilterBar>
@@ -413,15 +413,15 @@ function OrdersPageContent({ role }: { role: Role }) {
       <div className="action-bar">
         <div className="flex items-center gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
           <span>
-            <span className="font-bold text-white">{orders.length}</span> đơn
+            <span className="font-bold text-white">{orders.length}</span> orders
             {readyCount > 0 && (
               <span className="ml-2" style={{ color: "var(--accent)" }}>
-                · {readyCount} sẵn sàng
+                · {readyCount} ready
               </span>
             )}
             {attentionCount > 0 && (
               <span className="ml-2" style={{ color: "#f472b6" }}>
-                · {attentionCount} cần chú ý
+                · {attentionCount} need attention
               </span>
             )}
           </span>
@@ -429,14 +429,14 @@ function OrdersPageContent({ role }: { role: Role }) {
             <>
               <span style={{ color: "var(--text-muted)" }}>•</span>
               <span style={{ color: "var(--accent)" }}>
-                Đã chọn {selectedKeys.size}
+                Selected {selectedKeys.size}
               </span>
               <button
                 onClick={clearSelection}
                 className="text-xs underline"
                 style={{ color: "var(--text-muted)" }}
               >
-                Bỏ chọn
+                Deselect
               </button>
             </>
           )}
@@ -459,9 +459,9 @@ function OrdersPageContent({ role }: { role: Role }) {
             icon="download"
             onClick={exportFile}
             disabled={exporting || orders.length === 0}
-            title="Xuất file Excel toàn bộ đơn theo filter hiện tại"
+            title="Export all filtered orders to Excel"
           >
-            {exporting ? "Đang xuất..." : "Xuất file"}
+            {exporting ? "Exporting..." : "Export"}
           </Button>
           {!isCustomer && (
             <>
@@ -471,7 +471,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                 onClick={deleteSelected}
                 disabled={selectedKeys.size === 0 || deleting || creating}
               >
-                {deleting ? "Đang xóa..." : "Xóa"}
+                {deleting ? "Deleting..." : "Delete"}
               </Button>
               <Button
                 variant="primary"
@@ -479,7 +479,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                 onClick={createBatch}
                 disabled={selectedKeys.size === 0 || creating || deleting}
               >
-                {creating ? "Đang tạo..." : "Tạo Batch"}
+                {creating ? "Creating..." : "Create Batch"}
               </Button>
             </>
           )}
@@ -496,11 +496,11 @@ function OrdersPageContent({ role }: { role: Role }) {
       <div className="table-shell">
         {loading ? (
           <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-            Đang tải...
+            Loading...
           </div>
         ) : orders.length === 0 ? (
           <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-            Không có đơn nào. Bấm <span style={{ color: "var(--accent)" }}>Đồng bộ</span> để kéo đơn về.
+            No orders found. Click <span style={{ color: "var(--accent)" }}>Sync</span> to fetch orders.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -526,35 +526,35 @@ function OrdersPageContent({ role }: { role: Role }) {
                   </th>
                   {!isCustomer && (
                     <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                      Khách
+                      Customer
                     </th>
                   )}
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Sản phẩm
+                    Product
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Tên
+                    Name
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Địa chỉ
+                    Address
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Số lượng
+                    Qty
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Thanh toán
+                    Payment
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Trạng thái
+                    Status
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Cần chú ý
+                    Attention
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Tracking
                   </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Cờ
+                    Flag
                   </th>
                 </tr>
               </thead>
@@ -641,12 +641,12 @@ function OrdersPageContent({ role }: { role: Role }) {
                         className="px-3 py-2 text-center"
                         title={
                           o.paymentMethod === "COD"
-                            ? `Thu hộ: ${o.codAmount ?? "?"}${o.note ? `\n${o.note}` : ""}`
+                            ? `COD amount: ${o.codAmount ?? "?"}${o.note ? `\n${o.note}` : ""}`
                             : o.note || ""
                         }
                       >
                         <PaymentBadge method={o.paymentMethod}>
-                          {o.paymentMethod === "COD" ? "COD" : "Thường"}
+                          {o.paymentMethod === "COD" ? "COD" : "Prepaid"}
                         </PaymentBadge>
                       </td>
                       <td className="px-3 py-2 text-center">

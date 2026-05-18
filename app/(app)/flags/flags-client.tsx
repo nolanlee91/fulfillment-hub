@@ -78,11 +78,11 @@ function buildTrackingUrl(o: {
 
 function relativeTime(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return "Vừa xong";
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} ngày trước`;
-  return new Date(iso).toLocaleDateString("vi-VN");
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString("en-CA");
 }
 
 function formatBubbleTime(iso: string): string {
@@ -176,7 +176,7 @@ function FlagsContent({
         setDetail(json.data);
       } else {
         setDetail(null);
-        setDetailError(json.error || "Lỗi tải dữ liệu");
+        setDetailError(json.error || "Failed to load data");
       }
     } catch (e) {
       setDetail(null);
@@ -223,7 +223,7 @@ function FlagsContent({
       });
       const json = await res.json();
       if (!json.success) {
-        setErrorMsg(json.error || "Lỗi gửi tin nhắn");
+        setErrorMsg(json.error || "Failed to send message");
         return;
       }
       setDraft("");
@@ -238,7 +238,7 @@ function FlagsContent({
 
   async function handleResolve() {
     if (!selectedKey || resolving) return;
-    if (!confirm("Gỡ cờ đơn này? (Lịch sử chat vẫn được giữ)")) return;
+    if (!confirm("Resolve flag for this order? (Chat history will be kept)")) return;
     setResolving(true);
     setErrorMsg(null);
     try {
@@ -247,7 +247,7 @@ function FlagsContent({
       });
       const json = await res.json();
       if (!json.success) {
-        setErrorMsg(json.error || "Lỗi gỡ cờ");
+        setErrorMsg(json.error || "Failed to resolve flag");
         return;
       }
       await Promise.all([fetchDetail(selectedKey), fetchList()]);
@@ -262,7 +262,7 @@ function FlagsContent({
     if (!selectedKey || deleting) return;
     if (
       !confirm(
-        "Xóa HẲN cờ + toàn bộ tin nhắn của đơn này?\n\nĐơn sẽ biến mất khỏi tab Đơn gắn cờ và không thể khôi phục.",
+        "Permanently delete flag and all messages for this order?\n\nThis action cannot be undone.",
       )
     )
       return;
@@ -274,7 +274,7 @@ function FlagsContent({
       });
       const json = await res.json();
       if (!json.success) {
-        setErrorMsg(json.error || "Lỗi xóa cờ");
+        setErrorMsg(json.error || "Failed to delete flag");
         return;
       }
       // Sau khi xóa: clear selection + refetch list
@@ -318,7 +318,7 @@ function FlagsContent({
 
   return (
     <>
-      <Topbar title="Đơn gắn cờ" subtitle="Quản lý" showSync={false} />
+      <Topbar title="Flagged Orders" subtitle="Manage" showSync={false} />
 
       <div
         className="flex gap-4"
@@ -334,9 +334,9 @@ function FlagsContent({
             className="px-3 py-2.5 border-b flex gap-2"
             style={{ borderColor: "var(--border)" }}
           >
-            <FlagToggle label="Cờ đỏ"    color="#ef4444" checked={showRed}      onChange={setShowRed} />
-            <FlagToggle label="Cờ vàng"  color="#facc15" checked={showYellow}   onChange={setShowYellow} />
-            <FlagToggle label="Đã gỡ"    color="#6b7280" checked={showResolved} onChange={setShowResolved} />
+            <FlagToggle label="Red Flag"   color="#ef4444" checked={showRed}      onChange={setShowRed} />
+            <FlagToggle label="Yellow Flag" color="#facc15" checked={showYellow}   onChange={setShowYellow} />
+            <FlagToggle label="Resolved"  color="#6b7280" checked={showResolved} onChange={setShowResolved} />
           </div>
 
           {/* List items */}
@@ -346,14 +346,14 @@ function FlagsContent({
                 className="p-6 text-center text-sm"
                 style={{ color: "var(--text-muted)" }}
               >
-                Đang tải...
+                Loading...
               </div>
             ) : filteredList.length === 0 ? (
               <div
                 className="p-6 text-center text-sm"
                 style={{ color: "var(--text-muted)" }}
               >
-                Chưa có đơn nào.
+                No orders.
               </div>
             ) : (
               filteredList.map((item) => (
@@ -376,14 +376,14 @@ function FlagsContent({
               className="flex-1 flex items-center justify-center text-sm"
               style={{ color: "var(--text-muted)" }}
             >
-              Chọn một đơn ở bên trái để xem hội thoại
+              Select an order on the left to view the conversation
             </div>
           ) : detailLoading ? (
             <div
               className="flex-1 flex items-center justify-center text-sm"
               style={{ color: "var(--text-muted)" }}
             >
-              Đang tải...
+              Loading...
             </div>
           ) : detailError ? (
             <div
@@ -401,15 +401,15 @@ function FlagsContent({
               >
                 {/* Info chips — hàng ngang */}
                 <div className="flex items-center gap-5 flex-wrap flex-1 min-w-0">
-                  <InfoChip label="Mã đơn">
+                  <InfoChip label="Order ID">
                     <span className="font-mono font-bold" style={{ color: "var(--text-primary)" }}>
                       {detail.order.orderId}
                     </span>
                   </InfoChip>
-                  <InfoChip label="Khách hàng">
+                  <InfoChip label="Customer">
                     {detail.order.customerName ?? detail.order.customerId}
                   </InfoChip>
-                  <InfoChip label="Sản phẩm">
+                  <InfoChip label="Product">
                     {detail.order.productName ?? detail.order.productId}
                   </InfoChip>
                   {detail.order.trackingNumber && (
@@ -434,14 +434,14 @@ function FlagsContent({
                   {canResolve && (
                     <button onClick={handleResolve} disabled={resolving || deleting} className="btn btn-secondary">
                       <span className="material-symbols-outlined text-[16px]">flag_circle</span>
-                      {resolving ? "Đang gỡ..." : "Gỡ cờ"}
+                      {resolving ? "Resolving..." : "Resolve"}
                     </button>
                   )}
                   {canDelete && (
                     <button onClick={handleDelete} disabled={deleting || resolving} className="btn btn-danger"
-                      title="Xóa hẳn cờ + toàn bộ tin nhắn của đơn này">
+                      title="Permanently delete flag and all messages">
                       <span className="material-symbols-outlined text-[16px]">delete_forever</span>
-                      {deleting ? "Đang xóa..." : "Xóa hẳn"}
+                      {deleting ? "Deleting..." : "Delete"}
                     </button>
                   )}
                 </div>
@@ -457,7 +457,7 @@ function FlagsContent({
                     className="text-center text-sm py-8"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Chưa có tin nhắn. Hãy gửi tin nhắn đầu tiên để gắn cờ đơn này.
+                    No messages yet. Send the first message to flag this order.
                   </div>
                 ) : (
                   detail.messages.map((m) => (
@@ -492,7 +492,7 @@ function FlagsContent({
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
+                    placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
                     rows={2}
                     className="filter-input flex-1 resize-none"
                     style={{ minHeight: "44px" }}
@@ -505,7 +505,7 @@ function FlagsContent({
                     disabled={sending || !draft.trim()}
                     className="shrink-0"
                   >
-                    {sending ? "Đang gửi..." : "Gửi"}
+                    {sending ? "Sending..." : "Send"}
                   </Button>
                 </div>
               </div>
@@ -633,12 +633,12 @@ function FlagBadge({ color }: { color: FlagColor }) {
         }}
       >
         <span className="material-symbols-outlined text-[14px]">check_circle</span>
-        Đã gỡ cờ
+        Resolved
       </span>
     );
   }
   const bg = color === "red" ? "#ef4444" : "#facc15";
-  const label = color === "red" ? "Cờ đỏ" : "Cờ vàng";
+  const label = color === "red" ? "Red" : "Yellow";
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold"

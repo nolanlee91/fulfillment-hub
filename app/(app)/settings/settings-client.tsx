@@ -21,7 +21,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Topbar title="Cấu hình" subtitle="Cài đặt" />
+      <Topbar title="Configuration" subtitle="Settings" />
 
       {/* Tab navigation */}
       <div className="status-tabs-bar mb-4" style={{ width: "fit-content" }}>

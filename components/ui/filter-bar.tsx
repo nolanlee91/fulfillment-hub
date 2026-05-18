@@ -42,7 +42,7 @@ interface SearchInputProps
 export function SearchInput({
   wrapperClassName = "",
   className = "",
-  placeholder = "Tìm kiếm...",
+  placeholder = "Search...",
   ...rest
 }: SearchInputProps) {
   return (

@@ -52,13 +52,13 @@ export function Topbar({
       syncResult = await res.json();
     } catch (e) {
       setPhase("idle");
-      showMessage(`Lỗi kết nối khi đồng bộ: ${(e as Error).message}`, "error");
+      showMessage(`Connection error during sync: ${(e as Error).message}`, "error");
       return;
     }
 
     if (!syncResult.success) {
       setPhase("idle");
-      showMessage(`Lỗi đồng bộ: ${syncResult.error}`, "error");
+      showMessage(`Sync error: ${syncResult.error}`, "error");
       return;
     }
 
@@ -78,7 +78,7 @@ export function Topbar({
     } catch (e) {
       setPhase("idle");
       showMessage(
-        `Sync OK (+${syncResult.totalAdded} mới) nhưng lỗi validate: ${(e as Error).message}`,
+        `Sync OK (+${syncResult.totalAdded} new) but validate error: ${(e as Error).message}`,
         "error",
       );
       router.refresh();
@@ -89,7 +89,7 @@ export function Topbar({
 
     if (!validateResult.success) {
       showMessage(
-        `Sync OK (+${syncResult.totalAdded} mới) nhưng lỗi validate: ${validateResult.error}`,
+        `Sync OK (+${syncResult.totalAdded} new) but validate error: ${validateResult.error}`,
         "error",
       );
       router.refresh();
@@ -97,7 +97,7 @@ export function Topbar({
     }
 
     showMessage(
-      `Hoàn tất: +${syncResult.totalAdded} mới, ${syncResult.totalUpdated ?? 0} cập nhật · ${validateResult.ready} READY, ${validateResult.errors} lỗi`,
+      `Done: +${syncResult.totalAdded} new, ${syncResult.totalUpdated ?? 0} updated · ${validateResult.ready} READY, ${validateResult.errors} errors`,
       "success",
     );
     router.refresh();
@@ -106,10 +106,10 @@ export function Topbar({
   const isRunning = phase !== "idle";
   const buttonLabel =
     phase === "syncing"
-      ? "Đang đồng bộ..."
+      ? "Syncing..."
       : phase === "validating"
-        ? "Đang validate..."
-        : "Đồng bộ";
+        ? "Validating..."
+        : "Sync";
 
   const messageColor =
     message?.type === "success"
@@ -137,7 +137,7 @@ export function Topbar({
     <header className="mb-8">
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0">
-          <p className="page-eyebrow">{subtitle ?? "Tổng quan"}</p>
+          <p className="page-eyebrow">{subtitle ?? "Overview"}</p>
           <h1 className="page-title">{titleNode}</h1>
           {description && <p className="page-subtitle">{description}</p>}
         </div>
@@ -157,7 +157,7 @@ export function Topbar({
               onClick={runSyncAndValidate}
               disabled={isRunning}
               className="btn btn-primary"
-              title="Kéo đơn từ Google Sheets về và tự động validate gán thùng"
+              title="Pull orders from Google Sheets and auto-validate box assignment"
             >
               <span
                 className={`material-symbols-outlined text-[17px] ${isRunning ? "animate-spin" : ""}`}

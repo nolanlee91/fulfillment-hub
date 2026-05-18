@@ -57,8 +57,8 @@ const EMPTY_CREATE: CreateDraft = {
 
 const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: "Super Admin",
-  STAFF: "Nhân viên",
-  CUSTOMER: "Khách hàng",
+  STAFF: "Staff",
+  CUSTOMER: "Customer",
 };
 
 const ROLE_COLOR: Record<Role, { bg: string; fg: string }> = {
@@ -101,15 +101,15 @@ export default function UsersClient({
   async function create() {
     if (!creating) return;
     if (!creating.username.trim() || !creating.password || !creating.name.trim()) {
-      alert("Vui lòng nhập đầy đủ username, password, tên");
+      alert("Please fill in username, password, and name");
       return;
     }
     if (creating.password.length < 8) {
-      alert("Password phải >= 8 ký tự");
+      alert("Password must be at least 8 characters");
       return;
     }
     if (creating.role === "CUSTOMER" && !creating.customerId) {
-      alert("Tài khoản khách hàng cần chọn khách hàng");
+      alert("Customer accounts must be linked to a customer");
       return;
     }
     setSaving(true);
@@ -130,7 +130,7 @@ export default function UsersClient({
         setCreating(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -140,11 +140,11 @@ export default function UsersClient({
   async function update() {
     if (!editing) return;
     if (!editing.name.trim()) {
-      alert("Vui lòng nhập tên");
+      alert("Please enter a name");
       return;
     }
     if (editing.role === "CUSTOMER" && !editing.customerId) {
-      alert("Tài khoản khách hàng cần chọn khách hàng");
+      alert("Customer accounts must be linked to a customer");
       return;
     }
     setSaving(true);
@@ -164,7 +164,7 @@ export default function UsersClient({
         setEditing(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -174,7 +174,7 @@ export default function UsersClient({
   async function resetPassword() {
     if (!resetting) return;
     if (resetting.password.length < 8) {
-      alert("Password phải >= 8 ký tự");
+      alert("Password must be at least 8 characters");
       return;
     }
     setSaving(true);
@@ -189,7 +189,7 @@ export default function UsersClient({
         setResetDone({ username: resetting.username, password: resetting.password });
         setResetting(null);
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -229,7 +229,7 @@ export default function UsersClient({
 
   return (
     <>
-      <Topbar title="Tài khoản" subtitle="Cài đặt" />
+      <Topbar title="Users" subtitle="Settings" />
 
       <div className="flex justify-end mb-4">
         <Button
@@ -237,7 +237,7 @@ export default function UsersClient({
           icon="person_add"
           onClick={() => setCreating({ ...EMPTY_CREATE })}
         >
-          Tạo tài khoản
+          Create User
         </Button>
       </div>
 
@@ -247,7 +247,7 @@ export default function UsersClient({
             className="p-12 text-center"
             style={{ color: "var(--text-secondary)" }}
           >
-            Đang tải...
+            Loading...
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -258,22 +258,22 @@ export default function UsersClient({
                     Username
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Tên
+                    Name
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Vai trò
+                    Role
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Khách hàng
+                    Customer
                   </th>
                   <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Trạng thái
+                    Status
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Đăng nhập gần nhất
+                    Last Login
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Hành động
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -292,7 +292,7 @@ export default function UsersClient({
                             className="ml-2 text-[10px] font-normal"
                             style={{ color: "var(--text-muted)" }}
                           >
-                            (bạn)
+                            (you)
                           </span>
                         )}
                       </td>
@@ -356,8 +356,8 @@ export default function UsersClient({
                         style={{ color: "var(--text-muted)" }}
                       >
                         {u.lastLoginAt
-                          ? new Date(u.lastLoginAt).toLocaleString("vi-VN")
-                          : "Chưa đăng nhập"}
+                          ? new Date(u.lastLoginAt).toLocaleString("en-US")
+                          : "Never logged in"}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
@@ -371,13 +371,13 @@ export default function UsersClient({
                             }}
                             title={
                               isSelf
-                                ? "Không thể tự sửa tài khoản của mình"
+                                ? "Cannot edit your own account"
                                 : isSuperAdmin
-                                  ? "Không thể sửa SUPER_ADMIN"
+                                  ? "Cannot edit SUPER_ADMIN"
                                   : ""
                             }
                           >
-                            Sửa
+                            Edit
                           </button>
                           <button
                             onClick={() => startReset(u)}
@@ -389,13 +389,13 @@ export default function UsersClient({
                             }}
                             title={
                               isSelf
-                                ? "Không thể tự reset password"
+                                ? "Cannot reset your own password"
                                 : isSuperAdmin
-                                  ? "Không thể reset SUPER_ADMIN"
+                                  ? "Cannot reset SUPER_ADMIN password"
                                   : ""
                             }
                           >
-                            Reset MK
+                            Reset PW
                           </button>
                         </div>
                       </td>
@@ -409,7 +409,7 @@ export default function UsersClient({
                       className="px-4 py-8 text-center text-sm"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      Chưa có tài khoản nào
+                      No users yet
                     </td>
                   </tr>
                 )}
@@ -420,7 +420,7 @@ export default function UsersClient({
       </div>
 
       {creating && (
-        <Modal title="Tạo tài khoản mới" onClose={() => !saving && setCreating(null)}>
+        <Modal title="Create New User" onClose={() => !saving && setCreating(null)}>
           <div className="space-y-3">
             <Field label="Username" required>
               <input
@@ -446,24 +446,24 @@ export default function UsersClient({
                 onChange={(e) =>
                   setCreating({ ...creating, password: e.target.value })
                 }
-                placeholder=">= 8 ký tự"
+                placeholder=">= 8 characters"
                 className="w-full px-3 py-2 rounded text-sm font-mono"
               />
             </Field>
 
-            <Field label="Tên hiển thị" required>
+            <Field label="Display Name" required>
               <input
                 type="text"
                 value={creating.name}
                 onChange={(e) =>
                   setCreating({ ...creating, name: e.target.value })
                 }
-                placeholder="VD: Nguyễn Văn A"
+                placeholder="e.g. John Smith"
                 className="w-full px-3 py-2 rounded text-sm"
               />
             </Field>
 
-            <Field label="Vai trò" required>
+            <Field label="Role" required>
               <select
                 value={creating.role}
                 onChange={(e) =>
@@ -475,13 +475,13 @@ export default function UsersClient({
                 }
                 className="w-full px-3 py-2 rounded text-sm"
               >
-                <option value="STAFF">Nhân viên</option>
-                <option value="CUSTOMER">Khách hàng</option>
+                <option value="STAFF">Staff</option>
+                <option value="CUSTOMER">Customer</option>
               </select>
             </Field>
 
             {creating.role === "CUSTOMER" && (
-              <Field label="Khách hàng" required>
+              <Field label="Customer" required>
                 <select
                   value={creating.customerId}
                   onChange={(e) =>
@@ -489,7 +489,7 @@ export default function UsersClient({
                   }
                   className="w-full px-3 py-2 rounded text-sm"
                 >
-                  <option value="">— Chọn khách hàng —</option>
+                  <option value="">— Select customer —</option>
                   {activeCustomers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.id})
@@ -501,7 +501,7 @@ export default function UsersClient({
                     className="text-[10px] mt-1"
                     style={{ color: "#f87171" }}
                   >
-                    Chưa có khách hàng active — tạo ở Cấu hình → Customer Master
+                    No active customers — create one in Settings → Customer Master
                   </p>
                 )}
               </Field>
@@ -512,14 +512,14 @@ export default function UsersClient({
             onCancel={() => setCreating(null)}
             onSubmit={create}
             saving={saving}
-            submitLabel="Tạo"
+            submitLabel="Create"
           />
         </Modal>
       )}
 
       {editing && (
         <Modal
-          title={`Sửa tài khoản ${editing.username}`}
+          title={`Edit user ${editing.username}`}
           onClose={() => !saving && setEditing(null)}
         >
           <div className="space-y-3">
@@ -532,7 +532,7 @@ export default function UsersClient({
               />
             </Field>
 
-            <Field label="Tên hiển thị" required>
+            <Field label="Display Name" required>
               <input
                 type="text"
                 value={editing.name}
@@ -543,7 +543,7 @@ export default function UsersClient({
               />
             </Field>
 
-            <Field label="Vai trò" required>
+            <Field label="Role" required>
               <select
                 value={editing.role}
                 onChange={(e) =>
@@ -555,13 +555,13 @@ export default function UsersClient({
                 }
                 className="w-full px-3 py-2 rounded text-sm"
               >
-                <option value="STAFF">Nhân viên</option>
-                <option value="CUSTOMER">Khách hàng</option>
+                <option value="STAFF">Staff</option>
+                <option value="CUSTOMER">Customer</option>
               </select>
             </Field>
 
             {editing.role === "CUSTOMER" && (
-              <Field label="Khách hàng" required>
+              <Field label="Customer" required>
                 <select
                   value={editing.customerId}
                   onChange={(e) =>
@@ -569,7 +569,7 @@ export default function UsersClient({
                   }
                   className="w-full px-3 py-2 rounded text-sm"
                 >
-                  <option value="">— Chọn khách hàng —</option>
+                  <option value="">— Select customer —</option>
                   {activeCustomers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.id})
@@ -596,7 +596,7 @@ export default function UsersClient({
                 className="text-[10px]"
                 style={{ color: "var(--text-muted)" }}
               >
-                (uncheck = vô hiệu hóa + đẩy logout tất cả session)
+                (uncheck = deactivate + force logout all sessions)
               </span>
             </label>
           </div>
@@ -605,25 +605,25 @@ export default function UsersClient({
             onCancel={() => setEditing(null)}
             onSubmit={update}
             saving={saving}
-            submitLabel="Lưu"
+            submitLabel="Save"
           />
         </Modal>
       )}
 
       {resetting && (
         <Modal
-          title={`Reset password cho ${resetting.username}`}
+          title={`Reset password for ${resetting.username}`}
           onClose={() => !saving && setResetting(null)}
         >
           <p
             className="text-xs mb-3"
             style={{ color: "var(--text-muted)" }}
           >
-            Sau khi reset, user sẽ bị logout khỏi tất cả thiết bị và phải đăng
-            nhập lại với password mới.
+            After reset, the user will be logged out of all devices and must
+            sign in again with the new password.
           </p>
 
-          <Field label="Password mới" required>
+          <Field label="New Password" required>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -631,7 +631,7 @@ export default function UsersClient({
                 onChange={(e) =>
                   setResetting({ ...resetting, password: e.target.value })
                 }
-                placeholder=">= 8 ký tự"
+                placeholder=">= 8 characters"
                 className="flex-1 px-3 py-2 rounded text-sm font-mono"
                 autoFocus
               />
@@ -645,9 +645,9 @@ export default function UsersClient({
                   backgroundColor: "var(--accent-bg)",
                   color: "var(--accent)",
                 }}
-                title="Sinh password ngẫu nhiên 12 ký tự"
+                title="Generate a random 12-character password"
               >
-                Tạo ngẫu nhiên
+                Generate
               </button>
             </div>
           </Field>
@@ -656,23 +656,23 @@ export default function UsersClient({
             onCancel={() => setResetting(null)}
             onSubmit={resetPassword}
             saving={saving}
-            submitLabel="Đặt password mới"
+            submitLabel="Set New Password"
           />
         </Modal>
       )}
 
       {resetDone && (
-        <Modal title="Đã đặt password mới" onClose={() => setResetDone(null)}>
+        <Modal title="Password Reset Successfully" onClose={() => setResetDone(null)}>
           <p
             className="text-xs mb-3"
             style={{ color: "var(--text-muted)" }}
           >
-            Copy password bên dưới rồi gửi cho{" "}
+            Copy the password below and send it to{" "}
             <span className="font-mono" style={{ color: "var(--text-primary)" }}>
               {resetDone.username}
             </span>{" "}
-            qua kênh an toàn (Zalo, Telegram, gặp trực tiếp...). User cần đăng
-            nhập lại với password mới và nên đổi password sau lần đầu đăng nhập.
+            via a secure channel (Zalo, Telegram, in person, etc.). The user must
+            sign in again with the new password and should change it after first login.
           </p>
 
           <div
@@ -697,7 +697,7 @@ export default function UsersClient({
               Copy
             </Button>
             <Button variant="primary" onClick={() => setResetDone(null)}>
-              Đóng
+              Close
             </Button>
           </div>
         </Modal>
@@ -773,10 +773,10 @@ function ModalActions({
   return (
     <div className="flex justify-end gap-3 mt-6">
       <Button variant="secondary" onClick={onCancel} disabled={saving}>
-        Hủy
+        Cancel
       </Button>
       <Button variant="primary" onClick={onSubmit} disabled={saving}>
-        {saving ? "Đang xử lý..." : submitLabel}
+        {saving ? "Processing..." : submitLabel}
       </Button>
     </div>
   );

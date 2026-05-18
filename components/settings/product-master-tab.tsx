@@ -60,7 +60,7 @@ export function ProductMasterTab() {
   async function save() {
     if (!editing) return;
     if (!editing.name.trim()) {
-      alert("Tên sản phẩm không được để trống");
+      alert("Product name cannot be empty");
       return;
     }
     setSaving(true);
@@ -80,7 +80,7 @@ export function ProductMasterTab() {
         setEditing(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -90,7 +90,7 @@ export function ProductMasterTab() {
   async function create() {
     if (!creating) return;
     if (!creating.id.trim() || !creating.name.trim() || !creating.customerId) {
-      alert("Vui lòng nhập Mã, Tên sản phẩm và chọn Khách hàng");
+      alert("Please enter Product ID, Name, and select a Customer");
       return;
     }
     setSaving(true);
@@ -111,7 +111,7 @@ export function ProductMasterTab() {
         setCreating(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -121,7 +121,7 @@ export function ProductMasterTab() {
   if (loading) {
     return (
       <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
-        Đang tải...
+        Loading...
       </div>
     );
   }
@@ -135,10 +135,10 @@ export function ProductMasterTab() {
           onClick={() => setCreating({ ...EMPTY_PRODUCT })}
           disabled={activeCustomers.length === 0}
           className="btn btn-primary"
-          title={activeCustomers.length === 0 ? "Cần tạo khách hàng trước" : ""}
+          title={activeCustomers.length === 0 ? "Create a customer first" : ""}
         >
           <span className="material-symbols-outlined text-[17px]">add</span>
-          Tạo Sản phẩm
+          New Product
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -146,19 +146,19 @@ export function ProductMasterTab() {
           <thead>
             <tr>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Khách hàng
+                Customer
               </th>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Sản phẩm
+                Product
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Cân nặng (lb)
+                Weight (lb)
               </th>
               <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                 Active
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Hành động
+                Actions
               </th>
             </tr>
           </thead>
@@ -214,7 +214,7 @@ export function ProductMasterTab() {
                       color: "var(--accent)",
                     }}
                   >
-                    Sửa
+                    Edit
                   </button>
                 </td>
               </tr>
@@ -237,7 +237,7 @@ export function ProductMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">Tạo Sản phẩm mới</h3>
+            <h3 className="text-lg font-bold text-white mb-4">New Product</h3>
 
             <div className="space-y-3">
               <div>
@@ -245,7 +245,7 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Khách hàng <span style={{ color: "var(--accent)" }}>*</span>
+                  Customer <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <select
                   value={creating.customerId}
@@ -254,7 +254,7 @@ export function ProductMasterTab() {
                   }
                   className="w-full px-3 py-2 rounded text-sm"
                 >
-                  <option value="">— Chọn khách hàng —</option>
+                  <option value="">— Select customer —</option>
                   {activeCustomers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.id})
@@ -268,7 +268,7 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Mã sản phẩm <span style={{ color: "var(--accent)" }}>*</span>
+                  Product ID <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -276,14 +276,14 @@ export function ProductMasterTab() {
                   onChange={(e) =>
                     setCreating({ ...creating, id: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })
                   }
-                  placeholder="VD: fitgum_acai"
+                  placeholder="e.g. fitgum_acai"
                   className="w-full px-3 py-2 rounded text-sm font-mono"
                 />
                 <p
                   className="text-[10px] mt-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Chỉ a-z, 0-9, _ (không khoảng trắng, không hoa)
+                  Lowercase only: a-z, 0-9, _ (no spaces)
                 </p>
               </div>
 
@@ -292,7 +292,7 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Tên hiển thị <span style={{ color: "var(--accent)" }}>*</span>
+                  Display Name <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -300,7 +300,7 @@ export function ProductMasterTab() {
                   onChange={(e) =>
                     setCreating({ ...creating, name: e.target.value })
                   }
-                  placeholder="VD: Fitgum Acai"
+                  placeholder="e.g. Fitgum Acai"
                   className="w-full px-3 py-2 rounded text-sm"
                 />
               </div>
@@ -310,7 +310,7 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Cân nặng đơn vị (lb)
+                  Unit weight (lb)
                 </label>
                 <input
                   type="number"
@@ -341,8 +341,8 @@ export function ProductMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
-              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Đang tạo..." : "Tạo"}</button>
+              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Cancel</button>
+              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Creating..." : "Create"}</button>
             </div>
           </div>
         </div>
@@ -363,7 +363,7 @@ export function ProductMasterTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-white mb-1">
-              Sửa sản phẩm{" "}
+              Edit Product{" "}
               <span className="font-mono text-sm" style={{ color: "var(--text-muted)" }}>
                 {editing.id}
               </span>
@@ -372,7 +372,7 @@ export function ProductMasterTab() {
               className="text-xs mb-4"
               style={{ color: "var(--text-muted)" }}
             >
-              Khách hàng: {editing.customerId}
+              Customer: {editing.customerId}
             </p>
 
             <div className="space-y-3">
@@ -381,7 +381,7 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Tên hiển thị <span style={{ color: "var(--accent)" }}>*</span>
+                  Display Name <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -390,7 +390,7 @@ export function ProductMasterTab() {
                     setEditing({ ...editing, name: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded text-sm"
-                  placeholder="VD: Fitgum Acai"
+                  placeholder="e.g. Fitgum Acai"
                 />
               </div>
 
@@ -399,7 +399,7 @@ export function ProductMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Cân nặng đơn vị (lb)
+                  Unit weight (lb)
                 </label>
                 <input
                   type="number"
@@ -430,8 +430,8 @@ export function ProductMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
-              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Đang lưu..." : "Lưu"}</button>
+              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Cancel</button>
+              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Saving..." : "Save"}</button>
             </div>
           </div>
         </div>

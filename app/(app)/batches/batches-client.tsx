@@ -52,7 +52,7 @@ export default function BatchesPage() {
       a.click();
       URL.revokeObjectURL(url);
       setMessage({
-        text: `Đã tải file ${isEst ? "CSV" : "Excel"} cho batch ${batch.id}`,
+        text: `Downloaded ${isEst ? "CSV" : "Excel"} file for batch ${batch.id}`,
         type: "success",
       });
     } catch (e) {
@@ -77,7 +77,7 @@ export default function BatchesPage() {
 
   return (
     <>
-      <Topbar title="Lô đóng gói" subtitle="Quản lý" />
+      <Topbar title="Batches" subtitle="Operations" />
 
       <Card padding="none" className="mb-4 px-4 py-3 flex items-center justify-between">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -100,7 +100,7 @@ export default function BatchesPage() {
       <div className="table-shell">
         {loading ? (
           <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
-            Đang tải...
+            Loading...
           </div>
         ) : batches.length === 0 ? (
           <div className="p-12 text-center">
@@ -110,9 +110,9 @@ export default function BatchesPage() {
             >
               package_2
             </span>
-            <p className="mt-3 font-semibold text-white">Chưa có batch nào</p>
+            <p className="mt-3 font-semibold text-white">No batches yet</p>
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              Vào trang Đơn hàng → chọn đơn READY → bấm &quot;Tạo Batch&quot;
+              Go to Orders → select READY orders → click &quot;Create Batch&quot;
             </p>
           </div>
         ) : (
@@ -124,16 +124,16 @@ export default function BatchesPage() {
                     Batch ID
                   </th>
                   <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Loại
+                    Type
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Số đơn
+                    Orders
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Tạo lúc
+                    Created
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Hành động
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -149,7 +149,7 @@ export default function BatchesPage() {
                         <span
                           className={`payment-${isEst ? "COD" : "PREPAID"} px-2 py-0.5 rounded text-[10px] font-bold tracking-wider`}
                         >
-                          {isEst ? "COD" : "Thường"}
+                          {isEst ? "COD" : "Standard"}
                         </span>
                       </td>
                       <td
@@ -177,7 +177,7 @@ export default function BatchesPage() {
                           <span className="material-symbols-outlined text-[16px]">
                             download
                           </span>
-                          {exporting === b.id ? "Đang tải..." : isEst ? "Tải CSV" : "Tải Excel"}
+                          {exporting === b.id ? "Downloading..." : isEst ? "Download CSV" : "Download Excel"}
                         </button>
                       </td>
                     </tr>

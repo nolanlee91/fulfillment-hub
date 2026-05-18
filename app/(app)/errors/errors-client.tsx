@@ -46,11 +46,11 @@ export default function ErrorsPage() {
       const res = await fetch("/api/validate", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        setMessage(`Đã validate lại: ${data.ready} READY, ${data.errors} ERROR`);
+        setMessage(`Re-validated: ${data.ready} READY, ${data.errors} ERROR`);
         await load();
         router.refresh();
       } else {
-        setMessage("Lỗi: " + data.error);
+        setMessage("Error: " + data.error);
       }
     } finally {
       setRechecking(false);
@@ -67,7 +67,7 @@ export default function ErrorsPage() {
 
   return (
     <>
-      <Topbar title="Đơn lỗi" subtitle="Quản lý" />
+      <Topbar title="Error Orders" subtitle="Operations" />
 
       {/* Summary */}
       <Card className="mb-4 flex items-center justify-between">
@@ -86,7 +86,7 @@ export default function ErrorsPage() {
           <div>
             <p className="text-2xl font-bold text-white">{orders.length}</p>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              đơn cần xử lý
+              orders need attention
             </p>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function ErrorsPage() {
             onClick={recheckAll}
             disabled={rechecking}
           >
-            {rechecking ? "Đang xử lý..." : "Recheck tất cả"}
+            {rechecking ? "Processing..." : "Recheck All"}
           </Button>
         </div>
       </Card>
@@ -122,7 +122,7 @@ export default function ErrorsPage() {
             className="text-[11px] font-bold tracking-widest uppercase mb-3"
             style={{ color: "var(--text-muted)" }}
           >
-            Phân loại lỗi
+            Error Breakdown
           </h3>
           <div className="space-y-2">
             {Object.entries(errorGroups)
@@ -152,7 +152,7 @@ export default function ErrorsPage() {
       <div className="table-shell">
         {loading ? (
           <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
-            Đang tải...
+            Loading...
           </div>
         ) : orders.length === 0 ? (
           <div className="p-12 text-center">
@@ -162,9 +162,9 @@ export default function ErrorsPage() {
             >
               check_circle
             </span>
-            <p className="mt-3 font-semibold text-white">Không có đơn lỗi nào!</p>
+            <p className="mt-3 font-semibold text-white">No error orders!</p>
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              Tất cả đơn đã được validate thành công.
+              All orders have been validated successfully.
             </p>
           </div>
         ) : (
@@ -176,19 +176,19 @@ export default function ErrorsPage() {
                     Order ID
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Khách
+                    Customer
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Sản phẩm
+                    Product
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Tên
+                    Name
                   </th>
                   <th className="text-right px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    SL
+                    Qty
                   </th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Lỗi
+                    Error
                   </th>
                 </tr>
               </thead>

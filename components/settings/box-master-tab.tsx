@@ -63,7 +63,7 @@ export function BoxMasterTab() {
         setEditing(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -73,7 +73,7 @@ export function BoxMasterTab() {
   async function create() {
     if (!creating) return;
     if (!creating.code.trim() || !creating.name.trim()) {
-      alert("Vui lòng nhập Mã và Tên thùng");
+      alert("Please enter both Box Code and Name");
       return;
     }
     setSaving(true);
@@ -96,7 +96,7 @@ export function BoxMasterTab() {
         setCreating(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -109,7 +109,7 @@ export function BoxMasterTab() {
         className="p-12 text-center"
         style={{ color: "var(--text-secondary)" }}
       >
-        Đang tải...
+        Loading...
       </div>
     );
   }
@@ -119,7 +119,7 @@ export function BoxMasterTab() {
       <div className="flex justify-end p-3">
         <button onClick={() => setCreating({ ...EMPTY_BOX })} className="btn btn-primary">
           <span className="material-symbols-outlined text-[17px]">add</span>
-          Tạo Box
+          New Box
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -127,28 +127,28 @@ export function BoxMasterTab() {
           <thead>
             <tr>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Mã
+                Code
               </th>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Tên
+                Name
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Dài (in)
+                Length (in)
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Rộng (in)
+                Width (in)
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Cao (in)
+                Height (in)
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Cân vỏ (lb)
+                Weight (lb)
               </th>
               <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                 Active
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Hành động
+                Actions
               </th>
             </tr>
           </thead>
@@ -222,7 +222,7 @@ export function BoxMasterTab() {
                       color: "var(--accent)",
                     }}
                   >
-                    Sửa
+                    Edit
                   </button>
                 </td>
               </tr>
@@ -245,7 +245,7 @@ export function BoxMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">Tạo Box mới</h3>
+            <h3 className="text-lg font-bold text-white mb-4">New Box</h3>
 
             <div className="space-y-3">
               <div>
@@ -253,7 +253,7 @@ export function BoxMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Mã thùng <span style={{ color: "var(--accent)" }}>*</span>
+                  Box Code <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -261,7 +261,7 @@ export function BoxMasterTab() {
                   onChange={(e) =>
                     setCreating({ ...creating, code: e.target.value.toUpperCase() })
                   }
-                  placeholder="VD: A, B, M5"
+                  placeholder="e.g. A, B, M5"
                   className="w-full px-3 py-2 rounded text-sm font-mono"
                 />
               </div>
@@ -271,7 +271,7 @@ export function BoxMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Tên thùng <span style={{ color: "var(--accent)" }}>*</span>
+                  Box Name <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -289,7 +289,7 @@ export function BoxMasterTab() {
                     className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Dài (in)
+                    Length (in)
                   </label>
                   <input
                     type="number"
@@ -306,7 +306,7 @@ export function BoxMasterTab() {
                     className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Rộng (in)
+                    Width (in)
                   </label>
                   <input
                     type="number"
@@ -323,7 +323,7 @@ export function BoxMasterTab() {
                     className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Cao (in)
+                    Height (in)
                   </label>
                   <input
                     type="number"
@@ -342,7 +342,7 @@ export function BoxMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Cân vỏ thùng (lb)
+                  Empty weight (lb)
                 </label>
                 <input
                   type="number"
@@ -372,8 +372,8 @@ export function BoxMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
-              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Đang tạo..." : "Tạo"}</button>
+              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Cancel</button>
+              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Creating..." : "Create"}</button>
             </div>
           </div>
         </div>
@@ -394,7 +394,7 @@ export function BoxMasterTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-white mb-4">
-              Sửa Box <span style={{ color: "var(--accent)" }}>{editing.code}</span>
+              Edit Box <span style={{ color: "var(--accent)" }}>{editing.code}</span>
             </h3>
 
             <div className="space-y-3">
@@ -403,7 +403,7 @@ export function BoxMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Tên thùng
+                  Box Name
                 </label>
                 <input
                   type="text"
@@ -421,7 +421,7 @@ export function BoxMasterTab() {
                     className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Dài
+                    L
                   </label>
                   <input
                     type="number"
@@ -438,7 +438,7 @@ export function BoxMasterTab() {
                     className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Rộng
+                    W
                   </label>
                   <input
                     type="number"
@@ -455,7 +455,7 @@ export function BoxMasterTab() {
                     className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Cao
+                    H
                   </label>
                   <input
                     type="number"
@@ -474,7 +474,7 @@ export function BoxMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Cân vỏ thùng (lb)
+                  Empty weight (lb)
                 </label>
                 <input
                   type="number"
@@ -504,8 +504,8 @@ export function BoxMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
-              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Đang lưu..." : "Lưu"}</button>
+              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Cancel</button>
+              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Saving..." : "Save"}</button>
             </div>
           </div>
         </div>

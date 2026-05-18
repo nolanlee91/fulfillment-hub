@@ -20,26 +20,26 @@ export type AttentionReason =
 export type PaymentMethod = "PREPAID" | "COD";
 
 const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  NEW: "Mới",
-  READY: "Sẵn sàng",
-  ERROR: "Lỗi",
-  ERROR_UPDATED: "Lỗi đã sửa",
-  EXPORTED: "Đã xuất batch",
-  LABEL_CREATED: "Có label",
-  IN_TRANSIT: "Đang giao",
-  DELIVERED: "Đã giao",
-  FAILED: "Thất bại",
+  NEW: "New",
+  READY: "Ready",
+  ERROR: "Error",
+  ERROR_UPDATED: "Updated",
+  EXPORTED: "Exported",
+  LABEL_CREATED: "Label Created",
+  IN_TRANSIT: "In Transit",
+  DELIVERED: "Delivered",
+  FAILED: "Failed",
 };
 
 const ATTENTION_LABEL: Record<AttentionReason, string> = {
-  ADDRESS_ERROR: "Sai địa chỉ",
-  DELAYED: "Delay",
-  NOTICE_CARD: "Notice card",
-  STUCK: "Không cập nhật",
+  ADDRESS_ERROR: "Address Error",
+  DELAYED: "Delayed",
+  NOTICE_CARD: "Notice Card",
+  STUCK: "No Updates",
 };
 
 const PAYMENT_LABEL: Record<PaymentMethod, string> = {
-  PREPAID: "Trả trước",
+  PREPAID: "Prepaid",
   COD: "COD",
 };
 

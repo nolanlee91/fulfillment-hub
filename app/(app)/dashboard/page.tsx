@@ -169,7 +169,7 @@ async function getDashboardData() {
       else flagCounts.resolved = c;
     }
   } catch {
-    // Bảng flags chưa tồn tại (chưa chạy migration) — trả 0 để dashboard không vỡ
+    // flags table does not exist yet (migration not run) — return 0 so dashboard doesn't break
   }
 
   return {
@@ -506,17 +506,17 @@ function timeAgo(date: Date | null): string {
   if (!date) return "—";
   const now = Date.now();
   const diff = Math.floor((now - new Date(date).getTime()) / 1000);
-  if (diff < 60) return `${diff}s trước`;
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-  return `${Math.floor(diff / 86400)} ngày trước`;
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)} day(s) ago`;
 }
 
 const ATTENTION_LABELS: Record<string, string> = {
-  ADDRESS_ERROR: "Sai địa chỉ",
-  DELAYED: "Delay",
+  ADDRESS_ERROR: "Wrong address",
+  DELAYED: "Delayed",
   NOTICE_CARD: "Notice card",
-  STUCK: "Không cập nhật",
+  STUCK: "No updates",
 };
 
 export default async function DashboardPage() {
@@ -532,42 +532,42 @@ export default async function DashboardPage() {
     <>
       <Topbar
         title="Dashboard"
-        subtitle="Tổng quan vận hành"
-        description="Theo dõi đơn hàng, batch và pipeline xử lý real-time."
+        subtitle="Overview"
+        description="Track orders, batches and the processing pipeline in real-time."
       />
 
       {/* === KPI strip — 6 cards compact, clickable === */}
       <div className="grid grid-cols-6 gap-3 mb-3">
         <KpiCard
-          label="Đang xử lý"
+          label="In Progress"
           value={inProgress}
           icon="pending_actions"
           accent="var(--color-info)"
           href="/orders"
-          subInfo={{ label: `tổng ${stats.total} đơn`, value: `${inProgressRate}%` }}
+          subInfo={{ label: `of ${stats.total} total orders`, value: `${inProgressRate}%` }}
         />
         <KpiCard
-          label="Sẵn sàng đóng gói"
+          label="Ready to Pack"
           value={stats.ready}
           icon="inventory_2"
           accent="var(--accent)"
           href="/orders?status=READY"
           subInfo={
             stats.new > 0
-              ? { label: "đơn mới chờ validate", value: stats.new }
-              : { label: "tất cả đã validate", value: "✓" }
+              ? { label: "new orders pending validation", value: stats.new }
+              : { label: "all validated", value: "✓" }
           }
         />
         <KpiCard
-          label="Đã giao"
+          label="Delivered"
           value={stats.delivered}
           icon="task_alt"
           accent="var(--color-teal)"
           href="/delivered"
-          subInfo={{ label: `giao thành công trên ${stats.total} đơn`, value: `${deliveryRate}%` }}
+          subInfo={{ label: `delivery rate of ${stats.total} orders`, value: `${deliveryRate}%` }}
         />
         <KpiCard
-          label="Cần chú ý"
+          label="Needs Attention"
           value={attention.total}
           icon="priority_high"
           accent="var(--color-pink)"
@@ -575,7 +575,7 @@ export default async function DashboardPage() {
           subInfo={
             attention.total > 0
               ? {
-                  label: "đơn đang flag",
+                  label: "orders flagged",
                   value: [
                     attention.noticeCard ? `${attention.noticeCard} notice` : null,
                     attention.addressError ? `${attention.addressError} address` : null,
@@ -585,28 +585,28 @@ export default async function DashboardPage() {
                     .filter(Boolean)
                     .join(" · ") || "—",
                 }
-              : { label: "không có đơn cần chú ý", value: "✓" }
+              : { label: "no orders need attention", value: "✓" }
           }
         />
         <KpiCard
-          label="Đơn cờ đỏ"
+          label="Red Flag Orders"
           value={flagCounts.red}
           icon="flag"
           accent="#ef4444"
           href="/flags?filter=red"
           subInfo={{
-            label: flagCounts.red > 0 ? "đơn KDE vừa nhắn" : "không có đơn",
+            label: flagCounts.red > 0 ? "KDE just messaged" : "no orders",
             value: flagCounts.red > 0 ? "!" : "✓",
           }}
         />
         <KpiCard
-          label="Đơn cờ vàng"
+          label="Yellow Flag Orders"
           value={flagCounts.yellow}
           icon="flag"
           accent="#f59e0b"
           href="/flags?filter=yellow"
           subInfo={{
-            label: flagCounts.yellow > 0 ? "khách đang chờ" : "không có đơn",
+            label: flagCounts.yellow > 0 ? "customer waiting" : "no orders",
             value: flagCounts.yellow > 0 ? "!" : "✓",
           }}
         />
@@ -620,48 +620,48 @@ export default async function DashboardPage() {
               className="text-[10px] font-bold tracking-[0.14em] uppercase mb-1"
               style={{ color: "var(--text-muted)" }}
             >
-              Luồng xử lý đơn
+              Order Processing Flow
             </p>
-            <h3 className="text-sm font-semibold text-white">Pipeline trạng thái</h3>
+            <h3 className="text-sm font-semibold text-white">Status Pipeline</h3>
           </div>
           <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
             <span className="live-dot" />
-            <span>Cập nhật real-time</span>
+            <span>Live updates</span>
           </div>
         </div>
         <div className="flex items-center justify-between overflow-x-auto pb-2 gap-1">
-          <PipelineBox label={["Data khách", "Google Sheet"]} />
-          <PipelineArrow caption="Đồng bộ" width={88} />
-          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Sẵn sàng" color="#4ade80" />
+          <PipelineBox label={["Customer Data", "Google Sheets"]} />
+          <PipelineArrow caption="Sync" width={88} />
+          <PipelineBox count={stats.new + stats.ready + stats.errorUpdated} label="Ready" color="#4ade80" />
           <PipelineArrow
-            captionAbove="Tạo Batch"
-            caption="Xuất file upload lên ClickShip & EST"
+            captionAbove="Create Batch"
+            caption="Export file to upload to ClickShip & EST"
           />
           <BranchFork
             top={{ count: stats.exportedClickship, label: "ClickShip", color: "#4ade80" }}
             bottom={{ count: stats.exportedEst, label: "EST", color: "#fbbf24" }}
-            belowLabel={["Đã upload", "chờ label"]}
+            belowLabel={["Uploaded", "awaiting label"]}
           />
           <PipelineArrow
-            captionAbove="Download label từ ClickShip/EST"
-            caption="Tải label về máy"
+            captionAbove="Download label from ClickShip/EST"
+            caption="Save label to device"
           />
           <PipelineBox label="Label Downloaded" />
           <PipelineArrow
-            captionAbove="Upload label lên KDE-app"
-            caption="Đối soát vận chuyển"
+            captionAbove="Upload label to KDE-app"
+            caption="Shipping reconciliation"
           />
           <PipelineBox
             count={stats.labeled + stats.inTransit}
-            label={["Đơn cần", "xử lý"]}
+            label={["Orders to", "process"]}
             color="#60a5fa"
           />
           <BranchFork
-            top={{ count: stats.labeled, label: "Có label", color: "#a78bfa" }}
-            bottom={{ count: stats.inTransit, label: "Đang vận chuyển", color: "#38bdf8", pulse: true }}
+            top={{ count: stats.labeled, label: "Labeled", color: "#a78bfa" }}
+            bottom={{ count: stats.inTransit, label: "In Transit", color: "#38bdf8", pulse: true }}
             bottomSpur={
               attention.total > 0
-                ? { count: attention.total, label: "Cần chú ý", color: "#f472b6", pulse: true }
+                ? { count: attention.total, label: "Needs Attention", color: "#f472b6", pulse: true }
                 : undefined
             }
           />
@@ -682,7 +682,7 @@ export default async function DashboardPage() {
                 <span style={{ color: "var(--color-danger)", fontWeight: 600 }}>
                   {stats.error}
                 </span>{" "}
-                đơn lỗi cần sửa
+                error orders need fixing
               </span>
             </div>
           </div>
@@ -699,18 +699,18 @@ export default async function DashboardPage() {
                 className="text-[10px] font-bold tracking-[0.14em] uppercase mb-1"
                 style={{ color: "var(--text-muted)" }}
               >
-                Hoạt động gần đây
+                Recent Activity
               </p>
-              <h3 className="text-sm font-semibold text-white">Batch mới nhất</h3>
+              <h3 className="text-sm font-semibold text-white">Latest Batches</h3>
             </div>
             <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-              {stats.batches} batch tổng
+              {stats.batches} batches total
             </span>
           </div>
 
           {recentBatches.length === 0 ? (
             <p className="text-xs py-6 text-center" style={{ color: "var(--text-muted)" }}>
-              Chưa có batch nào.
+              No batches yet.
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -742,7 +742,7 @@ export default async function DashboardPage() {
                         {b.id}
                       </p>
                       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        {b.totalOrders} đơn
+                        {b.totalOrders} orders
                         {b.platform && (
                           <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider"
                             style={{
@@ -760,7 +760,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {b.exportedAt ? "Đã upload" : "Đang dựng"}
+                      {b.exportedAt ? "Uploaded" : "Building"}
                     </p>
                     <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                       {timeAgo(b.exportedAt ?? b.createdAt)}
@@ -791,11 +791,11 @@ export default async function DashboardPage() {
             <ActivityRow
               icon="cloud_sync"
               iconColor="var(--color-info)"
-              title="Đồng bộ Google Sheets"
+              title="Sync Google Sheets"
               detail={
                 lastSync
-                  ? `+${lastSync.totalAdded} mới · ${lastSync.totalErrors} lỗi`
-                  : "Chưa chạy lần nào"
+                  ? `+${lastSync.totalAdded} new · ${lastSync.totalErrors} errors`
+                  : "Never run"
               }
               time={timeAgo(lastSync?.completedAt ?? lastSync?.startedAt ?? null)}
             />
@@ -805,8 +805,8 @@ export default async function DashboardPage() {
               title="Pull tracking events"
               detail={
                 recentPulls[0]
-                  ? `+${recentPulls[0].totalUpdated} đơn cập nhật`
-                  : "Chưa có file"
+                  ? `+${recentPulls[0].totalUpdated} orders updated`
+                  : "No files yet"
               }
               time={timeAgo(recentPulls[0]?.processedAt ?? null)}
             />
@@ -818,11 +818,11 @@ export default async function DashboardPage() {
                 className="text-[10px] font-bold tracking-widest uppercase mb-2"
                 style={{ color: "var(--text-muted)" }}
               >
-                Đơn vừa flag
+                Recently Flagged
               </p>
               {recentAttention.length === 0 ? (
                 <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                  Không có flag mới.
+                  No new flags.
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -861,29 +861,29 @@ export default async function DashboardPage() {
             >
               Tracking ingest
             </p>
-            <h3 className="text-sm font-semibold text-white">Pull file gần nhất</h3>
+            <h3 className="text-sm font-semibold text-white">Recent File Pulls</h3>
           </div>
           <div className="text-right text-xs" style={{ color: "var(--text-muted)" }}>
             <p>
               <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
                 {aptFiles.total}
               </span>{" "}
-              file · từ{" "}
+              files · from{" "}
               <span style={{ color: "var(--text-secondary)" }}>
                 {parseAptFileDate(aptFiles.oldest)}
               </span>{" "}
-              đến{" "}
+              to{" "}
               <span style={{ color: "var(--text-secondary)" }}>
                 {parseAptFileDate(aptFiles.newest)}
               </span>
             </p>
-            <p className="text-[10px] mt-0.5">Cron 15 phút/lần</p>
+            <p className="text-[10px] mt-0.5">Cron every 15 min</p>
           </div>
         </div>
 
         {recentPulls.length === 0 ? (
           <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
-            Chưa có file nào được pull.
+            No files have been pulled yet.
           </p>
         ) : (
           <div className="grid grid-cols-4 gap-2">

@@ -144,7 +144,7 @@ export function OrderDrawer({
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-tertiary)] shrink-0 ml-3"
             style={{ color: "var(--text-muted)" }}
-            aria-label="Đóng"
+            aria-label="Close"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
@@ -153,20 +153,20 @@ export function OrderDrawer({
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
 
-          <SectionLabel>Người nhận</SectionLabel>
-          <DrawerRow label="Tên">{order.name || "—"}</DrawerRow>
-          <DrawerRow label="Địa chỉ">{fullAddress || "—"}</DrawerRow>
+          <SectionLabel>Recipient</SectionLabel>
+          <DrawerRow label="Name">{order.name || "—"}</DrawerRow>
+          <DrawerRow label="Address">{fullAddress || "—"}</DrawerRow>
           <DrawerRow label="Phone">
             <span className="font-mono">{order.phone || "—"}</span>
           </DrawerRow>
 
-          <SectionLabel>Đơn hàng</SectionLabel>
-          {isAdmin && <DrawerRow label="Khách">{order.customerId}</DrawerRow>}
-          <DrawerRow label="Sản phẩm">{order.productName}</DrawerRow>
-          <DrawerRow label="Số lượng">
+          <SectionLabel>Order</SectionLabel>
+          {isAdmin && <DrawerRow label="Customer">{order.customerId}</DrawerRow>}
+          <DrawerRow label="Product">{order.productName}</DrawerRow>
+          <DrawerRow label="Quantity">
             <span className="font-mono font-bold">{order.quantity}</span>
           </DrawerRow>
-          <DrawerRow label="Thanh toán">
+          <DrawerRow label="Payment">
             <span className="inline-flex items-center gap-2">
               <PaymentBadge method={order.paymentMethod} />
               {order.paymentMethod === "COD" && order.codAmount && (
@@ -176,13 +176,13 @@ export function OrderDrawer({
               )}
             </span>
           </DrawerRow>
-          {order.note && <DrawerRow label="Ghi chú">{order.note}</DrawerRow>}
+          {order.note && <DrawerRow label="Note">{order.note}</DrawerRow>}
 
           {/* Tracking — luôn hiển thị nếu có */}
           {trackingUrl && (
             <>
               <SectionLabel>Tracking</SectionLabel>
-              <DrawerRow label="Số tracking">
+              <DrawerRow label="Tracking No.">
                 <a
                   href={trackingUrl}
                   target="_blank"
@@ -200,7 +200,7 @@ export function OrderDrawer({
           {/* Vận hành (admin) — box + batch, chỉ khi có */}
           {hasOpsSection && (
             <>
-              <SectionLabel>Vận hành</SectionLabel>
+              <SectionLabel>Operations</SectionLabel>
               <DrawerRow label="Box">
                 {order.boxCode ? (
                   <span
@@ -224,13 +224,13 @@ export function OrderDrawer({
           {/* Giao hàng thành công */}
           {order.deliveredAt && (
             <>
-              <SectionLabel>Giao hàng</SectionLabel>
+              <SectionLabel>Delivery</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed flex items-center gap-2"
                 style={{ background: "rgba(74,222,128,0.07)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.14)" }}
               >
                 <span className="material-symbols-outlined text-[15px]">check_circle</span>
-                Giao thành công lúc {fmtDate(order.deliveredAt)}
+                Delivered at {fmtDate(order.deliveredAt)}
               </div>
             </>
           )}
@@ -238,7 +238,7 @@ export function OrderDrawer({
           {/* Thất bại / trả về — chỉ show khi status là FAILED hoặc không có status (trang failed) */}
           {(!order.status || order.status === "FAILED") && order.lastTrackingEvent && (
             <>
-              <SectionLabel>Lý do thất bại</SectionLabel>
+              <SectionLabel>Failure Reason</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed"
                 style={{ background: "rgba(249,115,22,0.08)", color: "#fb923c", border: "1px solid rgba(249,115,22,0.2)" }}
@@ -254,7 +254,7 @@ export function OrderDrawer({
           {/* Lỗi dữ liệu */}
           {order.errorNote && (
             <>
-              <SectionLabel>Lỗi dữ liệu</SectionLabel>
+              <SectionLabel>Data Error</SectionLabel>
               <div
                 className="rounded-lg p-3 text-[12px] leading-relaxed"
                 style={{ background: "rgba(239,68,68,0.08)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.2)" }}
@@ -267,7 +267,7 @@ export function OrderDrawer({
           {/* Cần chú ý */}
           {order.attentionReason && (order.attentionNote || order.attentionAt) && (
             <>
-              <SectionLabel>Cần chú ý</SectionLabel>
+              <SectionLabel>Attention</SectionLabel>
               {order.attentionNote && (
                 <div
                   className="rounded-lg p-3 text-[12px] leading-relaxed"
@@ -278,7 +278,7 @@ export function OrderDrawer({
               )}
               {order.attentionAt && (
                 <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>
-                  Ghi nhận lúc {fmtDate(order.attentionAt)}
+                  Flagged at {fmtDate(order.attentionAt)}
                 </p>
               )}
             </>

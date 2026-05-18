@@ -8,8 +8,8 @@ type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
 const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: "Super Admin",
-  STAFF: "Nhân viên",
-  CUSTOMER: "Khách hàng",
+  STAFF: "Staff",
+  CUSTOMER: "Customer",
 };
 
 export default function AccountClient({
@@ -32,19 +32,19 @@ export default function AccountClient({
   async function submit() {
     setMessage(null);
     if (!currentPassword) {
-      setMessage({ text: "Nhập mật khẩu hiện tại", type: "error" });
+      setMessage({ text: "Please enter your current password", type: "error" });
       return;
     }
     if (newPassword.length < 8) {
-      setMessage({ text: "Mật khẩu mới phải >= 8 ký tự", type: "error" });
+      setMessage({ text: "New password must be at least 8 characters", type: "error" });
       return;
     }
     if (newPassword !== confirm) {
-      setMessage({ text: "Xác nhận mật khẩu không khớp", type: "error" });
+      setMessage({ text: "Password confirmation does not match", type: "error" });
       return;
     }
     if (newPassword === currentPassword) {
-      setMessage({ text: "Mật khẩu mới phải khác mật khẩu hiện tại", type: "error" });
+      setMessage({ text: "New password must be different from the current password", type: "error" });
       return;
     }
     setSaving(true);
@@ -57,14 +57,14 @@ export default function AccountClient({
       const data = await res.json();
       if (data.success) {
         setMessage({
-          text: "Đã đổi mật khẩu. Các thiết bị khác sẽ bị đăng xuất.",
+          text: "Password changed. Other devices will be signed out.",
           type: "success",
         });
         setCurrentPassword("");
         setNewPassword("");
         setConfirm("");
       } else {
-        setMessage({ text: data.error || "Lỗi đổi mật khẩu", type: "error" });
+        setMessage({ text: data.error || "Failed to change password", type: "error" });
       }
     } catch (e) {
       setMessage({ text: (e as Error).message, type: "error" });
@@ -75,7 +75,7 @@ export default function AccountClient({
 
   return (
     <>
-      <Topbar title="Tài khoản của tôi" subtitle="Cá nhân" showSync={false} />
+      <Topbar title="My Account" subtitle="Profile" showSync={false} />
 
       <div className="max-w-2xl space-y-6">
         <Card padding="lg">
@@ -83,12 +83,12 @@ export default function AccountClient({
             className="text-[11px] font-bold tracking-widest uppercase mb-4"
             style={{ color: "var(--text-muted)" }}
           >
-            Thông tin tài khoản
+            Account Information
           </h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-            <InfoRow label="Tên hiển thị" value={name} />
+            <InfoRow label="Display Name" value={name} />
             <InfoRow label="Username" value={<span className="font-mono">{username}</span>} />
-            <InfoRow label="Vai trò" value={ROLE_LABEL[role]} />
+            <InfoRow label="Role" value={ROLE_LABEL[role]} />
           </div>
         </Card>
 
@@ -97,26 +97,26 @@ export default function AccountClient({
             className="text-[11px] font-bold tracking-widest uppercase mb-4"
             style={{ color: "var(--text-muted)" }}
           >
-            Đổi mật khẩu
+            Change Password
           </h3>
 
           <div className="space-y-3">
             <PasswordField
-              label="Mật khẩu hiện tại"
+              label="Current Password"
               value={currentPassword}
               onChange={setCurrentPassword}
               show={showCurrent}
               onToggle={() => setShowCurrent(!showCurrent)}
             />
             <PasswordField
-              label="Mật khẩu mới (>= 8 ký tự)"
+              label="New Password (>= 8 characters)"
               value={newPassword}
               onChange={setNewPassword}
               show={showNew}
               onToggle={() => setShowNew(!showNew)}
             />
             <PasswordField
-              label="Xác nhận mật khẩu mới"
+              label="Confirm New Password"
               value={confirm}
               onChange={setConfirm}
               show={showNew}
@@ -146,7 +146,7 @@ export default function AccountClient({
               onClick={submit}
               disabled={saving}
             >
-              {saving ? "Đang đổi..." : "Đổi mật khẩu"}
+              {saving ? "Saving..." : "Change Password"}
             </Button>
           </div>
         </Card>
@@ -207,7 +207,7 @@ function PasswordField({
           type="button"
           onClick={onToggle}
           className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded transition-colors hover:bg-[var(--bg-tertiary)]"
-          title={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+          title={show ? "Hide password" : "Show password"}
           tabIndex={-1}
         >
           <span

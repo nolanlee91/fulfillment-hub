@@ -40,14 +40,14 @@ export default function ImportTrackingPage() {
 
   return (
     <>
-      <Topbar title="Đối soát vận chuyển" subtitle="Quản lý" />
+      <Topbar title="Shipping Reconciliation" subtitle="Operations" />
 
       <Card padding="none" className="mb-4 overflow-hidden flex">
         <TabButton active={tab === "label"} onClick={() => setTab("label")}>
-          Tạo label
+          Create Label
         </TabButton>
         <TabButton active={tab === "events"} onClick={() => setTab("events")}>
-          Sự kiện vận chuyển (APT)
+          Shipping Events (APT)
         </TabButton>
       </Card>
 
@@ -81,7 +81,7 @@ function TabButton({
 }
 
 // ============================================================================
-// Tab 1: Import file Excel để cập nhật label cho batch (flow hiện tại)
+// Tab 1: Import Excel file to update labels for batch (current flow)
 // ============================================================================
 function LabelTab() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -138,10 +138,10 @@ function LabelTab() {
     <>
       <Card padding="lg" className="mb-4">
         <h3 className="font-bold text-lg text-white mb-1">
-          Upload file kết quả tạo label
+          Upload label result file
         </h3>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-          Chọn batch đã xuất, upload file kết quả tương ứng để cập nhật tracking và phát hiện đơn không tạo được label.
+          Select the exported batch and upload the corresponding result file to update tracking and detect orders that failed label creation.
         </p>
 
         <label
@@ -156,27 +156,27 @@ function LabelTab() {
           className="w-full px-3 py-2.5 rounded text-sm mb-1"
           disabled={importing}
         >
-          {batches.length === 0 && <option>Chưa có batch nào</option>}
+          {batches.length === 0 && <option>No batches yet</option>}
           {batches.map((b) => {
             const tag =
               b.platform === "EST"
                 ? "COD · CSV"
                 : b.platform === "CLICKSHIP"
-                  ? "Thường · Excel"
-                  : "Thường · Excel";
+                  ? "Standard · Excel"
+                  : "Standard · Excel";
             return (
               <option key={b.id} value={b.id}>
-                {b.id} ({b.totalOrders} đơn · {tag})
+                {b.id} ({b.totalOrders} orders · {tag})
               </option>
             );
           })}
         </select>
         {selectedBatchInfo && (
           <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-            {selectedBatchInfo.totalOrders} đơn —{" "}
+            {selectedBatchInfo.totalOrders} orders —{" "}
             {selectedBatchInfo.platform === "EST"
-              ? "Batch COD, expect file CSV trả về"
-              : "Batch thường, expect file Excel trả về"}
+              ? "COD batch, expecting CSV file back"
+              : "Standard batch, expecting Excel file back"}
           </p>
         )}
 
@@ -200,7 +200,7 @@ function LabelTab() {
         />
         {file && (
           <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
-            Đã chọn: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
+            Selected: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
           </p>
         )}
 
@@ -211,7 +211,7 @@ function LabelTab() {
           disabled={!file || !selectedBatch || importing}
           className="mt-5"
         >
-          {importing ? "Đang xử lý..." : "Import label"}
+          {importing ? "Processing..." : "Import Labels"}
         </Button>
 
         {error && (
@@ -229,12 +229,12 @@ function LabelTab() {
 
       {result && (
         <Card padding="lg">
-          <h3 className="font-bold text-lg text-white mb-4">Kết quả import</h3>
+          <h3 className="font-bold text-lg text-white mb-4">Import Results</h3>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <ResultCard label="Có tracking" value={result.matched} accent="emerald" hint="Đơn được xác nhận" />
-            <ResultCard label="Bị từ chối" value={result.rejected} accent="red" hint="Không tạo được label → ERROR" />
-            <ResultCard label="Không thuộc batch" value={result.notInBatch} accent="slate" hint="Trong file nhưng không khớp batch" />
+            <ResultCard label="Tracked" value={result.matched} accent="emerald" hint="Orders confirmed" />
+            <ResultCard label="Rejected" value={result.rejected} accent="red" hint="Label creation failed → ERROR" />
+            <ResultCard label="Not in batch" value={result.notInBatch} accent="slate" hint="In file but not matched to batch" />
           </div>
 
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -247,7 +247,7 @@ function LabelTab() {
 }
 
 // ============================================================================
-// Tab 2: Upload file APT → cập nhật trạng thái vận chuyển
+// Tab 2: Upload APT file → update shipping status
 // ============================================================================
 function EventsTab() {
   const [file, setFile] = useState<File | null>(null);
@@ -287,10 +287,10 @@ function EventsTab() {
     <>
       <Card padding="lg" className="mb-4">
         <h3 className="font-bold text-lg text-white mb-1">
-          Upload file sự kiện vận chuyển
+          Upload shipping events file
         </h3>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-          Upload file APT (.csv pipe-delimited) từ đối tác vận chuyển để cập nhật trạng thái: đang giao, đã giao, thất bại. File trùng tên đã xử lý sẽ bị từ chối.
+          Upload APT file (.csv pipe-delimited) from the shipping partner to update statuses: in transit, delivered, failed. Duplicate filenames already processed will be rejected.
         </p>
 
         <label
@@ -313,7 +313,7 @@ function EventsTab() {
         />
         {file && (
           <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
-            Đã chọn: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
+            Selected: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
           </p>
         )}
 
@@ -324,7 +324,7 @@ function EventsTab() {
           disabled={!file || importing}
           className="mt-5"
         >
-          {importing ? "Đang xử lý..." : "Cập nhật sự kiện"}
+          {importing ? "Processing..." : "Update Events"}
         </Button>
 
         {error && (
@@ -342,15 +342,15 @@ function EventsTab() {
 
       {result && (
         <Card padding="lg">
-          <h3 className="font-bold text-lg text-white mb-1">Kết quả xử lý</h3>
+          <h3 className="font-bold text-lg text-white mb-1">Processing Results</h3>
           <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-            File: <span className="font-mono">{result.filename}</span> • {result.totalEventsInFile} dòng • {result.totalTrackings} tracking unique
+            File: <span className="font-mono">{result.filename}</span> • {result.totalEventsInFile} rows • {result.totalTrackings} unique trackings
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <ResultCard label="Đã giao" value={result.byCategory.delivered} accent="teal" hint="Giao thành công" />
-            <ResultCard label="Đang vận chuyển" value={result.byCategory.inTransit} accent="sky" hint="Trên đường giao" />
-            <ResultCard label="Thất bại" value={result.byCategory.failed} accent="orange" hint="Trả về / không giao được" />
+            <ResultCard label="Delivered" value={result.byCategory.delivered} accent="teal" hint="Successfully delivered" />
+            <ResultCard label="In Transit" value={result.byCategory.inTransit} accent="sky" hint="On the way" />
+            <ResultCard label="Failed" value={result.byCategory.failed} accent="orange" hint="Returned / undeliverable" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
@@ -362,7 +362,7 @@ function EventsTab() {
               }}
             >
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Đơn match được trong DB
+                Orders matched in DB
               </p>
               <p className="text-2xl font-bold text-white">
                 {result.totalMatched}
@@ -379,7 +379,7 @@ function EventsTab() {
               }}
             >
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Đơn được cập nhật
+                Orders updated
               </p>
               <p className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
                 {result.totalUpdated}
@@ -401,7 +401,7 @@ function EventsTab() {
               }}
             >
               <p className="font-semibold mb-1">
-                {result.totalUnmatched} tracking trong file không match đơn nào trong DB. Mẫu:
+                {result.totalUnmatched} trackings in file did not match any order in DB. Samples:
               </p>
               <p className="font-mono text-[11px]">
                 {result.unmatchedSamples.join(", ")}

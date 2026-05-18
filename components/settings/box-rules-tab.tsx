@@ -63,7 +63,7 @@ export function BoxRulesTab() {
         if (data.success) {
           setMatrix((prev) => ({ ...prev, [key]: value }));
         } else {
-          alert("Lỗi: " + data.error);
+          alert("Error: " + data.error);
         }
       } finally {
         setSavingCell(null);
@@ -75,7 +75,7 @@ export function BoxRulesTab() {
   if (loading) {
     return (
       <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
-        Đang tải...
+        Loading...
       </div>
     );
   }
@@ -86,7 +86,7 @@ export function BoxRulesTab() {
         className="text-xs mb-4"
         style={{ color: "var(--text-muted)" }}
       >
-        Click vào ô để sửa số lượng tối đa. Lưu tự động khi rời ô.
+        Click a cell to edit the max quantity. Auto-saves on blur.
       </p>
 
       <div className="overflow-x-auto">
@@ -105,7 +105,7 @@ export function BoxRulesTab() {
                   minWidth: "180px",
                 }}
               >
-                Sản phẩm
+                Product
               </th>
               {boxes.map((b) => (
                 <th

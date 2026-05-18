@@ -49,7 +49,7 @@ export function CustomerMasterTab() {
   async function save() {
     if (!editing) return;
     if (!editing.name.trim()) {
-      alert("Vui lòng nhập Tên khách hàng");
+      alert("Please enter a customer name");
       return;
     }
     setSaving(true);
@@ -68,7 +68,7 @@ export function CustomerMasterTab() {
         setEditing(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -78,7 +78,7 @@ export function CustomerMasterTab() {
   async function create() {
     if (!creating) return;
     if (!creating.id.trim() || !creating.name.trim()) {
-      alert("Vui lòng nhập Mã và Tên khách hàng");
+      alert("Please enter both Customer ID and Name");
       return;
     }
     setSaving(true);
@@ -97,7 +97,7 @@ export function CustomerMasterTab() {
         setCreating(null);
         await load();
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Error: " + data.error);
       }
     } finally {
       setSaving(false);
@@ -107,7 +107,7 @@ export function CustomerMasterTab() {
   if (loading) {
     return (
       <div className="p-12 text-center" style={{ color: "var(--text-secondary)" }}>
-        Đang tải...
+        Loading...
       </div>
     );
   }
@@ -120,7 +120,7 @@ export function CustomerMasterTab() {
           className="btn btn-primary"
         >
           <span className="material-symbols-outlined text-[17px]">add</span>
-          Tạo Khách hàng
+          New Customer
         </button>
       </div>
 
@@ -129,16 +129,16 @@ export function CustomerMasterTab() {
           <thead>
             <tr>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Mã
+                ID
               </th>
               <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Tên
+                Name
               </th>
               <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                 Active
               </th>
               <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                Hành động
+                Actions
               </th>
             </tr>
           </thead>
@@ -190,7 +190,7 @@ export function CustomerMasterTab() {
                       color: "var(--accent)",
                     }}
                   >
-                    Sửa
+                    Edit
                   </button>
                 </td>
               </tr>
@@ -202,7 +202,7 @@ export function CustomerMasterTab() {
                   className="px-4 py-8 text-center text-sm"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Chưa có khách hàng nào
+                  No customers yet
                 </td>
               </tr>
             )}
@@ -224,7 +224,7 @@ export function CustomerMasterTab() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-4">Tạo Khách hàng mới</h3>
+            <h3 className="text-lg font-bold text-white mb-4">New Customer</h3>
 
             <div className="space-y-3">
               <div>
@@ -232,7 +232,7 @@ export function CustomerMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Mã khách hàng <span style={{ color: "var(--accent)" }}>*</span>
+                  Customer ID <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -243,14 +243,14 @@ export function CustomerMasterTab() {
                       id: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                     })
                   }
-                  placeholder="VD: venatureco, skylane"
+                  placeholder="e.g. venatureco, skylane"
                   className="w-full px-3 py-2 rounded text-sm font-mono"
                 />
                 <p
                   className="text-[10px] mt-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Chỉ a-z, 0-9, _ (không khoảng trắng, không hoa)
+                  Lowercase only: a-z, 0-9, _ (no spaces)
                 </p>
               </div>
 
@@ -259,7 +259,7 @@ export function CustomerMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Tên hiển thị <span style={{ color: "var(--accent)" }}>*</span>
+                  Display Name <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -267,7 +267,7 @@ export function CustomerMasterTab() {
                   onChange={(e) =>
                     setCreating({ ...creating, name: e.target.value })
                   }
-                  placeholder="VD: Venature Co"
+                  placeholder="e.g. Venature Co"
                   className="w-full px-3 py-2 rounded text-sm"
                 />
               </div>
@@ -289,8 +289,8 @@ export function CustomerMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
-              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Đang tạo..." : "Tạo"}</button>
+              <button onClick={() => setCreating(null)} disabled={saving} className="btn btn-secondary">Cancel</button>
+              <button onClick={create} disabled={saving} className="btn btn-primary">{saving ? "Creating..." : "Create"}</button>
             </div>
           </div>
         </div>
@@ -311,7 +311,7 @@ export function CustomerMasterTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-white mb-1">
-              Sửa khách hàng <span style={{ color: "var(--accent)" }}>{editing.id}</span>
+              Edit Customer <span style={{ color: "var(--accent)" }}>{editing.id}</span>
             </h3>
 
             <div className="space-y-3 mt-4">
@@ -320,7 +320,7 @@ export function CustomerMasterTab() {
                   className="text-[11px] font-bold tracking-widest uppercase block mb-1"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  Tên hiển thị
+                  Display Name
                 </label>
                 <input
                   type="text"
@@ -349,8 +349,8 @@ export function CustomerMasterTab() {
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Hủy</button>
-              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Đang lưu..." : "Lưu"}</button>
+              <button onClick={() => setEditing(null)} disabled={saving} className="btn btn-secondary">Cancel</button>
+              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? "Saving..." : "Save"}</button>
             </div>
           </div>
         </div>

@@ -19,7 +19,7 @@ interface NavSection {
 
 const sections: NavSection[] = [
   {
-    label: "Tổng quan",
+    label: "Overview",
     items: [
       {
         href: "/dashboard",
@@ -30,39 +30,39 @@ const sections: NavSection[] = [
     ],
   },
   {
-    label: "Quản lý",
+    label: "Operations",
     items: [
-      { href: "/orders", icon: "inventory_2", label: "Đơn đang xử lý" },
-      { href: "/flags", icon: "flag", label: "Đơn gắn cờ" },
-      { href: "/delivered", icon: "task_alt", label: "Đơn đã giao" },
-      { href: "/failed", icon: "assignment_return", label: "Đơn thất bại" },
+      { href: "/orders", icon: "inventory_2", label: "Active Orders" },
+      { href: "/flags", icon: "flag", label: "Flagged" },
+      { href: "/delivered", icon: "task_alt", label: "Delivered" },
+      { href: "/failed", icon: "assignment_return", label: "Failed" },
       {
         href: "/batches",
         icon: "package_2",
-        label: "Lô đóng gói",
+        label: "Batches",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
       {
         href: "/import-tracking",
         icon: "upload_file",
-        label: "Đối soát vận chuyển",
+        label: "Carrier Tracking",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
     ],
   },
   {
-    label: "Cài đặt",
+    label: "Settings",
     items: [
       {
         href: "/admin/users",
         icon: "manage_accounts",
-        label: "Tài khoản",
+        label: "Users",
         roles: ["SUPER_ADMIN"],
       },
       {
         href: "/settings",
         icon: "settings",
-        label: "Cấu hình",
+        label: "Configuration",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
     ],
@@ -71,8 +71,8 @@ const sections: NavSection[] = [
 
 const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: "Super Admin",
-  STAFF: "Nhân viên",
-  CUSTOMER: "Khách hàng",
+  STAFF: "Staff",
+  CUSTOMER: "Customer",
 };
 
 export function Sidebar({ user }: { user: CurrentUser }) {
@@ -197,7 +197,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         className="border-t pt-2 pb-2"
         style={{ borderColor: "var(--border)" }}
       >
-        <div className="sidebar-section-label">Cá nhân</div>
+        <div className="sidebar-section-label">Account</div>
         <Link
           href="/account"
           className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.025)]"
@@ -235,7 +235,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
           >
             account_circle
           </span>
-          Tài khoản của tôi
+          My Account
         </Link>
       </div>
 
@@ -270,7 +270,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            title="Đăng xuất"
+            title="Sign out"
             className="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--bg-tertiary)] shrink-0"
             style={{ color: "var(--text-muted)" }}
           >

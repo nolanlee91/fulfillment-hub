@@ -132,8 +132,8 @@ export default function FailedClient({ role }: { role: Role }) {
 
       const res = await fetch(`/api/orders/export?${params.toString()}`);
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Lỗi không xác định" }));
-        alert("Lỗi xuất file: " + (data.error || res.statusText));
+        const data = await res.json().catch(() => ({ error: "Unknown error" }));
+        alert("Export failed: " + (data.error || res.statusText));
         return;
       }
       const blob = await res.blob();
@@ -158,46 +158,46 @@ export default function FailedClient({ role }: { role: Role }) {
 
   return (
     <>
-      <Topbar title="Đơn thất bại" subtitle="Quản lý" showSync={!isCustomer} />
+      <Topbar title="Failed Orders" subtitle="Operations" showSync={!isCustomer} />
 
       <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} />
 
       {/* Filters */}
       <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>
         {!isCustomer && (
-          <FilterField label="Khách hàng">
+          <FilterField label="Customer">
             <select
               value={filterCustomer}
               onChange={(e) => { setFilterCustomer(e.target.value); setFilterProduct(""); }}
               className="filter-input"
             >
-              <option value="">Tất cả</option>
+              <option value="">All</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </FilterField>
         )}
-        <FilterField label="Sản phẩm">
+        <FilterField label="Product">
           <select value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} className="filter-input">
-            <option value="">Tất cả</option>
+            <option value="">All</option>
             {filteredProducts.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </FilterField>
-        <FilterField label="Thanh toán">
+        <FilterField label="Payment">
           <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)} className="filter-input">
-            <option value="">Tất cả</option>
-            <option value="PREPAID">Thường</option>
+            <option value="">All</option>
+            <option value="PREPAID">Prepaid</option>
             <option value="COD">COD</option>
           </select>
         </FilterField>
-        <FilterField label="Tìm kiếm" className="col-span-2">
+        <FilterField label="Search" className="col-span-2">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Order ID, Tên, Phone, Zipcode..."
+            placeholder="Order ID, Name, Phone, Zipcode..."
           />
         </FilterField>
       </FilterBar>
@@ -205,14 +205,14 @@ export default function FailedClient({ role }: { role: Role }) {
       {/* Counter */}
       <div className="action-bar">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          <span className="font-bold text-white">{orders.length}</span> đơn thất bại / trả về
+          <span className="font-bold text-white">{orders.length}</span> failed / returned orders
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
             <span className="material-symbols-outlined text-[16px]" style={{ color: "var(--color-orange)" }}>
               assignment_return
             </span>
-            <span>Đơn không giao được, đã trả về sender</span>
+            <span>Could not deliver, returned to sender</span>
           </div>
           <Button
             variant="secondary"
@@ -220,7 +220,7 @@ export default function FailedClient({ role }: { role: Role }) {
             onClick={exportFile}
             disabled={exporting || orders.length === 0}
           >
-            {exporting ? "Đang xuất..." : "Xuất file"}
+            {exporting ? "Exporting..." : "Export"}
           </Button>
         </div>
       </div>
@@ -228,24 +228,24 @@ export default function FailedClient({ role }: { role: Role }) {
       {/* Table */}
       <div className="table-shell">
         {loading ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>Đang tải...</div>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>Loading...</div>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>Chưa có đơn nào thất bại.</div>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--text-secondary)" }}>No failed orders.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="table-base">
               <thead>
                 <tr>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Order ID</th>
-                  {!isCustomer && <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Khách</th>}
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Sản phẩm</th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Tên</th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Địa chỉ</th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Số lượng</th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Thanh toán</th>
+                  {!isCustomer && <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Customer</th>}
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Product</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Name</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Address</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Qty</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Payment</th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Tracking</th>
-                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Lý do</th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Cờ</th>
+                  <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Reason</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Flag</th>
                 </tr>
               </thead>
               <tbody key={listKey}>
@@ -288,10 +288,10 @@ export default function FailedClient({ role }: { role: Role }) {
                     <td className="px-3 py-2 text-center font-mono">{o.quantity}</td>
                     <td
                       className="px-3 py-2 text-center"
-                      title={o.paymentMethod === "COD" ? `Thu hộ: ${o.codAmount ?? "?"}` : undefined}
+                      title={o.paymentMethod === "COD" ? `COD amount: ${o.codAmount ?? "?"}` : undefined}
                     >
                       <PaymentBadge method={o.paymentMethod}>
-                        {o.paymentMethod === "COD" ? "COD" : "Thường"}
+                        {o.paymentMethod === "COD" ? "COD" : "Prepaid"}
                       </PaymentBadge>
                     </td>
                     <td className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
