@@ -52,25 +52,23 @@ function LoginContent() {
       style={{ backgroundColor: "var(--bg-primary)" }}
     >
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center gap-2 mb-6">
-          <Image
-            src="/logo.png"
-            alt="KDExpress"
-            width={187}
-            height={92}
-            priority
-            className="h-14 w-auto"
-          />
-          <p
-            className="text-[10px] tracking-[0.12em] font-medium lowercase"
-            style={{ color: "var(--text-muted)" }}
-          >
-            fulfillment.hub
-          </p>
-        </div>
-
         <div className="card p-6">
-          <h2 className="text-sm font-semibold mb-4">Sign In</h2>
+          <div className="flex flex-col items-center gap-2 mb-6">
+            <Image
+              src="/logo.png"
+              alt="KDExpress"
+              width={187}
+              height={92}
+              priority
+              className="h-14 w-auto"
+            />
+            <p
+              className="text-[10px] tracking-[0.12em] font-medium lowercase"
+              style={{ color: "var(--text-muted)" }}
+            >
+              fulfillment.hub
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
