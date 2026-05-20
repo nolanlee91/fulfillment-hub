@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -113,37 +114,23 @@ export function Sidebar({ user }: { user: CurrentUser }) {
       }}
     >
       <div
-        className="px-5 py-5 border-b flex items-center gap-2.5"
+        className="px-5 py-5 border-b flex flex-col items-start gap-1"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <div
-          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-          style={{
-            background: "linear-gradient(135deg, #4ade80, #22c55e)",
-            boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)",
-          }}
+        <Image
+          src="/logo.png"
+          alt="KDExpress"
+          width={187}
+          height={92}
+          priority
+          className="h-9 w-auto"
+        />
+        <p
+          className="text-[10px] tracking-[0.12em] font-medium lowercase"
+          style={{ color: "var(--sidebar-text-muted)" }}
         >
-          <span
-            className="material-symbols-outlined text-[18px]"
-            style={{ color: "#052e16" }}
-          >
-            local_shipping
-          </span>
-        </div>
-        <div className="leading-tight">
-          <h1
-            className="text-[15px] font-bold tracking-tight"
-            style={{ color: "var(--sidebar-text)" }}
-          >
-            KDEXPRESS
-          </h1>
-          <p
-            className="text-[10px] mt-0.5 tracking-[0.12em] font-medium lowercase"
-            style={{ color: "var(--sidebar-text-muted)" }}
-          >
-            fulfillment.hub
-          </p>
-        </div>
+          fulfillment.hub
+        </p>
       </div>
 
       <nav className="flex-1 overflow-y-auto pb-4">

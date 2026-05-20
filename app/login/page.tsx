@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
@@ -51,35 +52,21 @@ function LoginContent() {
       style={{ backgroundColor: "var(--bg-primary)" }}
     >
       <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <div
-            className="w-11 h-11 rounded-md flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, #15803d, #22c55e)",
-              boxShadow: "0 2px 12px rgba(74, 222, 128, 0.25)",
-            }}
+        <div className="flex flex-col items-center gap-2 mb-6">
+          <Image
+            src="/logo.png"
+            alt="KDExpress"
+            width={187}
+            height={92}
+            priority
+            className="h-14 w-auto"
+          />
+          <p
+            className="text-[10px] tracking-[0.12em] font-medium lowercase"
+            style={{ color: "var(--text-muted)" }}
           >
-            <span
-              className="material-symbols-outlined text-[22px]"
-              style={{ color: "#052e16" }}
-            >
-              local_shipping
-            </span>
-          </div>
-          <div className="leading-tight">
-            <h1
-              className="text-lg font-bold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              KDEXPRESS
-            </h1>
-            <p
-              className="text-[10px] mt-0.5 tracking-[0.12em] font-medium lowercase"
-              style={{ color: "var(--text-muted)" }}
-            >
-              fulfillment.hub
-            </p>
-          </div>
+            fulfillment.hub
+          </p>
         </div>
 
         <div className="card p-6">
