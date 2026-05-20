@@ -50,8 +50,8 @@ export const config = {
      *   - /api/auth/*       (login/logout)
      *   - /_next/*          (Next.js assets)
      *   - /favicon.ico, /robots.txt, /sitemap.xml
-     *   - File static (chứa dấu chấm)
+     *   - File static (path chứa dấu chấm — logo.png, icon.png, ...)
      */
-    "/((?!api/cron|api/auth|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
+    "/((?!api/cron|api/auth|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|.*\\..*).*)",
   ],
 };
