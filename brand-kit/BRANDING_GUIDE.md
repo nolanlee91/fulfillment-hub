@@ -2,6 +2,12 @@
 
 Tài liệu này để áp dụng cho **mọi app KDExpress** (fulfillment, checkout, ...) khi cần update branding. Đã verified trên `fulfillment-hub` ngày 2026-05-20.
 
+> **Cách dùng cho app khác:** Folder `brand-kit/` chứa cặp file `BRANDING_GUIDE.md` + `logo.png` (master). Khi apply sang repo khác:
+> 1. Copy `logo.png` → `public/logo.png` của app đó (sidebar + login sẽ load từ đây)
+> 2. Copy `logo.png` → `app/icon.png` của app đó (Next.js auto thành favicon)
+> 3. Mở `BRANDING_GUIDE.md` này, làm theo Bước 2-4 ở dưới
+> 4. **Đừng quên check middleware matcher** — xem GOTCHA ở cuối file
+
 ## 4 chỗ cần thay
 
 | # | Vị trí | File | Hiệu ứng |
