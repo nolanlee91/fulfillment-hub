@@ -247,12 +247,13 @@ export const POST = withAuth(
       orderIdToInfo[o.orderId] = { uniqueKey: o.uniqueKey, status: o.status };
     }
 
-    // 3. Tách thành 4 nhóm (chỉ touch đơn EXPORTED, không bao giờ downgrade đơn đã LABEL_CREATED+):
-    //   - updates: trong file + status EXPORTED → set tracking + LABEL_CREATED
+    // 3. Tách thành 4 nhóm:
+    //   - updates: trong file + status EXPORTED hoặc ERROR → set tracking + LABEL_CREATED
+    //     (ERROR có thể là đơn fail label lần đầu, customer up file mới đã có tracking → cho phép phục hồi)
     //   - skippedAlreadyLabeled: trong file nhưng đã LABEL_CREATED/IN_TRANSIT/DELIVERED/FAILED → bỏ qua
     //   - notInBatch: trong file nhưng không thuộc batch này → bỏ qua
     //   - missingFromFile: trong batch + status EXPORTED nhưng không có trong file → ERROR (rejected)
-    //     (đơn missing đã LABEL_CREATED+ → bỏ qua, không downgrade)
+    //     (đơn missing đã LABEL_CREATED+ hoặc đã ERROR → bỏ qua, không downgrade/re-error)
     const matchedKeys: string[] = [];
     const skippedAlreadyLabeled: string[] = [];
     const notInBatch: string[] = [];
@@ -271,7 +272,7 @@ export const POST = withAuth(
         continue;
       }
       matchedKeys.push(info.uniqueKey);
-      if (info.status !== "EXPORTED") {
+      if (info.status !== "EXPORTED" && info.status !== "ERROR") {
         skippedAlreadyLabeled.push(info.uniqueKey);
         continue;
       }
@@ -290,7 +291,7 @@ export const POST = withAuth(
       .filter((o) => o.status === "EXPORTED")
       .map((o) => o.uniqueKey);
 
-    // 4. Update DB — đơn EXPORTED có tracking trong file → LABEL_CREATED
+    // 4. Update DB — đơn EXPORTED/ERROR có tracking trong file → LABEL_CREATED (+ clear errorNote)
     const now = new Date();
     for (const u of updates) {
       await db
@@ -301,6 +302,7 @@ export const POST = withAuth(
           trackingUrl: u.trackingUrl || null,
           shippingCarrier: u.shippingCarrier || null,
           shipDate: u.shipDate,
+          errorNote: null,
           updatedAt: now,
         })
         .where(eq(orders.uniqueKey, u.uniqueKey));
