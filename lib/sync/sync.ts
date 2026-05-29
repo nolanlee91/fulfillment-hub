@@ -30,6 +30,7 @@ function hasChanges(
 ): boolean {
   const fields: Array<[string, string]> = [
     [parsed.name || "", existing.name || ""],
+    [parsed.companyName || "", existing.companyName || ""],
     [parsed.addressLine1 || "", existing.addressLine1 || ""],
     [parsed.addressLine2 || "", existing.addressLine2 || ""],
     [parsed.city || "", existing.city || ""],

@@ -170,6 +170,7 @@ export async function parseSheet(
     }
 
     const name = String(row[cols.name] || "").trim();
+    const companyName = String(row[cols.company] || "").trim();
     const address1 = String(row[cols.address1] || "").trim();
     const city = String(row[cols.city] || "").trim();
     const zipcode = String(row[cols.zip] || "").trim();
@@ -186,6 +187,7 @@ export async function parseSheet(
     // Validate
     const missingFields: string[] = [];
     if (!name) missingFields.push("Name");
+    if (!companyName) missingFields.push("#COMPANYNAME");
     if (!address1) missingFields.push("#ADDRESSLINE1");
     if (!city) missingFields.push("City");
     if (!zipcode) missingFields.push("Zipcode");
@@ -206,7 +208,7 @@ export async function parseSheet(
       name,
       lastName: String(row[cols.lastName] || "").trim(),
       titleDept: String(row[cols.titleDept] || "").trim(),
-      companyName: String(row[cols.company] || "").trim(),
+      companyName,
       additionalAddressInfo: String(row[cols.addInfo] || "").trim(),
       addressLine1: address1,
       addressLine2: String(row[cols.address2] || "").trim(),
