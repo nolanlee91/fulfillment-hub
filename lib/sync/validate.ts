@@ -75,8 +75,9 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
   }> = [];
 
   for (const order of ordersToProcess) {
-    // Skip nếu đã có batch (extra safety)
-    if (order.batchId) {
+    // Skip nếu READY và đã có batch (đã đóng gói, không động lại)
+    // ERROR/ERROR_UPDATED giữ nguyên batchId từ batch fail trước → cần re-validate
+    if (order.batchId && order.status === "READY") {
       result.skipped++;
       continue;
     }
@@ -84,6 +85,7 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
     // Validate required fields
     const missingFields: string[] = [];
     if (!String(order.name || "").trim()) missingFields.push("Name");
+    if (!String(order.companyName || "").trim()) missingFields.push("#COMPANYNAME");
     if (!String(order.addressLine1 || "").trim()) missingFields.push("#ADDRESSLINE1");
     if (!String(order.city || "").trim()) missingFields.push("City");
     if (!String(order.zipcode || "").trim()) missingFields.push("Zipcode");
