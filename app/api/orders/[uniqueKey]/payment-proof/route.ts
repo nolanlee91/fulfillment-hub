@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
-import { buildProofKey, uploadObject } from "@/lib/storage/r2";
+import { buildProofKey, deleteObject, keyFromPublicUrl, uploadObject } from "@/lib/storage/r2";
 
 export const maxDuration = 60;
 
@@ -140,4 +140,66 @@ export const POST = withAuth(
     }
   },
   { roles: ["CUSTOMER"] },
+);
+
+/**
+ * DELETE /api/orders/[uniqueKey]/payment-proof
+ * STAFF/SUPER_ADMIN only — gỡ reconciliation của đơn (kể cả ETF ref hoặc proof image).
+ * Nếu có ảnh trong R2 → xóa luôn object. Clear tất cả 4 field reconciliation trong DB.
+ */
+export const DELETE = withAuth(
+  async (_req, _user, { params }: { params: Promise<{ uniqueKey: string }> }) => {
+    try {
+      const { uniqueKey } = await params;
+
+      const [order] = await db
+        .select({
+          uniqueKey: orders.uniqueKey,
+          paymentProofUrl: orders.paymentProofUrl,
+        })
+        .from(orders)
+        .where(eq(orders.uniqueKey, uniqueKey));
+
+      if (!order) {
+        return NextResponse.json(
+          { success: false, error: "Order not found" },
+          { status: 404 },
+        );
+      }
+
+      // Xóa R2 object nếu có (best-effort, không fail toàn request nếu R2 lỗi)
+      if (order.paymentProofUrl) {
+        const key = keyFromPublicUrl(order.paymentProofUrl);
+        if (key) {
+          try {
+            await deleteObject(key);
+          } catch (e) {
+            console.error("R2 delete failed (continuing):", e);
+          }
+        }
+      }
+
+      const now = new Date();
+      await db
+        .update(orders)
+        .set({
+          paymentType: null,
+          refNumber: null,
+          paymentProofUrl: null,
+          reconciledAt: null,
+          updatedAt: now,
+        })
+        .where(eq(orders.uniqueKey, uniqueKey));
+
+      return NextResponse.json({ success: true });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Payment proof delete error:", error);
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 },
+      );
+    }
+  },
+  { roles: ["STAFF", "SUPER_ADMIN"] },
 );

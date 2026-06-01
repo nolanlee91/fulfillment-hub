@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 /**
  * S3 client cho Cloudflare R2 (S3-compatible).
@@ -67,6 +67,25 @@ export async function uploadObject(
   );
 
   return `${getPublicBaseUrl()}/${key}`;
+}
+
+/**
+ * Xóa 1 object trong bucket. Không throw nếu key không tồn tại (R2 idempotent).
+ */
+export async function deleteObject(key: string): Promise<void> {
+  const client = getClient();
+  const bucket = getBucket();
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
+/**
+ * Convert public URL → key (để delete object).
+ * Vd: https://pub-xxx.r2.dev/proofs/skylane/abc.jpg → proofs/skylane/abc.jpg
+ */
+export function keyFromPublicUrl(url: string): string | null {
+  const base = getPublicBaseUrl();
+  if (!url.startsWith(base + "/")) return null;
+  return url.slice(base.length + 1);
 }
 
 /**

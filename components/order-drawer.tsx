@@ -98,9 +98,24 @@ function ReconciliationSection({
   const [paymentType, setPaymentType] = useState<"BANK_TRANSFER" | "CHEQUE" | "MONEY_ORDER">("BANK_TRANSFER");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Local override sau khi upload/delete trong drawer hiện tại — để view refresh ngay không cần F5/reopen. */
+  const [localState, setLocalState] = useState<{
+    paymentType: string | null;
+    paymentProofUrl: string | null;
+    refNumber: string | null;
+    reconciledAt: string | null;
+  } | null>(null);
 
-  const reconciled = !!(order.refNumber || order.paymentProofUrl || order.reconciledAt);
+  // Effective values: local override (nếu user vừa upload/delete) hoặc prop từ parent
+  const eff = localState ?? {
+    paymentType: order.paymentType ?? null,
+    paymentProofUrl: order.paymentProofUrl ?? null,
+    refNumber: order.refNumber ?? null,
+    reconciledAt: order.reconciledAt ?? null,
+  };
+  const reconciled = !!(eff.refNumber || eff.paymentProofUrl || eff.reconciledAt);
 
   async function runUpload() {
     if (!file) return;
@@ -117,6 +132,12 @@ function ReconciliationSection({
       const data = await res.json();
       if (data.success) {
         setFile(null);
+        setLocalState({
+          paymentType: data.paymentType,
+          paymentProofUrl: data.paymentProofUrl,
+          refNumber: null,
+          reconciledAt: data.reconciledAt,
+        });
         onUpdate?.();
       } else {
         setError(data.error || "Upload failed");
@@ -128,34 +149,62 @@ function ReconciliationSection({
     }
   }
 
+  async function runDelete() {
+    if (!confirm("Remove reconciliation for this order? Proof image will be deleted.")) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.uniqueKey)}/payment-proof`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLocalState({
+          paymentType: null,
+          paymentProofUrl: null,
+          refNumber: null,
+          reconciledAt: null,
+        });
+        onUpdate?.();
+      } else {
+        setError(data.error || "Delete failed");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   // Đã reconciled (qua ref file ETF, hoặc upload proof rồi) → read-only view
   if (reconciled) {
+    const isAdmin = role !== "CUSTOMER";
     return (
       <>
         <SectionLabel>Reconciliation</SectionLabel>
-        {order.refNumber && (
+        {eff.refNumber && (
           <DrawerRow label="Ref Number">
-            <span className="font-mono">{order.refNumber}</span>
-            {order.paymentType && (
+            <span className="font-mono">{eff.refNumber}</span>
+            {eff.paymentType && (
               <span
                 className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
                 style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
               >
-                {order.paymentType}
+                {eff.paymentType}
               </span>
             )}
           </DrawerRow>
         )}
-        {order.paymentProofUrl && (
+        {eff.paymentProofUrl && (
           <DrawerRow label="Proof">
             <a
-              href={order.paymentProofUrl}
+              href={eff.paymentProofUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 group"
             >
               <img
-                src={order.paymentProofUrl}
+                src={eff.paymentProofUrl}
                 alt="Payment proof"
                 className="h-16 w-16 object-cover rounded border"
                 style={{ borderColor: "var(--border)" }}
@@ -165,18 +214,40 @@ function ReconciliationSection({
                 <span className="material-symbols-outlined text-[13px]">open_in_new</span>
               </span>
             </a>
-            {order.paymentType && (
+            {eff.paymentType && (
               <span
                 className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
                 style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
               >
-                {order.paymentType}
+                {eff.paymentType}
               </span>
             )}
           </DrawerRow>
         )}
-        {order.reconciledAt && (
-          <DrawerRow label="Reconciled at">{fmtDate(order.reconciledAt)}</DrawerRow>
+        {eff.reconciledAt && (
+          <DrawerRow label="Reconciled at">{fmtDate(eff.reconciledAt)}</DrawerRow>
+        )}
+        {isAdmin && (
+          <div className="flex items-center gap-3 py-2.5">
+            <button
+              onClick={runDelete}
+              disabled={deleting}
+              className="px-3 py-1.5 rounded text-[12px] font-semibold transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+              style={{
+                backgroundColor: "rgba(220, 38, 38, 0.10)",
+                color: "#dc2626",
+                border: "1px solid rgba(220, 38, 38, 0.20)",
+              }}
+            >
+              <span className="material-symbols-outlined text-[14px]">delete</span>
+              {deleting ? "Removing..." : "Remove reconciliation"}
+            </button>
+            {error && (
+              <span className="text-[11px]" style={{ color: "#dc2626" }}>
+                {error}
+              </span>
+            )}
+          </div>
         )}
       </>
     );
