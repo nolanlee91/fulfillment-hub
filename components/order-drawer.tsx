@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   StatusBadge,
   AttentionBadge,
@@ -86,6 +86,166 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ReconciliationSection({
+  order,
+  role,
+  onUpdate,
+}: {
+  order: DrawerOrder;
+  role: Role;
+  onUpdate?: () => void;
+}) {
+  const [paymentType, setPaymentType] = useState<"BANK_TRANSFER" | "CHEQUE" | "MONEY_ORDER">("BANK_TRANSFER");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reconciled = !!(order.refNumber || order.paymentProofUrl || order.reconciledAt);
+
+  async function runUpload() {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("paymentType", paymentType);
+      fd.append("file", file);
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.uniqueKey)}/payment-proof`, {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFile(null);
+        onUpdate?.();
+      } else {
+        setError(data.error || "Upload failed");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // Đã reconciled (qua ref file ETF, hoặc upload proof rồi) → read-only view
+  if (reconciled) {
+    return (
+      <>
+        <SectionLabel>Reconciliation</SectionLabel>
+        {order.refNumber && (
+          <DrawerRow label="Ref Number">
+            <span className="font-mono">{order.refNumber}</span>
+            {order.paymentType && (
+              <span
+                className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+              >
+                {order.paymentType}
+              </span>
+            )}
+          </DrawerRow>
+        )}
+        {order.paymentProofUrl && (
+          <DrawerRow label="Proof">
+            <a
+              href={order.paymentProofUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 group"
+            >
+              <img
+                src={order.paymentProofUrl}
+                alt="Payment proof"
+                className="h-16 w-16 object-cover rounded border"
+                style={{ borderColor: "var(--border)" }}
+              />
+              <span className="tracking-link text-[12px]">
+                Open
+                <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+              </span>
+            </a>
+            {order.paymentType && (
+              <span
+                className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+              >
+                {order.paymentType}
+              </span>
+            )}
+          </DrawerRow>
+        )}
+        {order.reconciledAt && (
+          <DrawerRow label="Reconciled at">{fmtDate(order.reconciledAt)}</DrawerRow>
+        )}
+      </>
+    );
+  }
+
+  // Chưa reconciled — CUSTOMER thấy form upload
+  if (role === "CUSTOMER") {
+    return (
+      <>
+        <SectionLabel>Reconciliation</SectionLabel>
+        <div
+          className="rounded-lg p-3 mt-1 text-[12px] leading-relaxed"
+          style={{ background: "var(--bg-tertiary)", border: "1px solid var(--border)" }}
+        >
+          <p className="mb-3" style={{ color: "var(--text-secondary)" }}>
+            Upload a proof image for non-ETF payments (bank transfer, cheque, money order).
+            For ETF payments, use bulk upload on the <a className="tracking-link" href="/reconciliation">Reconciliation page</a>.
+          </p>
+
+          <label className="text-[10px] font-bold tracking-widest uppercase block mb-1" style={{ color: "var(--text-muted)" }}>
+            Payment type
+          </label>
+          <select
+            value={paymentType}
+            onChange={(e) => setPaymentType(e.target.value as "BANK_TRANSFER" | "CHEQUE" | "MONEY_ORDER")}
+            disabled={uploading}
+            className="w-full px-2 py-1.5 rounded text-[12px] mb-3"
+            style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border)" }}
+          >
+            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="CHEQUE">Cheque</option>
+            <option value="MONEY_ORDER">Money Order</option>
+          </select>
+
+          <label className="text-[10px] font-bold tracking-widest uppercase block mb-1" style={{ color: "var(--text-muted)" }}>
+            Image (JPG / PNG / WEBP, max 8 MB)
+          </label>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            disabled={uploading}
+            className="w-full px-2 py-1.5 rounded text-[12px] cursor-pointer mb-3"
+            style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border)" }}
+          />
+
+          <button
+            onClick={runUpload}
+            disabled={!file || uploading}
+            className="px-3 py-1.5 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+          >
+            {uploading ? "Uploading..." : "Upload proof"}
+          </button>
+
+          {error && (
+            <p className="mt-2 text-[11px]" style={{ color: "#dc2626" }}>
+              {error}
+            </p>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // STAFF/SUPER_ADMIN, chưa reconciled — không hiện gì (để section gọn cho phần kế toán xem)
+  return null;
+}
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString("vi-VN", {
     day: "2-digit", month: "2-digit", year: "numeric",
@@ -97,10 +257,13 @@ export function OrderDrawer({
   order,
   onClose,
   role,
+  onUpdate,
 }: {
   order: DrawerOrder | null;
   onClose: () => void;
   role: Role;
+  /** Gọi sau khi drawer thay đổi data (vd upload proof) — parent refetch */
+  onUpdate?: () => void;
 }) {
   const isAdmin = role !== "CUSTOMER";
 
@@ -268,48 +431,13 @@ export function OrderDrawer({
             </>
           )}
 
-          {/* Reconciliation (accounting) — show only for prepaid orders with ref/proof */}
-          {order.paymentMethod === "PREPAID" && (order.refNumber || order.paymentProofUrl || order.reconciledAt) && (
-            <>
-              <SectionLabel>Reconciliation</SectionLabel>
-              {order.refNumber && (
-                <DrawerRow label="Ref Number">
-                  <span className="font-mono">{order.refNumber}</span>
-                  {order.paymentType && (
-                    <span
-                      className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                      style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
-                    >
-                      {order.paymentType}
-                    </span>
-                  )}
-                </DrawerRow>
-              )}
-              {order.paymentProofUrl && (
-                <DrawerRow label="Proof">
-                  <a
-                    href={order.paymentProofUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="tracking-link"
-                  >
-                    View image
-                    <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                  </a>
-                  {order.paymentType && (
-                    <span
-                      className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                      style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
-                    >
-                      {order.paymentType}
-                    </span>
-                  )}
-                </DrawerRow>
-              )}
-              {order.reconciledAt && (
-                <DrawerRow label="Reconciled at">{fmtDate(order.reconciledAt)}</DrawerRow>
-              )}
-            </>
+          {/* Reconciliation — show for PREPAID orders. CUSTOMER thấy form upload nếu chưa reconcile */}
+          {order.paymentMethod === "PREPAID" && (
+            <ReconciliationSection
+              order={order}
+              role={role}
+              onUpdate={onUpdate}
+            />
           )}
 
           {/* Cần chú ý */}

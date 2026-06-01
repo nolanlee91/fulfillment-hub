@@ -494,6 +494,7 @@ function OrdersPageContent({ role }: { role: Role }) {
         order={drawerOrder}
         onClose={() => setDrawerOrder(null)}
         role={role}
+        onUpdate={loadOrders}
       />
 
       {/* Table */}

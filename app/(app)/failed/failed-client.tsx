@@ -164,7 +164,7 @@ export default function FailedClient({ role }: { role: Role }) {
     <>
       <Topbar title="Failed Orders" subtitle="Operations" showSync={!isCustomer} />
 
-      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} />
+      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} onUpdate={loadOrders} />
 
       {/* Filters */}
       <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>

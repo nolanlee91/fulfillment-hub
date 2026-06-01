@@ -163,7 +163,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
     <>
       <Topbar title="Delivered" subtitle="Operations" showSync={!isCustomer} />
 
-      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} />
+      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} onUpdate={loadOrders} />
 
       {/* Filters */}
       <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>
