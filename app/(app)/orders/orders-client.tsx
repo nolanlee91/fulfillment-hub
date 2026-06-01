@@ -58,6 +58,10 @@ interface Order {
     | null;
   attentionAt: string | null;
   attentionNote: string | null;
+  paymentType: string | null;
+  refNumber: string | null;
+  paymentProofUrl: string | null;
+  reconciledAt: string | null;
 }
 
 const ATTENTION_LABELS: Record<string, string> = {

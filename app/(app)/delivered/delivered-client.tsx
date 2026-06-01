@@ -34,6 +34,10 @@ interface Order {
   trackingNumber: string | null;
   trackingUrl: string | null;
   deliveredAt: string | null;
+  paymentType: string | null;
+  refNumber: string | null;
+  paymentProofUrl: string | null;
+  reconciledAt: string | null;
 }
 
 interface FilterOption {

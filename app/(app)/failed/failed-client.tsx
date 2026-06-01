@@ -35,6 +35,10 @@ interface Order {
   trackingUrl: string | null;
   lastTrackingEvent: string | null;
   lastTrackingAt: string | null;
+  paymentType: string | null;
+  refNumber: string | null;
+  paymentProofUrl: string | null;
+  reconciledAt: string | null;
 }
 
 interface FilterOption {

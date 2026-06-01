@@ -108,6 +108,10 @@ export const GET = withAuth(async (req, user) => {
         attentionReason: orders.attentionReason,
         attentionAt: orders.attentionAt,
         attentionNote: orders.attentionNote,
+        paymentType: orders.paymentType,
+        refNumber: orders.refNumber,
+        paymentProofUrl: orders.paymentProofUrl,
+        reconciledAt: orders.reconciledAt,
       })
       .from(orders)
       .leftJoin(products, eq(orders.productId, products.id))

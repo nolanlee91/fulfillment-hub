@@ -200,6 +200,12 @@ export const orders = pgTable(
     attentionAt: timestamp("attention_at"),
     attentionNote: text("attention_note"),
 
+    // Đối soát (kế toán dùng, hiển thị trong drawer)
+    paymentType: text("payment_type"),           // ETF / BANK_TRANSFER / CHEQUE / MONEY_ORDER
+    refNumber: text("ref_number"),               // Mã Ref từ email noti (chỉ ETF)
+    paymentProofUrl: text("payment_proof_url"),  // URL ảnh chứng từ (non-ETF, Phase 2)
+    reconciledAt: timestamp("reconciled_at"),
+
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
     syncedToSheetAt: timestamp("synced_to_sheet_at"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

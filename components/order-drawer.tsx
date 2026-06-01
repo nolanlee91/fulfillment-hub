@@ -44,6 +44,11 @@ export interface DrawerOrder {
   // Failed-specific
   lastTrackingEvent?: string | null;
   lastTrackingAt?: string | null;
+  // Đối soát (kế toán)
+  paymentType?: string | null;
+  refNumber?: string | null;
+  paymentProofUrl?: string | null;
+  reconciledAt?: string | null;
 }
 
 function buildTrackingUrl(o: Pick<DrawerOrder, "trackingUrl" | "trackingNumber">): string | null {
@@ -260,6 +265,50 @@ export function OrderDrawer({
               >
                 {order.errorNote}
               </div>
+            </>
+          )}
+
+          {/* Đối soát (kế toán) — hiện khi đơn prepaid và có ref/proof */}
+          {order.paymentMethod === "PREPAID" && (order.refNumber || order.paymentProofUrl || order.reconciledAt) && (
+            <>
+              <SectionLabel>Đối soát</SectionLabel>
+              {order.refNumber && (
+                <DrawerRow label="Mã Ref">
+                  <span className="font-mono">{order.refNumber}</span>
+                  {order.paymentType && (
+                    <span
+                      className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                      style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+                    >
+                      {order.paymentType}
+                    </span>
+                  )}
+                </DrawerRow>
+              )}
+              {order.paymentProofUrl && (
+                <DrawerRow label="Chứng từ">
+                  <a
+                    href={order.paymentProofUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tracking-link"
+                  >
+                    Xem ảnh
+                    <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                  </a>
+                  {order.paymentType && (
+                    <span
+                      className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                      style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+                    >
+                      {order.paymentType}
+                    </span>
+                  )}
+                </DrawerRow>
+              )}
+              {order.reconciledAt && (
+                <DrawerRow label="Lúc đối soát">{fmtDate(order.reconciledAt)}</DrawerRow>
+              )}
             </>
           )}
 

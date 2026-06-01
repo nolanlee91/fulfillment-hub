@@ -49,6 +49,11 @@ const sections: NavSection[] = [
         label: "Carrier Tracking",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
+      {
+        href: "/reconciliation",
+        icon: "receipt_long",
+        label: "Đối soát",
+      },
     ],
   },
   {
