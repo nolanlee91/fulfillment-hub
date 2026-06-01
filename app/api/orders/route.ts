@@ -116,7 +116,9 @@ export const GET = withAuth(async (req, user) => {
       .from(orders)
       .leftJoin(products, eq(orders.productId, products.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(orders.syncedAt))
+      // Tiebreaker uniqueKey để sort stable — nhiều đơn cùng 1 batch sync có cùng syncedAt,
+      // không có tiebreaker thì PostgreSQL trả về thứ tự không deterministic sau UPDATE.
+      .orderBy(desc(orders.syncedAt), desc(orders.uniqueKey))
       .limit(500);
 
     return NextResponse.json({ success: true, data: rows });
