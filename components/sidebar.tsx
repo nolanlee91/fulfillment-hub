@@ -55,6 +55,12 @@ const sections: NavSection[] = [
         label: "Reconciliation",
         roles: ["CUSTOMER"],
       },
+      {
+        href: "/reconciliation-lookup",
+        icon: "manage_search",
+        label: "Payment Lookup",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
     ],
   },
   {
