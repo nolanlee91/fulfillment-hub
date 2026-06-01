@@ -129,8 +129,8 @@ export function Sidebar({ user }: { user: CurrentUser }) {
           className="h-9 w-auto"
         />
         <p
-          className="text-[10px] tracking-[0.12em] font-medium lowercase"
-          style={{ color: "#6b7280" }}
+          className="text-[10px] tracking-[0.12em] font-semibold lowercase"
+          style={{ color: "#4b5563" }}
         >
           fulfillment.hub
         </p>
