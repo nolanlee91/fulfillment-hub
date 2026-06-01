@@ -115,7 +115,10 @@ export function Sidebar({ user }: { user: CurrentUser }) {
     >
       <div
         className="px-5 py-5 border-b flex flex-col items-start gap-1"
-        style={{ borderColor: "var(--sidebar-border)" }}
+        style={{
+          backgroundColor: "#ffffff",
+          borderColor: "rgba(0, 0, 0, 0.08)",
+        }}
       >
         <Image
           src="/logo.png"
@@ -127,7 +130,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         />
         <p
           className="text-[10px] tracking-[0.12em] font-medium lowercase"
-          style={{ color: "var(--sidebar-text-muted)" }}
+          style={{ color: "#6b7280" }}
         >
           fulfillment.hub
         </p>
