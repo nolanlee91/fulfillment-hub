@@ -151,8 +151,8 @@ function OrdersPageContent({ role }: { role: Role }) {
   const [filterAttention, setFilterAttention] = useState(() => searchParams.get("attention") ?? "");
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
+  const loadOrders = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     const params = new URLSearchParams();
     params.set("excludeTerminal", "true");
     if (filterStatus) params.set("status", filterStatus);
@@ -166,9 +166,10 @@ function OrdersPageContent({ role }: { role: Role }) {
     const data = await res.json();
     if (data.success) {
       setOrders(data.data);
-      setListKey((k) => k + 1);
+      // Silent refresh (vd sau khi drawer update) không bump listKey → tránh re-mount + replay animation.
+      if (!opts.silent) setListKey((k) => k + 1);
     }
-    setLoading(false);
+    if (!opts.silent) setLoading(false);
   }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, search]);
 
   useEffect(() => {
@@ -494,7 +495,7 @@ function OrdersPageContent({ role }: { role: Role }) {
         order={drawerOrder}
         onClose={() => setDrawerOrder(null)}
         role={role}
-        onUpdate={loadOrders}
+        onUpdate={() => loadOrders({ silent: true })}
       />
 
       {/* Table */}

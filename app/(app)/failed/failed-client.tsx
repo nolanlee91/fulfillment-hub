@@ -93,8 +93,8 @@ export default function FailedClient({ role }: { role: Role }) {
   const [filterPayment, setFilterPayment] = useState("");
   const [search, setSearch] = useState("");
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
+  const loadOrders = useCallback(async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     const params = new URLSearchParams();
     params.set("status", "FAILED");
     if (filterCustomer) params.set("customer", filterCustomer);
@@ -106,9 +106,9 @@ export default function FailedClient({ role }: { role: Role }) {
     const data = await res.json();
     if (data.success) {
       setOrders(data.data);
-      setListKey((k) => k + 1);
+      if (!opts.silent) setListKey((k) => k + 1);
     }
-    setLoading(false);
+    if (!opts.silent) setLoading(false);
   }, [filterCustomer, filterProduct, filterPayment, search]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
@@ -164,7 +164,7 @@ export default function FailedClient({ role }: { role: Role }) {
     <>
       <Topbar title="Failed Orders" subtitle="Operations" showSync={!isCustomer} />
 
-      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} onUpdate={loadOrders} />
+      <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} onUpdate={() => loadOrders({ silent: true })} />
 
       {/* Filters */}
       <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>
