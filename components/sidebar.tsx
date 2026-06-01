@@ -52,7 +52,8 @@ const sections: NavSection[] = [
       {
         href: "/reconciliation",
         icon: "receipt_long",
-        label: "Đối soát",
+        label: "Reconciliation",
+        roles: ["CUSTOMER"],
       },
     ],
   },

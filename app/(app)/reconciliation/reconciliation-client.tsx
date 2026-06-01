@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
 import { Button, Card } from "@/components/ui";
 
-type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
-
 interface UploadResult {
   totalInFile: number;
   matched: number;
@@ -22,23 +20,18 @@ interface UnreconciledOrder {
   name: string;
   quantity: number;
   status: string;
-  shipDate: string | null;
+  paymentMethod: string;
+  reconciledAt: string | null;
 }
 
-export default function ReconciliationClient({
-  role,
-  customerId,
-}: {
-  role: Role;
-  customerId: string | null;
-}) {
+export default function ReconciliationClient() {
   return (
     <>
-      <Topbar title="Đối soát thanh toán" subtitle="Reconciliation" />
+      <Topbar title="Reconciliation" subtitle="Match payments to your orders" />
 
-      <UploadSection role={role} />
+      <UploadSection />
 
-      <UnreconciledList role={role} customerId={customerId} />
+      <UnreconciledList />
     </>
   );
 }
@@ -46,7 +39,7 @@ export default function ReconciliationClient({
 // ============================================================================
 // Section 1: Upload Excel file (orderID + refNumber)
 // ============================================================================
-function UploadSection({ role }: { role: Role }) {
+function UploadSection() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
@@ -84,17 +77,31 @@ function UploadSection({ role }: { role: Role }) {
   return (
     <>
       <Card padding="lg" className="mb-4">
-        <h3 className="font-bold text-lg mb-1">Upload file đối soát (ETF)</h3>
+        <div className="flex items-start justify-between mb-1 gap-3">
+          <h3 className="font-bold text-lg">Upload reconciliation file (ETF)</h3>
+          <a
+            href="/api/reconciliation/template"
+            download
+            className="text-xs font-semibold inline-flex items-center gap-1 px-3 py-1.5 rounded transition-colors shrink-0"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <span className="material-symbols-outlined text-[15px]">download</span>
+            Download template
+          </a>
+        </div>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-          File Excel (.xlsx) với 2 cột: <b>Mã đơn hàng</b> + <b>Mã Ref</b> (lấy từ email noti ngân hàng). App match orderID → gán Ref cho đơn của
-          {role === "CUSTOMER" ? " bạn" : " khách"}.
+          Excel file (.xlsx) with 2 columns: <b>Order ID</b> + <b>Ref Number</b> (from your bank email notification). The app matches each Order ID and assigns the Ref to your orders.
         </p>
 
         <label
           className="text-[11px] font-bold tracking-widest uppercase block mb-2"
           style={{ color: "var(--text-muted)" }}
         >
-          File Excel (.xlsx)
+          Excel file (.xlsx)
         </label>
         <input
           id="ref-file-input"
@@ -121,7 +128,7 @@ function UploadSection({ role }: { role: Role }) {
           disabled={!file || uploading}
           className="mt-5"
         >
-          {uploading ? "Đang xử lý..." : "Upload"}
+          {uploading ? "Processing..." : "Upload"}
         </Button>
 
         {error && (
@@ -136,12 +143,12 @@ function UploadSection({ role }: { role: Role }) {
 
       {result && (
         <Card padding="lg" className="mb-4">
-          <h3 className="font-bold text-lg mb-4">Kết quả</h3>
+          <h3 className="font-bold text-lg mb-4">Results</h3>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <ResultCard label="Khớp" value={result.matched} accent="emerald" hint="Đã gán Ref" />
-            <ResultCard label="Không khớp" value={result.unmatched} accent="red" hint="OrderID không tìm thấy" />
-            <ResultCard label="Bỏ qua COD" value={result.skippedCOD} accent="slate" hint="Đơn COD không cần đối soát" />
+            <ResultCard label="Matched" value={result.matched} accent="emerald" hint="Ref assigned" />
+            <ResultCard label="Unmatched" value={result.unmatched} accent="red" hint="Order ID not found" />
+            <ResultCard label="COD skipped" value={result.skippedCOD} accent="slate" hint="COD orders don't need reconciliation" />
           </div>
 
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -158,8 +165,8 @@ function UploadSection({ role }: { role: Role }) {
               }}
             >
               <p className="font-semibold mb-2">
-                Mã đơn không khớp ({result.unmatchedOrderIds.length}
-                {result.unmatched > result.unmatchedOrderIds.length ? `+, hiện 50 đầu` : ""}):
+                Order IDs not found ({result.unmatchedOrderIds.length}
+                {result.unmatched > result.unmatchedOrderIds.length ? `+, showing first 50` : ""}):
               </p>
               <p className="font-mono text-[11px] leading-relaxed">
                 {result.unmatchedOrderIds.join(", ")}
@@ -173,37 +180,34 @@ function UploadSection({ role }: { role: Role }) {
 }
 
 // ============================================================================
-// Section 2: List unreconciled orders (đã giao, đã có label, prepaid)
+// Section 2: List unreconciled prepaid orders of current customer
 // ============================================================================
-function UnreconciledList({ role, customerId }: { role: Role; customerId: string | null }) {
+function UnreconciledList() {
   const [orders, setOrders] = useState<UnreconciledOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load đơn của customer (CUSTOMER tự động filter, STAFF có thể chọn customer sau)
     const params = new URLSearchParams();
-    params.set("excludeTerminal", "false");
     params.set("payment", "PREPAID");
-    if (role !== "CUSTOMER" && customerId) params.set("customer", customerId);
 
     fetch(`/api/orders?${params.toString()}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
-          const unrec = (d.data as Array<UnreconciledOrder & { reconciledAt: string | null; paymentMethod: string }>).filter(
+          const unrec = (d.data as UnreconciledOrder[]).filter(
             (o) => !o.reconciledAt && o.paymentMethod === "PREPAID",
           );
           setOrders(unrec);
         }
       })
       .finally(() => setLoading(false));
-  }, [role, customerId]);
+  }, []);
 
   if (loading) {
     return (
       <Card padding="lg">
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Đang tải...
+          Loading...
         </p>
       </Card>
     );
@@ -211,14 +215,14 @@ function UnreconciledList({ role, customerId }: { role: Role; customerId: string
 
   return (
     <Card padding="lg">
-      <h3 className="font-bold text-lg mb-1">Đơn prepaid chưa đối soát</h3>
+      <h3 className="font-bold text-lg mb-1">Prepaid orders pending reconciliation</h3>
       <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-        Danh sách đơn prepaid của {role === "CUSTOMER" ? "bạn" : "customer"} chưa có Mã Ref. Upload file để gán Ref hàng loạt.
+        Your prepaid orders that don't have a Ref Number yet. Upload the Excel above to assign Refs in bulk.
       </p>
 
       {orders.length === 0 ? (
         <p className="text-sm py-4" style={{ color: "var(--text-secondary)" }}>
-          ✓ Tất cả đơn prepaid đã được đối soát.
+          ✓ All prepaid orders are reconciled.
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -257,7 +261,7 @@ function UnreconciledList({ role, customerId }: { role: Role; customerId: string
           </table>
           {orders.length > 100 && (
             <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
-              Hiện 100/{orders.length} đơn. Up file Ref để xử lý hàng loạt.
+              Showing 100 of {orders.length} orders. Upload the Ref file for bulk processing.
             </p>
           )}
         </div>

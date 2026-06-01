@@ -71,16 +71,10 @@ export const POST = withAuth(
         );
       }
 
-      // Optional override: STAFF có thể up hộ customer X qua field customer_id
-      const customerIdOverride =
-        user.role !== "CUSTOMER"
-          ? (formData.get("customer_id") as string | null)
-          : null;
-      const customerId = user.role === "CUSTOMER" ? user.customerId : customerIdOverride;
-
-      if (user.role === "CUSTOMER" && !customerId) {
+      const customerId = user.customerId;
+      if (!customerId) {
         return NextResponse.json(
-          { success: false, error: "Tài khoản chưa gắn customer" },
+          { success: false, error: "Account is not linked to a customer" },
           { status: 400 },
         );
       }
@@ -107,10 +101,7 @@ export const POST = withAuth(
       for (const r of rows) refByOrderId[r.orderId] = r.refNumber;
       const orderIds = Object.keys(refByOrderId);
 
-      // Load orders matching
-      const conditions = [inArray(orders.orderId, orderIds)];
-      if (customerId) conditions.push(eq(orders.customerId, customerId));
-
+      // Load orders matching — CUSTOMER chỉ thấy đơn của customer mình
       const dbOrders = await db
         .select({
           uniqueKey: orders.uniqueKey,
@@ -118,7 +109,12 @@ export const POST = withAuth(
           paymentMethod: orders.paymentMethod,
         })
         .from(orders)
-        .where(and(...conditions));
+        .where(
+          and(
+            inArray(orders.orderId, orderIds),
+            eq(orders.customerId, customerId),
+          ),
+        );
 
       // Skip COD orders (đối soát chỉ áp dụng prepaid)
       const matched: Array<{ uniqueKey: string; orderId: string; refNumber: string }> = [];
@@ -170,5 +166,5 @@ export const POST = withAuth(
       );
     }
   },
-  { roles: ["CUSTOMER", "STAFF", "SUPER_ADMIN"] },
+  { roles: ["CUSTOMER"] },
 );

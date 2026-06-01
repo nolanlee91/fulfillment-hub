@@ -268,12 +268,12 @@ export function OrderDrawer({
             </>
           )}
 
-          {/* Đối soát (kế toán) — hiện khi đơn prepaid và có ref/proof */}
+          {/* Reconciliation (accounting) — show only for prepaid orders with ref/proof */}
           {order.paymentMethod === "PREPAID" && (order.refNumber || order.paymentProofUrl || order.reconciledAt) && (
             <>
-              <SectionLabel>Đối soát</SectionLabel>
+              <SectionLabel>Reconciliation</SectionLabel>
               {order.refNumber && (
-                <DrawerRow label="Mã Ref">
+                <DrawerRow label="Ref Number">
                   <span className="font-mono">{order.refNumber}</span>
                   {order.paymentType && (
                     <span
@@ -286,14 +286,14 @@ export function OrderDrawer({
                 </DrawerRow>
               )}
               {order.paymentProofUrl && (
-                <DrawerRow label="Chứng từ">
+                <DrawerRow label="Proof">
                   <a
                     href={order.paymentProofUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="tracking-link"
                   >
-                    Xem ảnh
+                    View image
                     <span className="material-symbols-outlined text-[13px]">open_in_new</span>
                   </a>
                   {order.paymentType && (
@@ -307,7 +307,7 @@ export function OrderDrawer({
                 </DrawerRow>
               )}
               {order.reconciledAt && (
-                <DrawerRow label="Lúc đối soát">{fmtDate(order.reconciledAt)}</DrawerRow>
+                <DrawerRow label="Reconciled at">{fmtDate(order.reconciledAt)}</DrawerRow>
               )}
             </>
           )}
