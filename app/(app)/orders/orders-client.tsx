@@ -341,39 +341,9 @@ function OrdersPageContent({ role }: { role: Role }) {
         ))}
       </div>
 
-      {/* Recon toggle — 3 trạng thái: All / Reconciled / Not reconciled */}
-      <div
-        className="flex items-center gap-2 px-4 py-2 mb-2 text-[11px]"
-        style={{ color: "var(--text-muted)" }}
-      >
-        <span className="font-bold uppercase tracking-widest mr-1">Recon</span>
-        {[
-          { value: "", label: "All" },
-          { value: "yes", label: "Reconciled" },
-          { value: "no", label: "Not reconciled" },
-        ].map((opt) => {
-          const active = filterReconciled === opt.value;
-          return (
-            <button
-              key={opt.value || "all"}
-              onClick={() => setFilterReconciled(opt.value)}
-              className="px-2.5 py-1 rounded transition-colors"
-              style={{
-                backgroundColor: active ? "var(--accent-bg)" : "transparent",
-                color: active ? "var(--accent)" : "var(--text-secondary)",
-                border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                fontWeight: active ? 600 : 500,
-              }}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Secondary filters */}
       <FilterBar
-        className={`grid gap-3 ${isCustomer ? "grid-cols-5" : "grid-cols-6"}`}
+        className={`grid gap-3 ${isCustomer ? "grid-cols-6" : "grid-cols-7"}`}
       >
         {!isCustomer && (
           <FilterField label="Customer">
@@ -434,6 +404,18 @@ function OrdersPageContent({ role }: { role: Role }) {
             <option value="DELAYED">Delayed</option>
             <option value="NOTICE_CARD">Notice Card</option>
             <option value="STUCK">No updates (3 business days)</option>
+          </select>
+        </FilterField>
+
+        <FilterField label="Recon">
+          <select
+            value={filterReconciled}
+            onChange={(e) => setFilterReconciled(e.target.value)}
+            className="filter-input"
+          >
+            <option value="">All</option>
+            <option value="yes">Reconciled</option>
+            <option value="no">Not reconciled</option>
           </select>
         </FilterField>
 

@@ -95,7 +95,9 @@ function ReconciliationSection({
   role: Role;
   onUpdate?: () => void;
 }) {
-  const [paymentType, setPaymentType] = useState<"BANK_TRANSFER" | "CHEQUE" | "MONEY_ORDER">("BANK_TRANSFER");
+  // Customer chỉ upload ảnh — không phân biệt type ở UI. Default "BANK_TRANSFER" gửi API
+  // để admin biết kiểu chung (có thể đổi thủ công nếu cần audit sau).
+  const paymentType = "BANK_TRANSFER" as const;
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -233,62 +235,38 @@ function ReconciliationSection({
     );
   }
 
-  // Chưa reconciled — CUSTOMER thấy form upload
+  // Chưa reconciled — CUSTOMER thấy 2 line: ETF (read-only —) + Non-ETF (file picker + Upload inline)
   if (role === "CUSTOMER") {
     return (
       <>
         <SectionLabel>Reconciliation</SectionLabel>
-        <div
-          className="rounded-lg p-3 mt-1 text-[12px] leading-relaxed"
-          style={{ background: "var(--bg-tertiary)", border: "1px solid var(--border)" }}
-        >
-          <p className="mb-3" style={{ color: "var(--text-secondary)" }}>
-            Upload a proof image for non-ETF payments (bank transfer, cheque, money order).
-            For ETF payments, use bulk upload on the <a className="tracking-link" href="/reconciliation">Reconciliation page</a>.
-          </p>
-
-          <label className="text-[10px] font-bold tracking-widest uppercase block mb-1" style={{ color: "var(--text-muted)" }}>
-            Payment type
-          </label>
-          <select
-            value={paymentType}
-            onChange={(e) => setPaymentType(e.target.value as "BANK_TRANSFER" | "CHEQUE" | "MONEY_ORDER")}
-            disabled={uploading}
-            className="w-full px-2 py-1.5 rounded text-[12px] mb-3"
-            style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border)" }}
-          >
-            <option value="BANK_TRANSFER">Bank Transfer</option>
-            <option value="CHEQUE">Cheque</option>
-            <option value="MONEY_ORDER">Money Order</option>
-          </select>
-
-          <label className="text-[10px] font-bold tracking-widest uppercase block mb-1" style={{ color: "var(--text-muted)" }}>
-            Image (JPG / PNG / WEBP, max 8 MB)
-          </label>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            disabled={uploading}
-            className="w-full px-2 py-1.5 rounded text-[12px] cursor-pointer mb-3"
-            style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border)" }}
-          />
-
-          <button
-            onClick={runUpload}
-            disabled={!file || uploading}
-            className="px-3 py-1.5 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
-            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
-          >
-            {uploading ? "Uploading..." : "Upload proof"}
-          </button>
-
+        <DrawerRow label="ETF">
+          <span style={{ color: "var(--text-muted)" }}>—</span>
+        </DrawerRow>
+        <DrawerRow label="Non-ETF">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              disabled={uploading}
+              className="text-[11px] cursor-pointer max-w-[180px]"
+            />
+            <button
+              onClick={runUpload}
+              disabled={!file || uploading}
+              className="px-2.5 py-1 rounded text-[11px] font-semibold transition-colors disabled:opacity-40"
+              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+            >
+              {uploading ? "..." : "Upload"}
+            </button>
+          </div>
           {error && (
-            <p className="mt-2 text-[11px]" style={{ color: "#dc2626" }}>
+            <p className="mt-1 text-[10px]" style={{ color: "#dc2626" }}>
               {error}
             </p>
           )}
-        </div>
+        </DrawerRow>
       </>
     );
   }
