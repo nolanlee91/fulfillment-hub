@@ -176,74 +176,54 @@ function ReconciliationSection({
     }
   }
 
-  // Đã reconciled (qua ref file ETF, hoặc upload proof rồi) → read-only view
+  // Đã reconciled — 2 line gọn: ETF (ref) + Non-ETF (proof image)
   if (reconciled) {
     const isAdmin = role !== "CUSTOMER";
     return (
       <>
         <SectionLabel>Reconciliation</SectionLabel>
-        {eff.refNumber && (
-          <DrawerRow label="Ref Number">
+        <DrawerRow label="ETF">
+          {eff.refNumber ? (
             <span className="font-mono">{eff.refNumber}</span>
-            {eff.paymentType && (
-              <span
-                className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
-              >
-                {eff.paymentType}
-              </span>
-            )}
-          </DrawerRow>
-        )}
-        {eff.paymentProofUrl && (
-          <DrawerRow label="Proof">
+          ) : (
+            <span style={{ color: "var(--text-muted)" }}>—</span>
+          )}
+        </DrawerRow>
+        <DrawerRow label="Non-ETF">
+          {eff.paymentProofUrl ? (
             <a
               href={eff.paymentProofUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 group"
+              className="inline-flex items-center gap-2"
             >
               <img
                 src={eff.paymentProofUrl}
                 alt="Payment proof"
-                className="h-16 w-16 object-cover rounded border"
+                className="h-10 w-10 object-cover rounded border"
                 style={{ borderColor: "var(--border)" }}
               />
-              <span className="tracking-link text-[12px]">
-                Open
-                <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                {eff.paymentType ?? ""}
               </span>
             </a>
-            {eff.paymentType && (
-              <span
-                className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
-              >
-                {eff.paymentType}
-              </span>
-            )}
-          </DrawerRow>
-        )}
-        {eff.reconciledAt && (
-          <DrawerRow label="Reconciled at">{fmtDate(eff.reconciledAt)}</DrawerRow>
-        )}
+          ) : (
+            <span style={{ color: "var(--text-muted)" }}>—</span>
+          )}
+        </DrawerRow>
         {isAdmin && (
-          <div className="flex items-center gap-3 py-2.5">
+          <div className="py-1">
             <button
               onClick={runDelete}
               disabled={deleting}
-              className="px-3 py-1.5 rounded text-[12px] font-semibold transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
-              style={{
-                backgroundColor: "rgba(220, 38, 38, 0.10)",
-                color: "#dc2626",
-                border: "1px solid rgba(220, 38, 38, 0.20)",
-              }}
+              className="text-[11px] inline-flex items-center gap-1 transition-colors disabled:opacity-50"
+              style={{ color: "#dc2626" }}
             >
-              <span className="material-symbols-outlined text-[14px]">delete</span>
-              {deleting ? "Removing..." : "Remove reconciliation"}
+              <span className="material-symbols-outlined text-[13px]">delete</span>
+              {deleting ? "Removing..." : "Remove"}
             </button>
             {error && (
-              <span className="text-[11px]" style={{ color: "#dc2626" }}>
+              <span className="ml-2 text-[11px]" style={{ color: "#dc2626" }}>
                 {error}
               </span>
             )}

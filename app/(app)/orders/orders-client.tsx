@@ -145,6 +145,7 @@ function OrdersPageContent({ role }: { role: Role }) {
 
   // Filters — initial từ URL search params (cho phép link từ dashboard)
   const [filterStatus, setFilterStatus] = useState(() => searchParams.get("status") ?? "");
+  const [filterReconciled, setFilterReconciled] = useState(() => searchParams.get("reconciled") ?? ""); // "" | "yes" | "no"
   const [filterCustomer, setFilterCustomer] = useState(() => searchParams.get("customer") ?? "");
   const [filterProduct, setFilterProduct] = useState(() => searchParams.get("product") ?? "");
   const [filterPayment, setFilterPayment] = useState(() => searchParams.get("payment") ?? "");
@@ -160,6 +161,7 @@ function OrdersPageContent({ role }: { role: Role }) {
     if (filterProduct) params.set("product", filterProduct);
     if (filterPayment) params.set("payment", filterPayment);
     if (filterAttention) params.set("attention", filterAttention);
+    if (filterReconciled) params.set("reconciled", filterReconciled);
     if (search) params.set("search", search);
 
     const res = await fetch(`/api/orders?${params.toString()}`);
@@ -170,7 +172,7 @@ function OrdersPageContent({ role }: { role: Role }) {
       if (!opts.silent) setListKey((k) => k + 1);
     }
     if (!opts.silent) setLoading(false);
-  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, search]);
+  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, filterReconciled, search]);
 
   useEffect(() => {
     loadOrders();
@@ -337,6 +339,36 @@ function OrdersPageContent({ role }: { role: Role }) {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      {/* Recon toggle — 3 trạng thái: All / Reconciled / Not reconciled */}
+      <div
+        className="flex items-center gap-2 px-4 py-2 mb-2 text-[11px]"
+        style={{ color: "var(--text-muted)" }}
+      >
+        <span className="font-bold uppercase tracking-widest mr-1">Recon</span>
+        {[
+          { value: "", label: "All" },
+          { value: "yes", label: "Reconciled" },
+          { value: "no", label: "Not reconciled" },
+        ].map((opt) => {
+          const active = filterReconciled === opt.value;
+          return (
+            <button
+              key={opt.value || "all"}
+              onClick={() => setFilterReconciled(opt.value)}
+              className="px-2.5 py-1 rounded transition-colors"
+              style={{
+                backgroundColor: active ? "var(--accent-bg)" : "transparent",
+                color: active ? "var(--accent)" : "var(--text-secondary)",
+                border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                fontWeight: active ? 600 : 500,
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Secondary filters */}
@@ -559,6 +591,12 @@ function OrdersPageContent({ role }: { role: Role }) {
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Tracking
                   </th>
+                  <th
+                    className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase"
+                    title="Reconciled — customer đã update payment cho đơn này"
+                  >
+                    Recon
+                  </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Flag
                   </th>
@@ -707,6 +745,19 @@ function OrdersPageContent({ role }: { role: Role }) {
                           }
                           return <span style={{ color: "var(--text-muted)" }}>—</span>;
                         })()}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {o.reconciledAt ? (
+                          <span
+                            className="material-symbols-outlined text-[18px]"
+                            style={{ color: "#16a34a", fontVariationSettings: '"FILL" 1' }}
+                            title={`Reconciled${o.paymentType ? ` (${o.paymentType})` : ""}`}
+                          >
+                            check_circle
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
                       </td>
                       <td
                         className="px-3 py-2 text-center"

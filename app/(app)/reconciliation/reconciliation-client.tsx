@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Topbar } from "@/components/topbar";
 import { Button, Card } from "@/components/ui";
 
@@ -13,25 +13,11 @@ interface UploadResult {
   message: string;
 }
 
-interface UnreconciledOrder {
-  uniqueKey: string;
-  orderId: string;
-  productName: string;
-  name: string;
-  quantity: number;
-  status: string;
-  paymentMethod: string;
-  reconciledAt: string | null;
-}
-
 export default function ReconciliationClient() {
   return (
     <>
       <Topbar title="Reconciliation" subtitle="Match payments to your orders" />
-
       <UploadSection />
-
-      <UnreconciledList />
     </>
   );
 }
@@ -179,96 +165,6 @@ function UploadSection() {
   );
 }
 
-// ============================================================================
-// Section 2: List unreconciled prepaid orders of current customer
-// ============================================================================
-function UnreconciledList() {
-  const [orders, setOrders] = useState<UnreconciledOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    params.set("payment", "PREPAID");
-
-    fetch(`/api/orders?${params.toString()}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) {
-          const unrec = (d.data as UnreconciledOrder[]).filter(
-            (o) => !o.reconciledAt && o.paymentMethod === "PREPAID",
-          );
-          setOrders(unrec);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <Card padding="lg">
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Loading...
-        </p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card padding="lg">
-      <h3 className="font-bold text-lg mb-1">Prepaid orders pending reconciliation</h3>
-      <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-        Your prepaid orders that don't have a Ref Number yet. Upload the Excel above to assign Refs in bulk.
-      </p>
-
-      {orders.length === 0 ? (
-        <p className="text-sm py-4" style={{ color: "var(--text-secondary)" }}>
-          ✓ All prepaid orders are reconciled.
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr
-                className="text-left text-[11px] font-bold tracking-widest uppercase"
-                style={{ color: "var(--text-muted)" }}
-              >
-                <th className="py-2 pr-3">Order ID</th>
-                <th className="py-2 pr-3">Recipient</th>
-                <th className="py-2 pr-3">Product</th>
-                <th className="py-2 pr-3 text-right">Qty</th>
-                <th className="py-2 pr-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.slice(0, 100).map((o) => (
-                <tr
-                  key={o.uniqueKey}
-                  className="border-t"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <td className="py-2 pr-3 font-mono text-[12px]">{o.orderId}</td>
-                  <td className="py-2 pr-3">{o.name}</td>
-                  <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--text-secondary)" }}>
-                    {o.productName}
-                  </td>
-                  <td className="py-2 pr-3 text-right font-bold">{o.quantity}</td>
-                  <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--text-secondary)" }}>
-                    {o.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {orders.length > 100 && (
-            <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
-              Showing 100 of {orders.length} orders. Upload the Ref file for bulk processing.
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-}
 
 function ResultCard({
   label,

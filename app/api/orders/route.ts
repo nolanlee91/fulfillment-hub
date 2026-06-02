@@ -17,6 +17,7 @@ export const GET = withAuth(async (req, user) => {
     const productId = searchParams.get("product");
     const payment = searchParams.get("payment"); // PREPAID | COD
     const attention = searchParams.get("attention"); // ADDRESS_ERROR | DELAYED | NOTICE_CARD | STUCK | "any"
+    const reconciled = searchParams.get("reconciled"); // "yes" | "no" | null
     const excludeTerminal = searchParams.get("excludeTerminal") === "true";
     const search = searchParams.get("search");
 
@@ -64,6 +65,11 @@ export const GET = withAuth(async (req, user) => {
       ) {
         conditions.push(eq(orders.attentionReason, attention));
       }
+    }
+    if (reconciled === "yes") {
+      conditions.push(sql`${orders.reconciledAt} IS NOT NULL`);
+    } else if (reconciled === "no") {
+      conditions.push(sql`${orders.reconciledAt} IS NULL`);
     }
     if (search) {
       const s = `%${search.toLowerCase()}%`;
