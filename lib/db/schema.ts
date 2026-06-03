@@ -143,6 +143,10 @@ export const batches = pgTable("batches", {
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   exportedAt: timestamp("exported_at"),
+  // Soft-delete: khi xóa batch → đơn EXPORTED revert về READY, batch giữ lại để lưu lý do (audit).
+  deletedAt: timestamp("deleted_at"),
+  deletedReason: text("deleted_reason"),
+  deletedBy: text("deleted_by"),
 });
 
 // ============================================================================

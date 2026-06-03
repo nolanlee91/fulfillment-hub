@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
-import { Card } from "@/components/ui";
+import { Card, Button } from "@/components/ui";
 
 interface Batch {
   id: string;
@@ -10,6 +10,9 @@ interface Batch {
   platform: "CLICKSHIP" | "EST" | null;
   createdAt: string;
   exportedAt: string | null;
+  deletedAt: string | null;
+  deletedReason: string | null;
+  deletedBy: string | null;
 }
 
 export default function BatchesPage() {
@@ -20,6 +23,9 @@ export default function BatchesPage() {
     text: string;
     type: "success" | "error";
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Batch | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -60,6 +66,33 @@ export default function BatchesPage() {
     } finally {
       setExporting(null);
       setTimeout(() => setMessage(null), 5000);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || !deleteReason.trim()) return;
+    setDeleteBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/batches/${encodeURIComponent(deleteTarget.id)}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: deleteReason.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setMessage({ text: data.error || "Xóa batch thất bại", type: "error" });
+        return;
+      }
+      setMessage({ text: data.message, type: "success" });
+      setDeleteTarget(null);
+      setDeleteReason("");
+      await load();
+    } catch (e) {
+      setMessage({ text: (e as Error).message, type: "error" });
+    } finally {
+      setDeleteBusy(false);
+      setTimeout(() => setMessage(null), 6000);
     }
   }
 
@@ -132,6 +165,9 @@ export default function BatchesPage() {
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Created
                   </th>
+                  <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
+                    Note
+                  </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Actions
                   </th>
@@ -140,8 +176,9 @@ export default function BatchesPage() {
               <tbody>
                 {batches.map((b) => {
                   const isEst = b.platform === "EST";
+                  const isDeleted = !!b.deletedAt;
                   return (
-                    <tr key={b.id}>
+                    <tr key={b.id} style={isDeleted ? { opacity: 0.55 } : undefined}>
                       <td className="px-4 py-3 font-mono text-sm font-bold">
                         {b.id}
                       </td>
@@ -164,15 +201,52 @@ export default function BatchesPage() {
                       >
                         {formatDate(b.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => exportBatch(b)}
-                          disabled={exporting === b.id}
-                          className="btn btn-primary"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">download</span>
-                          {exporting === b.id ? "Downloading..." : isEst ? "Download CSV" : "Download Excel"}
-                        </button>
+                      <td className="px-4 py-3 text-xs" style={{ maxWidth: 280 }}>
+                        {isDeleted ? (
+                          <div>
+                            <div style={{ color: "var(--color-danger)" }}>
+                              {b.deletedReason}
+                            </div>
+                            <div className="mt-0.5" style={{ color: "var(--text-muted)" }}>
+                              Đã xóa
+                              {b.deletedBy ? ` bởi ${b.deletedBy}` : ""}
+                              {b.deletedAt ? ` · ${formatDate(b.deletedAt)}` : ""}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          {isDeleted ? (
+                            <Button variant="secondary" icon="delete" disabled>
+                              Đã xóa
+                            </Button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => exportBatch(b)}
+                                disabled={exporting === b.id}
+                                className="btn btn-primary"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">download</span>
+                                {exporting === b.id ? "Downloading..." : isEst ? "Download CSV" : "Download Excel"}
+                              </button>
+                              <Button
+                                variant="danger"
+                                icon="delete"
+                                onClick={() => {
+                                  setDeleteTarget(b);
+                                  setDeleteReason("");
+                                }}
+                                title="Xóa batch — đơn sẽ về lại READY"
+                              >
+                                Xóa
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -182,6 +256,69 @@ export default function BatchesPage() {
           </div>
         )}
       </div>
+
+      {/* Modal xác nhận xóa batch + nhập lý do */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+          onClick={() => {
+            if (!deleteBusy) setDeleteTarget(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Card>
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={{ color: "var(--color-danger)" }}
+                >
+                  warning
+                </span>
+                <h3 className="font-bold text-base">Xóa batch {deleteTarget.id}?</h3>
+              </div>
+              <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+                {deleteTarget.totalOrders} đơn trong batch sẽ chuyển về trạng thái{" "}
+                <span className="font-semibold">READY</span> để tạo batch lại. Chỉ xóa được
+                khi tất cả đơn đang ở EXPORTED.
+              </p>
+
+              <label className="filter-label">Lý do xóa batch (bắt buộc)</label>
+              <textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                rows={3}
+                autoFocus
+                placeholder="VD: tách 30 đơn acai đi nhanh khỏi 70 đơn đi thường"
+                className="filter-input w-full mt-1"
+                style={{ resize: "vertical", minHeight: 72 }}
+                disabled={deleteBusy}
+              />
+
+              <div className="flex items-center justify-end gap-2 mt-4">
+                <Button
+                  variant="secondary"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleteBusy}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  variant="danger"
+                  icon="delete"
+                  onClick={confirmDelete}
+                  disabled={deleteBusy || !deleteReason.trim()}
+                >
+                  {deleteBusy ? "Đang xóa..." : "Xác nhận xóa"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
     </>
   );
 }

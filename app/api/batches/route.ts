@@ -47,6 +47,9 @@ export const GET = withAuth(
         platform: batches.platform,
         createdAt: batches.createdAt,
         exportedAt: batches.exportedAt,
+        deletedAt: batches.deletedAt,
+        deletedReason: batches.deletedReason,
+        deletedBy: batches.deletedBy,
       })
       .from(batches)
       .orderBy(desc(batches.createdAt));
