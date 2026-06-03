@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { orders, customers, products } from "@/lib/db/schema";
 import { and, desc, eq, ne, or, sql } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
+import { provinceToRegion, isRegion } from "@/lib/geo/province";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -71,6 +72,7 @@ export const GET = withAuth(
     const productId = searchParams.get("product");
     const payment = searchParams.get("payment");
     const attention = searchParams.get("attention");
+    const region = searchParams.get("region"); // WEST | EAST | UNKNOWN | null
     const search = searchParams.get("search");
 
     const conditions = [];
@@ -140,7 +142,7 @@ export const GET = withAuth(
       );
     }
 
-    const rows = await db
+    const allRows = await db
       .select({
         orderId: orders.orderId,
         customerId: orders.customerId,
@@ -179,6 +181,11 @@ export const GET = withAuth(
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(orders.syncedAt))
       .limit(5000);
+
+    // Lọc theo khu vực (suy từ tỉnh người nhận) để khớp với bộ lọc Region trên UI.
+    const rows = isRegion(region)
+      ? allRows.filter((r) => provinceToRegion(r.province, r.country) === region)
+      : allRows;
 
     // Build XLSX
     const workbook = new ExcelJS.Workbook();

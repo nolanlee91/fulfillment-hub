@@ -4,6 +4,7 @@ import { orders, boxes, products, batches } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
+import { normalizeProvince } from "@/lib/geo/province";
 
 export const maxDuration = 60;
 
@@ -50,47 +51,6 @@ function csvEscape(value: string | number): string {
     return '"' + s.replace(/"/g, '""') + '"';
   }
   return s;
-}
-
-const CA_PROVINCE_MAP: Record<string, string> = {
-  "british columbia": "BC",
-  "ontario": "ON",
-  "quebec": "QC",
-  "québec": "QC",
-  "alberta": "AB",
-  "manitoba": "MB",
-  "new brunswick": "NB",
-  "nouveau-brunswick": "NB",
-  "newfoundland and labrador": "NL",
-  "newfoundland": "NL",
-  "terre-neuve-et-labrador": "NL",
-  "nova scotia": "NS",
-  "nouvelle-écosse": "NS",
-  "northwest territories": "NT",
-  "territoires du nord-ouest": "NT",
-  "nunavut": "NU",
-  "prince edward island": "PE",
-  "île-du-prince-édouard": "PE",
-  "saskatchewan": "SK",
-  "yukon": "YT",
-};
-
-function normalizeProvince(p: string | null): string {
-  if (!p) return "";
-  // Strip ký tự khách hay nhầm: dấu chấm, phẩy, nháy, slash...
-  // Giữ letter (kể cả tiếng Pháp có dấu), space, dash — dash cần để match
-  // tên Pháp như "île-du-prince-édouard" trong CA_PROVINCE_MAP.
-  const cleaned = p
-    .replace(/[^a-zA-ZÀ-ÿ\s\-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!cleaned) return "";
-  // "B C" / "B.C." → compact "BC" để nhận diện code 2 chữ
-  const compact = cleaned.replace(/\s+/g, "");
-  if (/^[a-zA-Z]{2}$/.test(compact)) return compact.toUpperCase();
-  const lower = cleaned.toLowerCase();
-  if (CA_PROVINCE_MAP[lower]) return CA_PROVINCE_MAP[lower];
-  return compact.toUpperCase().slice(0, 2);
 }
 
 function normalizePostalCode(z: string | null): string {

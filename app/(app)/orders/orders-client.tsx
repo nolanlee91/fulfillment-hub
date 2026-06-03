@@ -146,6 +146,7 @@ function OrdersPageContent({ role }: { role: Role }) {
   // Filters — initial từ URL search params (cho phép link từ dashboard)
   const [filterStatus, setFilterStatus] = useState(() => searchParams.get("status") ?? "");
   const [filterReconciled, setFilterReconciled] = useState(() => searchParams.get("reconciled") ?? ""); // "" | "yes" | "no"
+  const [filterRegion, setFilterRegion] = useState(() => searchParams.get("region") ?? ""); // "" | "WEST" | "EAST" | "UNKNOWN"
   const [filterCustomer, setFilterCustomer] = useState(() => searchParams.get("customer") ?? "");
   const [filterProduct, setFilterProduct] = useState(() => searchParams.get("product") ?? "");
   const [filterPayment, setFilterPayment] = useState(() => searchParams.get("payment") ?? "");
@@ -162,6 +163,7 @@ function OrdersPageContent({ role }: { role: Role }) {
     if (filterPayment) params.set("payment", filterPayment);
     if (filterAttention) params.set("attention", filterAttention);
     if (filterReconciled) params.set("reconciled", filterReconciled);
+    if (filterRegion) params.set("region", filterRegion);
     if (search) params.set("search", search);
 
     const res = await fetch(`/api/orders?${params.toString()}`);
@@ -172,7 +174,7 @@ function OrdersPageContent({ role }: { role: Role }) {
       if (!opts.silent) setListKey((k) => k + 1);
     }
     if (!opts.silent) setLoading(false);
-  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, filterReconciled, search]);
+  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, filterReconciled, filterRegion, search]);
 
   useEffect(() => {
     loadOrders();
@@ -247,6 +249,7 @@ function OrdersPageContent({ role }: { role: Role }) {
       if (filterProduct) params.set("product", filterProduct);
       if (filterPayment) params.set("payment", filterPayment);
       if (filterAttention) params.set("attention", filterAttention);
+      if (!isCustomer && filterRegion) params.set("region", filterRegion);
       if (search) params.set("search", search);
 
       const res = await fetch(`/api/orders/export?${params.toString()}`);
@@ -343,7 +346,7 @@ function OrdersPageContent({ role }: { role: Role }) {
 
       {/* Secondary filters */}
       <FilterBar
-        className={`grid gap-3 ${isCustomer ? "grid-cols-6" : "grid-cols-7"}`}
+        className={`grid gap-3 ${isCustomer ? "grid-cols-6" : "grid-cols-8"}`}
       >
         {!isCustomer && (
           <FilterField label="Customer">
@@ -418,6 +421,22 @@ function OrdersPageContent({ role }: { role: Role }) {
             <option value="no">Not reconciled</option>
           </select>
         </FilterField>
+
+        {!isCustomer && (
+          <FilterField label="Region">
+            <select
+              value={filterRegion}
+              onChange={(e) => setFilterRegion(e.target.value)}
+              className="filter-input"
+              title="Khu vực giao (suy từ tỉnh người nhận) — lọc để tạo batch theo từng khu"
+            >
+              <option value="">All</option>
+              <option value="WEST">West (BC–MB)</option>
+              <option value="EAST">East (ON–NL)</option>
+              <option value="UNKNOWN">Unknown</option>
+            </select>
+          </FilterField>
+        )}
 
         <FilterField label="Search" className="col-span-2">
           <SearchInput

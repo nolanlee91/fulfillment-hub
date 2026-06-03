@@ -4,6 +4,7 @@ import { orders, customers, products } from "@/lib/db/schema";
 import { eq, and, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
+import { provinceToRegion, isRegion } from "@/lib/geo/province";
 
 const DeleteOrdersSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
@@ -18,6 +19,7 @@ export const GET = withAuth(async (req, user) => {
     const payment = searchParams.get("payment"); // PREPAID | COD
     const attention = searchParams.get("attention"); // ADDRESS_ERROR | DELAYED | NOTICE_CARD | STUCK | "any"
     const reconciled = searchParams.get("reconciled"); // "yes" | "no" | null
+    const region = searchParams.get("region"); // WEST | EAST | UNKNOWN | null
     const excludeTerminal = searchParams.get("excludeTerminal") === "true";
     const search = searchParams.get("search");
 
@@ -127,7 +129,13 @@ export const GET = withAuth(async (req, user) => {
       .orderBy(desc(orders.syncedAt), desc(orders.uniqueKey))
       .limit(500);
 
-    return NextResponse.json({ success: true, data: rows });
+    // Lọc theo khu vực (suy từ tỉnh người nhận). Tỉnh là text thô nên lọc ở JS
+    // sau truy vấn thay vì SQL.
+    const data = isRegion(region)
+      ? rows.filter((r) => provinceToRegion(r.province, r.country) === region)
+      : rows;
+
+    return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
