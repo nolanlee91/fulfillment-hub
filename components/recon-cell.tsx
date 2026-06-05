@@ -29,8 +29,8 @@ export function ReconCell({
       <span
         title={
           reconciled
-            ? `Đã đối soát${order.paymentType ? ` (${order.paymentType})` : ""}`
-            : "Chưa đối soát"
+            ? `Reconciled${order.paymentType ? ` (${order.paymentType})` : ""}`
+            : "Not reconciled"
         }
         className="inline-flex"
       >
@@ -55,22 +55,23 @@ export function ReconCell({
           className="inline-flex items-center transition-opacity hover:opacity-70"
           title={
             accounted
-              ? `Đã hạch toán${order.accountedBy ? ` bởi ${order.accountedBy}` : ""} — bấm để bỏ`
-              : "Chưa hạch toán — bấm để đánh dấu"
+              ? `Booked${order.accountedBy ? ` by ${order.accountedBy}` : ""} — click to undo`
+              : "Not booked — click to mark"
           }
         >
-          <span
-            className="material-symbols-outlined text-[17px]"
-            style={{
-              color: accounted ? "#16a34a" : "var(--text-muted)",
-              fontVariationSettings: accounted ? '"FILL" 1' : undefined,
-            }}
-          >
-            {accounted ? "check_circle" : "radio_button_unchecked"}
-          </span>
+          {accounted ? (
+            <span
+              className="material-symbols-outlined text-[17px]"
+              style={{ color: "#16a34a", fontVariationSettings: '"FILL" 1' }}
+            >
+              check_circle
+            </span>
+          ) : (
+            <span style={{ color: "var(--text-muted)" }}>—</span>
+          )}
         </button>
       ) : (
-        <span title={accounted ? "Đã hạch toán" : "Chưa hạch toán"} className="inline-flex">
+        <span title={accounted ? "Booked" : "Not booked"} className="inline-flex">
           {accounted ? (
             <span
               className="material-symbols-outlined text-[17px]"

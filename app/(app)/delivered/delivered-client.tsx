@@ -235,7 +235,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
             value={filterRecon}
             onChange={(e) => setFilterRecon(e.target.value)}
             className="filter-input"
-            title="Đối soát (khách up ảnh) → Hạch toán (KDExpress ghi sổ)"
+            title="Reconciled (customer upload) → Booked (KDExpress)"
           >
             {RECON_FILTER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>

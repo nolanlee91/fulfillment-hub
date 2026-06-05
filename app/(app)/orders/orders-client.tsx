@@ -445,7 +445,7 @@ function OrdersPageContent({ role }: { role: Role }) {
             value={filterRecon}
             onChange={(e) => setFilterRecon(e.target.value)}
             className="filter-input"
-            title="Đối soát (khách up ảnh) → Hạch toán (KDExpress ghi sổ)"
+            title="Reconciled (customer upload) → Booked (KDExpress)"
           >
             {RECON_FILTER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -627,7 +627,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                   </th>
                   <th
                     className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase"
-                    title="Đối soát (khách up ảnh) / Hạch toán (KDExpress ghi sổ)"
+                    title="Reconciled (customer upload) / Booked (KDExpress)"
                   >
                     Recon
                   </th>

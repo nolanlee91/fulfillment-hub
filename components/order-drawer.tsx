@@ -265,7 +265,7 @@ function ReconciliationSection({
               onClick={toggleAccounted}
               disabled={accBusy}
               className="inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              title="Hạch toán (ghi sổ) đơn này"
+              title="Mark this order as booked"
             >
               <span
                 className="material-symbols-outlined text-[16px]"
@@ -280,7 +280,7 @@ function ReconciliationSection({
                 className="text-[12px] font-semibold"
                 style={{ color: effAccountedAt ? "#15803d" : "var(--accent)" }}
               >
-                {accBusy ? "..." : effAccountedAt ? "Đã hạch toán" : "Đánh dấu hạch toán"}
+                {accBusy ? "..." : effAccountedAt ? "Booked" : "Mark booked"}
               </span>
             </button>
           ) : effAccountedAt ? (
@@ -291,10 +291,10 @@ function ReconciliationSection({
               >
                 check_circle
               </span>
-              Đã hạch toán
+              Booked
             </span>
           ) : (
-            <span style={{ color: "var(--text-muted)" }}>Chưa hạch toán</span>
+            <span style={{ color: "var(--text-muted)" }}>Not booked</span>
           )}
         </DrawerRow>
         {isAdmin && (
