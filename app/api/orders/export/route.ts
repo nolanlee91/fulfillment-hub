@@ -73,6 +73,7 @@ export const GET = withAuth(
     const payment = searchParams.get("payment");
     const attention = searchParams.get("attention");
     const region = searchParams.get("region"); // WEST | EAST | UNKNOWN | null
+    const reconciled = searchParams.get("reconciled"); // "yes" | "no" | null
     const search = searchParams.get("search");
 
     const conditions = [];
@@ -129,6 +130,11 @@ export const GET = withAuth(
           ),
         );
       }
+    }
+    if (reconciled === "yes") {
+      conditions.push(sql`${orders.reconciledAt} IS NOT NULL`);
+    } else if (reconciled === "no") {
+      conditions.push(sql`${orders.reconciledAt} IS NULL`);
     }
     if (search) {
       const s = `%${search.toLowerCase()}%`;

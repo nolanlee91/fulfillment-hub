@@ -90,6 +90,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
   const [filterPayment, setFilterPayment] = useState("");
+  const [filterReconciled, setFilterReconciled] = useState(""); // "" | "yes" | "no"
   const [search, setSearch] = useState("");
 
   const loadOrders = useCallback(async (opts: { silent?: boolean } = {}) => {
@@ -99,6 +100,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
     if (filterCustomer) params.set("customer", filterCustomer);
     if (filterProduct) params.set("product", filterProduct);
     if (filterPayment) params.set("payment", filterPayment);
+    if (filterReconciled) params.set("reconciled", filterReconciled);
     if (search) params.set("search", search);
 
     const res = await fetch(`/api/orders?${params.toString()}`);
@@ -110,7 +112,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
       if (!opts.silent) setListKey((k) => k + 1);
     }
     if (!opts.silent) setLoading(false);
-  }, [filterCustomer, filterProduct, filterPayment, search]);
+  }, [filterCustomer, filterProduct, filterPayment, filterReconciled, search]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -133,6 +135,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
       if (!isCustomer && filterCustomer) params.set("customer", filterCustomer);
       if (filterProduct) params.set("product", filterProduct);
       if (filterPayment) params.set("payment", filterPayment);
+      if (filterReconciled) params.set("reconciled", filterReconciled);
       if (search) params.set("search", search);
 
       const res = await fetch(`/api/orders/export?${params.toString()}`);
@@ -168,7 +171,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
       <OrderDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} role={role} onUpdate={() => loadOrders({ silent: true })} />
 
       {/* Filters */}
-      <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-4" : "grid-cols-5"}`}>
+      <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-5" : "grid-cols-6"}`}>
         {!isCustomer && (
           <FilterField label="Customer">
             <select
@@ -196,6 +199,18 @@ export default function DeliveredClient({ role }: { role: Role }) {
             <option value="">All</option>
             <option value="PREPAID">Prepaid</option>
             <option value="COD">COD</option>
+          </select>
+        </FilterField>
+        <FilterField label="Recon">
+          <select
+            value={filterReconciled}
+            onChange={(e) => setFilterReconciled(e.target.value)}
+            className="filter-input"
+            title="Đối soát — đơn đã có bằng chứng thanh toán chưa"
+          >
+            <option value="">All</option>
+            <option value="yes">Reconciled</option>
+            <option value="no">Not reconciled</option>
           </select>
         </FilterField>
         <FilterField label="Search" className="col-span-2">
@@ -250,6 +265,12 @@ export default function DeliveredClient({ role }: { role: Role }) {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Payment</th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Tracking</th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Delivered At</th>
+                  <th
+                    className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase"
+                    title="Reconciled — đã có bằng chứng thanh toán"
+                  >
+                    Recon
+                  </th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Flag</th>
                 </tr>
               </thead>
@@ -325,6 +346,19 @@ export default function DeliveredClient({ role }: { role: Role }) {
                             hour: "2-digit", minute: "2-digit",
                           })
                         : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {o.reconciledAt ? (
+                        <span
+                          className="material-symbols-outlined text-[18px]"
+                          style={{ color: "#16a34a", fontVariationSettings: '"FILL" 1' }}
+                          title={`Reconciled${o.paymentType ? ` (${o.paymentType})` : ""}`}
+                        >
+                          check_circle
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <FlagCell orderUniqueKey={o.uniqueKey} color={flagMap.get(o.uniqueKey)} />
