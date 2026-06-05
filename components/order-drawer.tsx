@@ -49,6 +49,8 @@ export interface DrawerOrder {
   refNumber?: string | null;
   paymentProofUrl?: string | null;
   reconciledAt?: string | null;
+  accountedAt?: string | null;
+  accountedBy?: string | null;
 }
 
 function buildTrackingUrl(o: Pick<DrawerOrder, "trackingUrl" | "trackingNumber">): string | null {
@@ -102,6 +104,11 @@ function ReconciliationSection({
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Hạch toán (accounted) — local override sau khi toggle để view cập nhật ngay.
+  const [localAccountedAt, setLocalAccountedAt] = useState<string | null | undefined>(undefined);
+  const [accBusy, setAccBusy] = useState(false);
+  // Lightbox zoom ảnh chứng từ (không mở link ngoài).
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   /** Local override sau khi upload/delete trong drawer hiện tại — để view refresh ngay không cần F5/reopen. */
   const [localState, setLocalState] = useState<{
     paymentType: string | null;
@@ -118,6 +125,32 @@ function ReconciliationSection({
     reconciledAt: order.reconciledAt ?? null,
   };
   const reconciled = !!(eff.refNumber || eff.paymentProofUrl || eff.reconciledAt);
+  const effAccountedAt =
+    localAccountedAt !== undefined ? localAccountedAt : order.accountedAt ?? null;
+
+  async function toggleAccounted() {
+    setAccBusy(true);
+    setError(null);
+    try {
+      const next = !effAccountedAt;
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.uniqueKey)}/accounted`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accounted: next }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLocalAccountedAt(data.accountedAt);
+        onUpdate?.();
+      } else {
+        setError(data.error || "Update failed");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAccBusy(false);
+    }
+  }
 
   async function runUpload() {
     if (!file) return;
@@ -193,11 +226,11 @@ function ReconciliationSection({
         </DrawerRow>
         <DrawerRow label="Non-ETF">
           {eff.paymentProofUrl ? (
-            <a
-              href={eff.paymentProofUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2"
+            <button
+              type="button"
+              onClick={() => setZoomUrl(eff.paymentProofUrl)}
+              className="inline-flex items-center gap-2 cursor-zoom-in"
+              title="Bấm để phóng to"
             >
               <img
                 src={eff.paymentProofUrl}
@@ -208,9 +241,60 @@ function ReconciliationSection({
               <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                 {eff.paymentType ?? ""}
               </span>
-            </a>
+            </button>
           ) : (
             <span style={{ color: "var(--text-muted)" }}>—</span>
+          )}
+        </DrawerRow>
+        {zoomUrl && (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-6"
+            style={{ background: "rgba(0,0,0,0.8)", zIndex: 100, cursor: "zoom-out" }}
+            onClick={() => setZoomUrl(null)}
+          >
+            <img
+              src={zoomUrl}
+              alt="Payment proof"
+              className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        )}
+        <DrawerRow label="Booked">
+          {isAdmin ? (
+            <button
+              onClick={toggleAccounted}
+              disabled={accBusy}
+              className="inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              title="Hạch toán (ghi sổ) đơn này"
+            >
+              <span
+                className="material-symbols-outlined text-[16px]"
+                style={{
+                  color: effAccountedAt ? "#16a34a" : "var(--text-muted)",
+                  fontVariationSettings: effAccountedAt ? '"FILL" 1' : undefined,
+                }}
+              >
+                {effAccountedAt ? "check_circle" : "radio_button_unchecked"}
+              </span>
+              <span
+                className="text-[12px] font-semibold"
+                style={{ color: effAccountedAt ? "#15803d" : "var(--accent)" }}
+              >
+                {accBusy ? "..." : effAccountedAt ? "Đã hạch toán" : "Đánh dấu hạch toán"}
+              </span>
+            </button>
+          ) : effAccountedAt ? (
+            <span className="inline-flex items-center gap-1" style={{ color: "#15803d" }}>
+              <span
+                className="material-symbols-outlined text-[16px]"
+                style={{ fontVariationSettings: '"FILL" 1' }}
+              >
+                check_circle
+              </span>
+              Đã hạch toán
+            </span>
+          ) : (
+            <span style={{ color: "var(--text-muted)" }}>Chưa hạch toán</span>
           )}
         </DrawerRow>
         {isAdmin && (

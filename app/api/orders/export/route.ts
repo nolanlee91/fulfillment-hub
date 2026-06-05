@@ -74,6 +74,7 @@ export const GET = withAuth(
     const attention = searchParams.get("attention");
     const region = searchParams.get("region"); // WEST | EAST | UNKNOWN | null
     const reconciled = searchParams.get("reconciled"); // "yes" | "no" | null
+    const accounted = searchParams.get("accounted"); // "yes" | "no" | null (hạch toán)
     const search = searchParams.get("search");
 
     const conditions = [];
@@ -135,6 +136,11 @@ export const GET = withAuth(
       conditions.push(sql`${orders.reconciledAt} IS NOT NULL`);
     } else if (reconciled === "no") {
       conditions.push(sql`${orders.reconciledAt} IS NULL`);
+    }
+    if (accounted === "yes") {
+      conditions.push(sql`${orders.accountedAt} IS NOT NULL`);
+    } else if (accounted === "no") {
+      conditions.push(sql`${orders.accountedAt} IS NULL`);
     }
     if (search) {
       const s = `%${search.toLowerCase()}%`;

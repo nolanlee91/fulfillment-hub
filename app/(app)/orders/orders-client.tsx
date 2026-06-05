@@ -6,6 +6,7 @@ import { Topbar } from "@/components/topbar";
 import { FlagCell } from "@/components/flag-cell";
 import { useFlagMap } from "@/lib/hooks/use-flag-map";
 import { OrderDrawer, type DrawerOrder } from "@/components/order-drawer";
+import { ReconCell } from "@/components/recon-cell";
 import {
   Button,
   StatusBadge,
@@ -15,6 +16,7 @@ import {
   FilterField,
   SearchInput,
 } from "@/components/ui";
+import { applyReconFilter, RECON_FILTER_OPTIONS } from "@/lib/recon-filter";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -62,6 +64,8 @@ interface Order {
   refNumber: string | null;
   paymentProofUrl: string | null;
   reconciledAt: string | null;
+  accountedAt: string | null;
+  accountedBy: string | null;
 }
 
 const ATTENTION_LABELS: Record<string, string> = {
@@ -145,7 +149,7 @@ function OrdersPageContent({ role }: { role: Role }) {
 
   // Filters — initial từ URL search params (cho phép link từ dashboard)
   const [filterStatus, setFilterStatus] = useState(() => searchParams.get("status") ?? "");
-  const [filterReconciled, setFilterReconciled] = useState(() => searchParams.get("reconciled") ?? ""); // "" | "yes" | "no"
+  const [filterRecon, setFilterRecon] = useState(() => searchParams.get("recon") ?? ""); // "" | unreconciled | reconciled_unbooked | booked
   const [filterRegion, setFilterRegion] = useState(() => searchParams.get("region") ?? ""); // "" | "WEST" | "EAST" | "UNKNOWN"
   const [filterCustomer, setFilterCustomer] = useState(() => searchParams.get("customer") ?? "");
   const [filterProduct, setFilterProduct] = useState(() => searchParams.get("product") ?? "");
@@ -162,7 +166,7 @@ function OrdersPageContent({ role }: { role: Role }) {
     if (filterProduct) params.set("product", filterProduct);
     if (filterPayment) params.set("payment", filterPayment);
     if (filterAttention) params.set("attention", filterAttention);
-    if (filterReconciled) params.set("reconciled", filterReconciled);
+    applyReconFilter(params, filterRecon);
     if (filterRegion) params.set("region", filterRegion);
     if (search) params.set("search", search);
 
@@ -174,7 +178,7 @@ function OrdersPageContent({ role }: { role: Role }) {
       if (!opts.silent) setListKey((k) => k + 1);
     }
     if (!opts.silent) setLoading(false);
-  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, filterReconciled, filterRegion, search]);
+  }, [filterStatus, filterCustomer, filterProduct, filterPayment, filterAttention, filterRecon, filterRegion, search]);
 
   useEffect(() => {
     loadOrders();
@@ -191,6 +195,31 @@ function OrdersPageContent({ role }: { role: Role }) {
         }
       });
   }, []);
+
+  // Toggle "đã hạch toán" (accounted) — optimistic update, không refetch để giữ DOM.
+  async function toggleAccounted(o: Order) {
+    const prevVal = o.accountedAt;
+    const optimistic = prevVal ? null : new Date().toISOString();
+    setOrders((cur) =>
+      cur.map((x) => (x.uniqueKey === o.uniqueKey ? { ...x, accountedAt: optimistic } : x)),
+    );
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(o.uniqueKey)}/accounted`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accounted: !prevVal }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "fail");
+      setOrders((cur) =>
+        cur.map((x) => (x.uniqueKey === o.uniqueKey ? { ...x, accountedAt: data.accountedAt } : x)),
+      );
+    } catch {
+      setOrders((cur) =>
+        cur.map((x) => (x.uniqueKey === o.uniqueKey ? { ...x, accountedAt: prevVal } : x)),
+      );
+    }
+  }
 
   function toggleSelect(uniqueKey: string) {
     const next = new Set(selectedKeys);
@@ -249,6 +278,7 @@ function OrdersPageContent({ role }: { role: Role }) {
       if (filterProduct) params.set("product", filterProduct);
       if (filterPayment) params.set("payment", filterPayment);
       if (filterAttention) params.set("attention", filterAttention);
+      applyReconFilter(params, filterRecon);
       if (!isCustomer && filterRegion) params.set("region", filterRegion);
       if (search) params.set("search", search);
 
@@ -412,13 +442,16 @@ function OrdersPageContent({ role }: { role: Role }) {
 
         <FilterField label="Recon">
           <select
-            value={filterReconciled}
-            onChange={(e) => setFilterReconciled(e.target.value)}
+            value={filterRecon}
+            onChange={(e) => setFilterRecon(e.target.value)}
             className="filter-input"
+            title="Đối soát (khách up ảnh) → Hạch toán (KDExpress ghi sổ)"
           >
-            <option value="">All</option>
-            <option value="yes">Reconciled</option>
-            <option value="no">Not reconciled</option>
+            {RECON_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </FilterField>
 
@@ -594,7 +627,7 @@ function OrdersPageContent({ role }: { role: Role }) {
                   </th>
                   <th
                     className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase"
-                    title="Reconciled — customer đã update payment cho đơn này"
+                    title="Đối soát (khách up ảnh) / Hạch toán (KDExpress ghi sổ)"
                   >
                     Recon
                   </th>
@@ -747,18 +780,12 @@ function OrdersPageContent({ role }: { role: Role }) {
                           return <span style={{ color: "var(--text-muted)" }}>—</span>;
                         })()}
                       </td>
-                      <td className="px-3 py-2 text-center">
-                        {o.reconciledAt ? (
-                          <span
-                            className="material-symbols-outlined text-[18px]"
-                            style={{ color: "#16a34a", fontVariationSettings: '"FILL" 1' }}
-                            title={`Reconciled${o.paymentType ? ` (${o.paymentType})` : ""}`}
-                          >
-                            check_circle
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--text-muted)" }}>—</span>
-                        )}
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <ReconCell
+                          order={o}
+                          canToggle={!isCustomer}
+                          onToggleAccounted={() => toggleAccounted(o)}
+                        />
                       </td>
                       <td
                         className="px-3 py-2 text-center"

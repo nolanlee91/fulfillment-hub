@@ -5,6 +5,7 @@ import { Topbar } from "@/components/topbar";
 import { FlagCell } from "@/components/flag-cell";
 import { useFlagMap } from "@/lib/hooks/use-flag-map";
 import { OrderDrawer, type DrawerOrder } from "@/components/order-drawer";
+import { ReconCell } from "@/components/recon-cell";
 import {
   Button,
   PaymentBadge,
@@ -12,6 +13,7 @@ import {
   FilterField,
   SearchInput,
 } from "@/components/ui";
+import { applyReconFilter, RECON_FILTER_OPTIONS } from "@/lib/recon-filter";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -38,6 +40,8 @@ interface Order {
   refNumber: string | null;
   paymentProofUrl: string | null;
   reconciledAt: string | null;
+  accountedAt: string | null;
+  accountedBy: string | null;
 }
 
 interface FilterOption {
@@ -90,7 +94,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
   const [filterPayment, setFilterPayment] = useState("");
-  const [filterReconciled, setFilterReconciled] = useState(""); // "" | "yes" | "no"
+  const [filterRecon, setFilterRecon] = useState(""); // "" | unreconciled | reconciled_unbooked | booked
   const [search, setSearch] = useState("");
 
   const loadOrders = useCallback(async (opts: { silent?: boolean } = {}) => {
@@ -100,7 +104,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
     if (filterCustomer) params.set("customer", filterCustomer);
     if (filterProduct) params.set("product", filterProduct);
     if (filterPayment) params.set("payment", filterPayment);
-    if (filterReconciled) params.set("reconciled", filterReconciled);
+    applyReconFilter(params, filterRecon);
     if (search) params.set("search", search);
 
     const res = await fetch(`/api/orders?${params.toString()}`);
@@ -112,7 +116,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
       if (!opts.silent) setListKey((k) => k + 1);
     }
     if (!opts.silent) setLoading(false);
-  }, [filterCustomer, filterProduct, filterPayment, filterReconciled, search]);
+  }, [filterCustomer, filterProduct, filterPayment, filterRecon, search]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -135,7 +139,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
       if (!isCustomer && filterCustomer) params.set("customer", filterCustomer);
       if (filterProduct) params.set("product", filterProduct);
       if (filterPayment) params.set("payment", filterPayment);
-      if (filterReconciled) params.set("reconciled", filterReconciled);
+      applyReconFilter(params, filterRecon);
       if (search) params.set("search", search);
 
       const res = await fetch(`/api/orders/export?${params.toString()}`);
@@ -157,6 +161,31 @@ export default function DeliveredClient({ role }: { role: Role }) {
       URL.revokeObjectURL(url);
     } finally {
       setExporting(false);
+    }
+  }
+
+  // Toggle "đã hạch toán" — optimistic, không refetch để giữ DOM.
+  async function toggleAccounted(o: Order) {
+    const prevVal = o.accountedAt;
+    const optimistic = prevVal ? null : new Date().toISOString();
+    setOrders((cur) =>
+      cur.map((x) => (x.uniqueKey === o.uniqueKey ? { ...x, accountedAt: optimistic } : x)),
+    );
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(o.uniqueKey)}/accounted`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accounted: !prevVal }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "fail");
+      setOrders((cur) =>
+        cur.map((x) => (x.uniqueKey === o.uniqueKey ? { ...x, accountedAt: data.accountedAt } : x)),
+      );
+    } catch {
+      setOrders((cur) =>
+        cur.map((x) => (x.uniqueKey === o.uniqueKey ? { ...x, accountedAt: prevVal } : x)),
+      );
     }
   }
 
@@ -203,14 +232,16 @@ export default function DeliveredClient({ role }: { role: Role }) {
         </FilterField>
         <FilterField label="Recon">
           <select
-            value={filterReconciled}
-            onChange={(e) => setFilterReconciled(e.target.value)}
+            value={filterRecon}
+            onChange={(e) => setFilterRecon(e.target.value)}
             className="filter-input"
-            title="Đối soát — đơn đã có bằng chứng thanh toán chưa"
+            title="Đối soát (khách up ảnh) → Hạch toán (KDExpress ghi sổ)"
           >
-            <option value="">All</option>
-            <option value="yes">Reconciled</option>
-            <option value="no">Not reconciled</option>
+            {RECON_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </FilterField>
         <FilterField label="Search" className="col-span-2">
@@ -347,18 +378,12 @@ export default function DeliveredClient({ role }: { role: Role }) {
                           })
                         : "—"}
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      {o.reconciledAt ? (
-                        <span
-                          className="material-symbols-outlined text-[18px]"
-                          style={{ color: "#16a34a", fontVariationSettings: '"FILL" 1' }}
-                          title={`Reconciled${o.paymentType ? ` (${o.paymentType})` : ""}`}
-                        >
-                          check_circle
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--text-muted)" }}>—</span>
-                      )}
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <ReconCell
+                        order={o}
+                        canToggle={!isCustomer}
+                        onToggleAccounted={() => toggleAccounted(o)}
+                      />
                     </td>
                     <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <FlagCell orderUniqueKey={o.uniqueKey} color={flagMap.get(o.uniqueKey)} />

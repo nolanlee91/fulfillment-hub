@@ -208,7 +208,9 @@ export const orders = pgTable(
     paymentType: text("payment_type"),           // ETF / BANK_TRANSFER / CHEQUE / MONEY_ORDER
     refNumber: text("ref_number"),               // Mã Ref từ email noti (chỉ ETF)
     paymentProofUrl: text("payment_proof_url"),  // URL ảnh chứng từ (non-ETF, Phase 2)
-    reconciledAt: timestamp("reconciled_at"),
+    reconciledAt: timestamp("reconciled_at"),    // Đối soát: khách đã up ảnh/ref
+    accountedAt: timestamp("accounted_at"),      // Hạch toán: KDExpress đã ghi sổ
+    accountedBy: text("accounted_by"),           // username người hạch toán
 
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
     syncedToSheetAt: timestamp("synced_to_sheet_at"),

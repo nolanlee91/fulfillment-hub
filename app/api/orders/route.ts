@@ -19,6 +19,7 @@ export const GET = withAuth(async (req, user) => {
     const payment = searchParams.get("payment"); // PREPAID | COD
     const attention = searchParams.get("attention"); // ADDRESS_ERROR | DELAYED | NOTICE_CARD | STUCK | "any"
     const reconciled = searchParams.get("reconciled"); // "yes" | "no" | null
+    const accounted = searchParams.get("accounted"); // "yes" | "no" | null (hạch toán)
     const region = searchParams.get("region"); // WEST | EAST | UNKNOWN | null
     const excludeTerminal = searchParams.get("excludeTerminal") === "true";
     const search = searchParams.get("search");
@@ -73,6 +74,11 @@ export const GET = withAuth(async (req, user) => {
     } else if (reconciled === "no") {
       conditions.push(sql`${orders.reconciledAt} IS NULL`);
     }
+    if (accounted === "yes") {
+      conditions.push(sql`${orders.accountedAt} IS NOT NULL`);
+    } else if (accounted === "no") {
+      conditions.push(sql`${orders.accountedAt} IS NULL`);
+    }
     if (search) {
       const s = `%${search.toLowerCase()}%`;
       conditions.push(
@@ -120,6 +126,8 @@ export const GET = withAuth(async (req, user) => {
         refNumber: orders.refNumber,
         paymentProofUrl: orders.paymentProofUrl,
         reconciledAt: orders.reconciledAt,
+        accountedAt: orders.accountedAt,
+        accountedBy: orders.accountedBy,
       })
       .from(orders)
       .leftJoin(products, eq(orders.productId, products.id))
