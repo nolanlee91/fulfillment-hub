@@ -112,8 +112,10 @@ function parseCsvLine(line: string): string[] {
 
 /**
  * Parse file CSV EST trả về → list tracking entries.
- * Filter dòng BEHALF_OF_CUSTOMER_NAME = KDEXPRESS (skip đơn EXT của khách khác).
  * Match CUSTOMER_ORDER_ITEM_ID ↔ orders.orderId, lấy BAR_CODE_ID làm tracking number.
+ * KHÔNG lọc theo BEHALF_OF_CUSTOMER_NAME (giá trị thay đổi: KDEXPRESS / DISTRIBUTION
+ * CENTRE / ...). Việc lọc đúng đơn do bước match Mã đơn trong batch đảm nhiệm —
+ * dòng không khớp batch tự bị bỏ qua.
  */
 function parseEstFile(buffer: ArrayBuffer): ParsedTrackingRow[] {
   // BOM strip
@@ -126,23 +128,19 @@ function parseEstFile(buffer: ArrayBuffer): ParsedTrackingRow[] {
   const header = parseCsvLine(lines[0]).map((h) => h.trim().toUpperCase());
   const idx = (name: string) => header.indexOf(name);
 
-  const behalfCol = idx("BEHALF_OF_CUSTOMER_NAME");
   const barcodeCol = idx("BAR_CODE_ID");
   const orderItemCol = idx("CUSTOMER_ORDER_ITEM_ID");
   const mailingDateCol = idx("MAILING_DATE");
 
-  if (behalfCol < 0 || barcodeCol < 0 || orderItemCol < 0) {
+  if (barcodeCol < 0 || orderItemCol < 0) {
     throw new Error(
-      "File EST thiếu cột BEHALF_OF_CUSTOMER_NAME / BAR_CODE_ID / CUSTOMER_ORDER_ITEM_ID",
+      "File EST thiếu cột BAR_CODE_ID / CUSTOMER_ORDER_ITEM_ID",
     );
   }
 
   const rows: ParsedTrackingRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const fields = parseCsvLine(lines[i]);
-    const behalf = (fields[behalfCol] || "").trim().toUpperCase();
-    if (behalf !== "KDEXPRESS") continue;
-
     const orderId = (fields[orderItemCol] || "").trim();
     const tracking = (fields[barcodeCol] || "").trim();
     if (!orderId || !tracking) continue;
@@ -217,7 +215,7 @@ export const POST = withAuth(
           success: false,
           error:
             platform === "EST"
-              ? "File EST không có dòng nào của KDEXPRESS"
+              ? "File EST không có dòng tracking hợp lệ (thiếu Mã đơn / BAR_CODE_ID)"
               : "File không có dòng tracking nào",
         },
         { status: 400 },
