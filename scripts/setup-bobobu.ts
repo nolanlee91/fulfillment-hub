@@ -47,14 +47,15 @@ async function main() {
   });
   console.log("✓ source_sheet ([" + SHEET_NAME + "])");
 
+  // Box cố định A cho mọi đơn (maxQty lớn → luôn chọn A)
   await db.insert(boxRules).values({
-    id: "bobobu_B",
+    id: "bobobu_A",
     productId: PRODUCT_ID,
-    boxCode: "B",
+    boxCode: "A",
     maxQty: 9999,
     active: true,
   }).onConflictDoNothing();
-  console.log("✓ box_rule (→ Box B)");
+  console.log("✓ box_rule (→ Box A)");
 
   process.exit(0);
 }
