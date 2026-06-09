@@ -45,6 +45,12 @@ export const userRoleEnum = pgEnum("user_role", [
 
 export const flagColorEnum = pgEnum("flag_color", ["red", "yellow"]);
 
+export const inventoryMovementTypeEnum = pgEnum("inventory_movement_type", [
+  "STOCK_IN", // nhập kho (+)
+  "ORDER_OUT", // đóng đơn / import label (−)
+  "ADJUST", // kiểm kê / sửa tay (±)
+]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -319,6 +325,82 @@ export const flagMessages = pgTable(
   (t) => ({
     flagIdx: index("flag_messages_flag_idx").on(t.flagId),
     createdIdx: index("flag_messages_created_idx").on(t.createdAt),
+  }),
+);
+
+// ============================================================================
+// WAREHOUSES + INVENTORY (tồn kho theo từng kho)
+// ============================================================================
+//
+// Mục đích: kho Ontario (EAST) chỉ trữ một SỐ mặt hàng, không đủ như kho BC
+// (WEST). Region thuần theo địa chỉ đích là chưa đủ để định tuyến — phải biết
+// kho đó có "theo dõi" (= có trữ) mặt hàng + còn đủ số lượng không.
+//
+//   - warehouses: 1 dòng / kho. code khớp Region ("WEST" | "EAST").
+//   - inventory_tracking: cấu hình (kho × product) — chỉ product `tracked`
+//     mới bị trừ; `onHand` là tồn hiện tại (cache, nguồn gốc là ledger).
+//   - inventory_movements: ledger mọi biến động (nhập/xuất/chỉnh) — audit đầy đủ.
+
+export const warehouses = pgTable("warehouses", {
+  code: text("code").primaryKey(), // "WEST" | "EAST" — khớp Region
+  name: text("name").notNull(), // VD: "Kho BC", "Kho Ontario"
+  region: text("region").notNull(), // WEST | EAST — region đơn map về kho này
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const inventoryTracking = pgTable(
+  "inventory_tracking",
+  {
+    id: text("id").primaryKey(), // `${warehouseCode}__${productId}`
+    warehouseCode: text("warehouse_code")
+      .notNull()
+      .references(() => warehouses.code),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id),
+    tracked: boolean("tracked").default(true).notNull(),
+    trackedSince: timestamp("tracked_since"), // chỉ trừ đơn có ngày ≥ mốc này
+    onHand: integer("on_hand").default(0).notNull(), // tồn hiện tại (cache từ ledger)
+    lowStockThreshold: integer("low_stock_threshold"), // cảnh báo khi onHand ≤ ngưỡng
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    whProd: uniqueIndex("inventory_tracking_wh_prod").on(
+      t.warehouseCode,
+      t.productId,
+    ),
+    whIdx: index("inventory_tracking_wh_idx").on(t.warehouseCode),
+  }),
+);
+
+export const inventoryMovements = pgTable(
+  "inventory_movements",
+  {
+    id: text("id").primaryKey(),
+    warehouseCode: text("warehouse_code")
+      .notNull()
+      .references(() => warehouses.code),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id),
+    delta: integer("delta").notNull(), // + nhập, − xuất
+    type: inventoryMovementTypeEnum("type").notNull(),
+    refOrderKey: text("ref_order_key").references(() => orders.uniqueKey), // ORDER_OUT: đơn nguồn
+    note: text("note"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    whProdIdx: index("inventory_movements_wh_prod_idx").on(
+      t.warehouseCode,
+      t.productId,
+    ),
+    // 1 đơn chỉ trừ đúng 1 lần (idempotent). NULL (STOCK_IN/ADJUST) → nhiều NULL OK.
+    refOrderUnique: uniqueIndex("inventory_movements_ref_order_unique").on(
+      t.refOrderKey,
+    ),
   }),
 );
 

@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
 import { syncTrackingBatch } from "@/lib/sync/write-back";
+import { deductOrdersInventory } from "@/lib/inventory";
 
 export const maxDuration = 60;
 
@@ -167,7 +168,7 @@ function parseEstFile(buffer: ArrayBuffer): ParsedTrackingRow[] {
 }
 
 export const POST = withAuth(
-  async (req) => {
+  async (req, user) => {
   try {
     const formData = await req.formData();
     const file = formData.get("file");
@@ -318,6 +319,13 @@ export const POST = withAuth(
         .where(inArray(orders.uniqueKey, missingFromFile));
     }
 
+    // 5b. Trừ tồn kho cho đơn vừa tạo label (idempotent, không chặn nếu lỗi).
+    //     Kho đóng = theo region đích; chỉ product đang được theo dõi mới bị trừ.
+    const inventoryDeducted = await deductOrdersInventory(
+      updates.map((u) => u.uniqueKey),
+      user.username,
+    );
+
     // 6. Đẩy tracking về sheet nguồn — 1 batchUpdate/spreadsheet.
     //    Cron sync-source-sheets sẽ retry các đơn fail trên cùng sheet.
     const sheetRes = await syncTrackingBatch(updates.map((u) => u.uniqueKey));
@@ -352,6 +360,7 @@ export const POST = withAuth(
       skipped: skippedAlreadyLabeled.length,
       rejected: missingFromFile.length,
       notInBatch: notInBatch.length,
+      inventoryDeducted,
       sheetSync: {
         synced: sheetSynced,
         skipped: sheetSkipped,
