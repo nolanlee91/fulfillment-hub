@@ -144,6 +144,9 @@ export async function parseSheet(
   const qtyIndexes: number[] = [];
   const giaTienIdx = header.findIndex((h) => h.startsWith("giá tiền"));
   const ghiChuIdx = header.findIndex((h) => h.startsWith("ghi chú"));
+  // Một số khách (vd nhiều mặt hàng / KDE đóng hàng) đánh dấu COD ở cột riêng
+  // "Payment Method" thay vì ghi trong Ghi chú. Khách cũ không có cột này → bỏ qua.
+  const paymentMethodIdx = header.findIndex((h) => h.startsWith("payment method"));
   if (giaTienIdx > cols.phone) {
     for (let i = cols.phone + 1; i < giaTienIdx; i++) {
       qtyIndexes.push(i);
@@ -179,8 +182,12 @@ export async function parseSheet(
 
     // Payment + note
     const note = ghiChuIdx >= 0 ? String(row[ghiChuIdx] || "").trim() : "";
+    const paymentMethodCell =
+      paymentMethodIdx >= 0 ? String(row[paymentMethodIdx] || "").trim() : "";
     const giaTienVal = giaTienIdx >= 0 ? parseMoney(String(row[giaTienIdx] || "")) : NaN;
-    const isCOD = note.toLowerCase().includes("cod");
+    const isCOD =
+      note.toLowerCase().includes("cod") ||
+      paymentMethodCell.toLowerCase().includes("cod");
     const paymentMethod: "PREPAID" | "COD" = isCOD ? "COD" : "PREPAID";
     const codAmount = isCOD && !isNaN(giaTienVal) && giaTienVal > 0 ? giaTienVal : null;
 
