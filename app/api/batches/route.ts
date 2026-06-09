@@ -4,6 +4,7 @@ import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray, and, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
+import { loadEastAvailable, pickWarehouse } from "@/lib/inventory/routing";
 
 const CreateBatchSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
@@ -78,11 +79,16 @@ export const POST = withAuth(
     const body = await req.json();
     const { uniqueKeys } = CreateBatchSchema.parse(body);
 
-    // Filter chỉ READY + lấy paymentMethod để split
+    // Filter chỉ READY + lấy paymentMethod để split + geo để gán kho.
+    // Sort theo syncedAt (FIFO) cho khớp định tuyến ở danh sách đơn.
     const validOrders = await db
       .select({
         uniqueKey: orders.uniqueKey,
         paymentMethod: orders.paymentMethod,
+        productId: orders.productId,
+        quantity: orders.quantity,
+        province: orders.province,
+        country: orders.country,
       })
       .from(orders)
       .where(
@@ -90,7 +96,8 @@ export const POST = withAuth(
           inArray(orders.uniqueKey, uniqueKeys),
           eq(orders.status, "READY"),
         ),
-      );
+      )
+      .orderBy(orders.syncedAt, orders.uniqueKey);
 
     const skipped = uniqueKeys.length - validOrders.length;
 
@@ -110,6 +117,16 @@ export const POST = withAuth(
     const codKeys = validOrders
       .filter((o) => o.paymentMethod === "COD")
       .map((o) => o.uniqueKey);
+
+    // Gán kho đóng cho từng đơn (region + tồn kho E, greedy FIFO). Lưu để trừ tồn
+    // đúng kho lúc import label (đơn East fallback về BC không trừ nhầm kho E).
+    const eastAvail = await loadEastAvailable();
+    const eastKeys: string[] = [];
+    const westKeys: string[] = [];
+    for (const o of validOrders) {
+      const wh = pickWarehouse(o, eastAvail);
+      (wh === "EAST" ? eastKeys : westKeys).push(o.uniqueKey);
+    }
 
     const now = new Date();
     const created: Array<{ batchNo: string; platform: "CLICKSHIP" | "EST"; count: number }> = [];
@@ -152,6 +169,20 @@ export const POST = withAuth(
         })
         .where(inArray(orders.uniqueKey, codKeys));
       created.push({ batchNo, platform: "EST", count: codKeys.length });
+    }
+
+    // Lưu kho đóng cho các đơn vừa EXPORTED.
+    if (eastKeys.length > 0) {
+      await db
+        .update(orders)
+        .set({ warehouseCode: "EAST" })
+        .where(inArray(orders.uniqueKey, eastKeys));
+    }
+    if (westKeys.length > 0) {
+      await db
+        .update(orders)
+        .set({ warehouseCode: "WEST" })
+        .where(inArray(orders.uniqueKey, westKeys));
     }
 
     const summary = created

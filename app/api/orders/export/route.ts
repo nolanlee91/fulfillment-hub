@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 import { orders, customers, products } from "@/lib/db/schema";
 import { and, desc, eq, ne, or, sql } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
-import { provinceToRegion, isRegion } from "@/lib/geo/province";
+import { isRegion } from "@/lib/geo/province";
+import { orderWarehouse, type WarehouseCode } from "@/lib/inventory";
+import { computeWarehouseMap } from "@/lib/inventory/routing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -156,6 +158,8 @@ export const GET = withAuth(
 
     const allRows = await db
       .select({
+        uniqueKey: orders.uniqueKey,
+        warehouseCode: orders.warehouseCode,
         orderId: orders.orderId,
         customerId: orders.customerId,
         customerName: customers.name,
@@ -194,9 +198,15 @@ export const GET = withAuth(
       .orderBy(desc(orders.syncedAt))
       .limit(5000);
 
-    // Lọc theo khu vực (suy từ tỉnh người nhận) để khớp với bộ lọc Region trên UI.
+    // Lọc theo kho đóng (khớp bộ lọc "Warehouse" trên UI): ưu tiên kho đã lưu,
+    // đơn chưa chốt dùng định tuyến có nhìn tồn kho E.
+    const whMap = isRegion(region) ? await computeWarehouseMap() : null;
+    const rowWarehouse = (r: (typeof allRows)[number]): WarehouseCode => {
+      if (r.warehouseCode === "EAST" || r.warehouseCode === "WEST") return r.warehouseCode;
+      return whMap?.get(r.uniqueKey) ?? orderWarehouse(r.province, r.country);
+    };
     const rows = isRegion(region)
-      ? allRows.filter((r) => provinceToRegion(r.province, r.country) === region)
+      ? allRows.filter((r) => rowWarehouse(r) === region)
       : allRows;
 
     // Build XLSX

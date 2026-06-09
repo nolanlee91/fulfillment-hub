@@ -129,12 +129,17 @@ export async function deductOrdersInventory(
           province: orders.province,
           country: orders.country,
           orderDate: orders.orderDate,
+          warehouseCode: orders.warehouseCode,
         })
         .from(orders)
         .where(eq(orders.uniqueKey, key));
       if (!o || o.quantity <= 0) continue;
 
-      const warehouseCode = orderWarehouse(o.province, o.country);
+      // Ưu tiên kho đã gán lúc tạo batch; fallback theo region cho đơn cũ chưa gán.
+      const warehouseCode =
+        o.warehouseCode === "EAST" || o.warehouseCode === "WEST"
+          ? o.warehouseCode
+          : orderWarehouse(o.province, o.country);
 
       // Chỉ trừ nếu product đang được theo dõi ở kho này.
       const [cfg] = await db

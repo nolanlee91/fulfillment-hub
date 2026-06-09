@@ -4,7 +4,9 @@ import { orders, customers, products } from "@/lib/db/schema";
 import { eq, and, or, sql, desc, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
-import { provinceToRegion, isRegion } from "@/lib/geo/province";
+import { isRegion } from "@/lib/geo/province";
+import { orderWarehouse, type WarehouseCode } from "@/lib/inventory";
+import { computeWarehouseMap } from "@/lib/inventory/routing";
 
 const DeleteOrdersSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
@@ -112,6 +114,7 @@ export const GET = withAuth(async (req, user) => {
         note: orders.note,
         status: orders.status,
         boxCode: orders.boxCode,
+        warehouseCode: orders.warehouseCode,
         errorNote: orders.errorNote,
         batchId: orders.batchId,
         trackingNumber: orders.trackingNumber,
@@ -137,11 +140,20 @@ export const GET = withAuth(async (req, user) => {
       .orderBy(desc(orders.syncedAt), desc(orders.uniqueKey))
       .limit(500);
 
-    // Lọc theo khu vực (suy từ tỉnh người nhận). Tỉnh là text thô nên lọc ở JS
-    // sau truy vấn thay vì SQL.
+    // Gán kho đóng cho từng đơn: ưu tiên kho đã lưu (đơn đã chốt), với đơn chưa
+    // chốt thì dùng định tuyến có nhìn tồn kho (region + tồn kho E). Trả về để UI
+    // hiện badge, đồng thời lọc theo bộ lọc "Warehouse" (param region: WEST|EAST).
+    const isStaff = user.role !== "CUSTOMER";
+    const whMap = isStaff ? await computeWarehouseMap() : new Map<string, WarehouseCode>();
+    const rowWarehouse = (r: (typeof rows)[number]): WarehouseCode => {
+      if (r.warehouseCode === "EAST" || r.warehouseCode === "WEST") return r.warehouseCode;
+      return whMap.get(r.uniqueKey) ?? orderWarehouse(r.province, r.country);
+    };
+
+    const withWarehouse = rows.map((r) => ({ ...r, warehouse: rowWarehouse(r) }));
     const data = isRegion(region)
-      ? rows.filter((r) => provinceToRegion(r.province, r.country) === region)
-      : rows;
+      ? withWarehouse.filter((r) => r.warehouse === region)
+      : withWarehouse;
 
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {

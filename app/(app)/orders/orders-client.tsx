@@ -17,6 +17,7 @@ import {
   SearchInput,
 } from "@/components/ui";
 import { applyReconFilter, RECON_FILTER_OPTIONS } from "@/lib/recon-filter";
+import { provinceToRegion } from "@/lib/geo/province";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -66,6 +67,7 @@ interface Order {
   reconciledAt: string | null;
   accountedAt: string | null;
   accountedBy: string | null;
+  warehouse?: "WEST" | "EAST"; // kho đóng (định tuyến region + tồn kho)
 }
 
 const ATTENTION_LABELS: Record<string, string> = {
@@ -456,17 +458,16 @@ function OrdersPageContent({ role }: { role: Role }) {
         </FilterField>
 
         {!isCustomer && (
-          <FilterField label="Region">
+          <FilterField label="Warehouse">
             <select
               value={filterRegion}
               onChange={(e) => setFilterRegion(e.target.value)}
               className="filter-input"
-              title="Khu vực giao (suy từ tỉnh người nhận) — lọc để tạo batch theo từng khu"
+              title="Kho đóng hàng — theo khu vực giao + tồn kho. Đơn East mà kho Ontario không có hàng/đủ số lượng sẽ tự về kho BC."
             >
               <option value="">All</option>
-              <option value="WEST">West (BC–MB)</option>
-              <option value="EAST">East (ON–NL)</option>
-              <option value="UNKNOWN">Unknown</option>
+              <option value="WEST">Kho BC (West)</option>
+              <option value="EAST">Kho Ontario (East)</option>
             </select>
           </FilterField>
         )}
@@ -711,6 +712,26 @@ function OrdersPageContent({ role }: { role: Role }) {
                           {[o.city, o.province, o.zipcode].filter(Boolean).join(", ")}
                           {o.country && o.country !== "CA" ? ` · ${o.country}` : ""}
                         </div>
+                        {!isCustomer && o.warehouse && (() => {
+                          const fellBack =
+                            provinceToRegion(o.province, o.country) === "EAST" &&
+                            o.warehouse === "WEST";
+                          return (
+                            <div
+                              className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide"
+                              style={{ color: fellBack ? "#b45309" : "var(--text-muted)" }}
+                              title={
+                                fellBack
+                                  ? "Đơn khu East nhưng kho Ontario không đủ hàng → đóng tại kho BC"
+                                  : "Kho đóng hàng"
+                              }
+                            >
+                              <span className="material-symbols-outlined text-[12px]">warehouse</span>
+                              {o.warehouse === "EAST" ? "Kho Ontario" : "Kho BC"}
+                              {fellBack && " (E→BC)"}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-2 text-center font-mono">
                         {o.quantity}

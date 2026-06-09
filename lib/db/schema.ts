@@ -196,6 +196,9 @@ export const orders = pgTable(
 
     status: orderStatusEnum("status").default("NEW").notNull(),
     boxCode: text("box_code").references(() => boxes.code),
+    // Kho thực sự đóng đơn — gán lúc tạo batch (định tuyến theo region + tồn kho).
+    // Dùng để trừ tồn đúng kho (đơn East fallback về BC không trừ nhầm kho E).
+    warehouseCode: text("warehouse_code"),
     errorNote: text("error_note"),
     batchId: text("batch_id").references(() => batches.id),
     trackingNumber: text("tracking_number"),
