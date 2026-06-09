@@ -5,8 +5,7 @@ import { orders, customers, products } from "@/lib/db/schema";
 import { and, desc, eq, ne, or, sql } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
 import { isRegion } from "@/lib/geo/province";
-import { orderWarehouse, type WarehouseCode } from "@/lib/inventory";
-import { computeWarehouseMap } from "@/lib/inventory/routing";
+import { buildWarehouseResolver } from "@/lib/inventory/routing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -199,14 +198,10 @@ export const GET = withAuth(
       .limit(5000);
 
     // Lọc theo kho đóng (khớp bộ lọc "Warehouse" trên UI): ưu tiên kho đã lưu,
-    // đơn chưa chốt dùng định tuyến có nhìn tồn kho E.
-    const whMap = isRegion(region) ? await computeWarehouseMap() : null;
-    const rowWarehouse = (r: (typeof allRows)[number]): WarehouseCode => {
-      if (r.warehouseCode === "EAST" || r.warehouseCode === "WEST") return r.warehouseCode;
-      return whMap?.get(r.uniqueKey) ?? orderWarehouse(r.province, r.country);
-    };
-    const rows = isRegion(region)
-      ? allRows.filter((r) => rowWarehouse(r) === region)
+    // đơn chưa chốt dùng định tuyến có nhìn tồn kho E, đơn cũ kiểm tra track ở E.
+    const resolve = isRegion(region) ? await buildWarehouseResolver() : null;
+    const rows = resolve
+      ? allRows.filter((r) => resolve(r) === region)
       : allRows;
 
     // Build XLSX

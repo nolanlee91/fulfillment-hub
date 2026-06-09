@@ -92,15 +92,29 @@ export function pickWarehouse(o: GeoOrder, avail: Map<string, number>): Warehous
   return "EAST";
 }
 
+interface ResolvableOrder {
+  uniqueKey: string;
+  productId: string;
+  province: string | null;
+  country: string | null;
+  warehouseCode: string | null;
+  status: string;
+}
+
 /**
- * Tính kho đề xuất cho TẤT CẢ đơn chưa chốt (toàn cục, FIFO) → Map<uniqueKey, kho>.
- * Đơn đã chốt (EXPORTED trở đi) KHÔNG nằm trong map — dùng warehouseCode đã lưu.
- * Tính toàn cục để danh sách đơn và lúc tạo batch nhất quán bất kể bộ lọc đang xem.
+ * Resolver kho cho mọi đơn (1 lần load, dùng cho cả list + export):
+ *   1. Đơn đã chốt (warehouseCode đã lưu) → dùng nguyên.
+ *   2. Đơn chưa chốt (NEW/READY/ERROR…) → kết quả phân bổ greedy FIFO toàn cục
+ *      (region + tồn kho E). Tính toàn cục để list & lúc tạo batch nhất quán.
+ *   3. Đơn cũ đã xử lý nhưng chưa có warehouseCode → region + KIỂM TRA mặt hàng
+ *      có được track ở kho E không. KHÔNG track ở E ⇒ WEST dù region=EAST
+ *      (đây là chỗ trước bị sai: fallback region thuần gán nhầm EAST).
  */
-export async function computeWarehouseMap(): Promise<Map<string, WarehouseCode>> {
+export async function buildWarehouseResolver(): Promise<
+  (o: ResolvableOrder) => WarehouseCode
+> {
   const avail = await loadEastAvailable();
-  const map = new Map<string, WarehouseCode>();
-  if (avail.size === 0) return map; // không track gì ở E → mọi đơn về WEST (caller fallback)
+  const eastProducts = new Set(avail.keys()); // mặt hàng kho E có theo dõi
 
   const assignable = await db
     .select({
@@ -114,8 +128,15 @@ export async function computeWarehouseMap(): Promise<Map<string, WarehouseCode>>
     .where(inArray(ordersTable.status, [...ASSIGNABLE_STATUSES]))
     .orderBy(asc(ordersTable.syncedAt), asc(ordersTable.uniqueKey));
 
-  for (const o of assignable) {
-    map.set(o.uniqueKey, pickWarehouse(o, avail));
-  }
-  return map;
+  const map = new Map<string, WarehouseCode>();
+  for (const o of assignable) map.set(o.uniqueKey, pickWarehouse(o, avail));
+
+  return (o: ResolvableOrder): WarehouseCode => {
+    if (o.warehouseCode === "EAST" || o.warehouseCode === "WEST") return o.warehouseCode;
+    const fromMap = map.get(o.uniqueKey);
+    if (fromMap) return fromMap;
+    // Đơn cũ chưa gán: region + mặt hàng phải được track ở kho E mới là EAST.
+    if (provinceToRegion(o.province, o.country) !== "EAST") return "WEST";
+    return eastProducts.has(o.productId) ? "EAST" : "WEST";
+  };
 }
