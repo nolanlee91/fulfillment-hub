@@ -505,6 +505,15 @@ input::placeholder, textarea::placeholder {
 }
 .status-tabs-bar::-webkit-scrollbar { display: none; }
 
+/* Recon filter dropdown (custom, có submenu hover) */
+.recon-menu-item {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.recon-menu-item:hover {
+  background: var(--bg-tertiary);
+}
+
 .status-tab {
   display: inline-flex;
   align-items: center;

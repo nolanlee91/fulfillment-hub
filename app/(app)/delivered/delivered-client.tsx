@@ -13,7 +13,8 @@ import {
   FilterField,
   SearchInput,
 } from "@/components/ui";
-import { applyReconFilter, RECON_FILTER_OPTIONS } from "@/lib/recon-filter";
+import { applyReconFilter } from "@/lib/recon-filter";
+import { ReconFilterMenu } from "@/components/recon-filter-menu";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -231,18 +232,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
           </select>
         </FilterField>
         <FilterField label="Recon">
-          <select
-            value={filterRecon}
-            onChange={(e) => setFilterRecon(e.target.value)}
-            className="filter-input"
-            title="Reconciled (customer upload) → Booked (KDExpress)"
-          >
-            {RECON_FILTER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <ReconFilterMenu value={filterRecon} onChange={setFilterRecon} />
         </FilterField>
         <FilterField label="Search" className="col-span-2">
           <SearchInput

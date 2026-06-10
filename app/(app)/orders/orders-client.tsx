@@ -16,7 +16,8 @@ import {
   FilterField,
   SearchInput,
 } from "@/components/ui";
-import { applyReconFilter, RECON_FILTER_OPTIONS } from "@/lib/recon-filter";
+import { applyReconFilter } from "@/lib/recon-filter";
+import { ReconFilterMenu } from "@/components/recon-filter-menu";
 import { provinceToRegion } from "@/lib/geo/province";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
@@ -443,18 +444,7 @@ function OrdersPageContent({ role }: { role: Role }) {
         </FilterField>
 
         <FilterField label="Recon">
-          <select
-            value={filterRecon}
-            onChange={(e) => setFilterRecon(e.target.value)}
-            className="filter-input"
-            title="Reconciled (customer upload) → Booked (KDExpress)"
-          >
-            {RECON_FILTER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <ReconFilterMenu value={filterRecon} onChange={setFilterRecon} />
         </FilterField>
 
         {!isCustomer && (

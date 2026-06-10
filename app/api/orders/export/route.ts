@@ -76,6 +76,7 @@ export const GET = withAuth(
     const region = searchParams.get("region"); // WEST | EAST | UNKNOWN | null
     const reconciled = searchParams.get("reconciled"); // "yes" | "no" | null
     const accounted = searchParams.get("accounted"); // "yes" | "no" | null (hạch toán)
+    const recpay = searchParams.get("recpay"); // ETF | NON_ETF | null (loại thanh toán)
     const search = searchParams.get("search");
 
     const conditions = [];
@@ -142,6 +143,16 @@ export const GET = withAuth(
       conditions.push(sql`${orders.accountedAt} IS NOT NULL`);
     } else if (accounted === "no") {
       conditions.push(sql`${orders.accountedAt} IS NULL`);
+    }
+    if (recpay === "ETF") {
+      conditions.push(eq(orders.paymentType, "ETF"));
+    } else if (recpay === "NON_ETF") {
+      conditions.push(
+        and(
+          sql`${orders.reconciledAt} IS NOT NULL`,
+          sql`${orders.paymentType} IS DISTINCT FROM 'ETF'`,
+        )!,
+      );
     }
     if (search) {
       const s = `%${search.toLowerCase()}%`;
