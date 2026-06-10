@@ -28,6 +28,13 @@ export function ReconFilterMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="filter-input w-full flex items-center justify-between gap-2 text-left"
+        style={{
+          backgroundColor: "var(--bg-secondary)",
+          border: "1px solid var(--border-strong)",
+          borderRadius: "var(--radius-sm)",
+          color: "var(--text-primary)",
+          cursor: "pointer",
+        }}
         title="Reconciled (customer upload) → Booked (KDExpress); ETF / non-ETF"
       >
         <span className="truncate">{reconFilterLabel(value)}</span>
