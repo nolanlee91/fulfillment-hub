@@ -28,7 +28,7 @@ interface CreateDraft {
   username: string;
   password: string;
   name: string;
-  role: "STAFF" | "CUSTOMER";
+  role: "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
   customerId: string;
 }
 
@@ -78,7 +78,11 @@ export default function UsersClient({
   const [creating, setCreating] = useState<CreateDraft | null>(null);
   const [editing, setEditing] = useState<EditDraft | null>(null);
   const [resetting, setResetting] = useState<ResetDraft | null>(null);
-  const [resetDone, setResetDone] = useState<{ username: string; password: string } | null>(null);
+  const [revealCreds, setRevealCreds] = useState<{
+    username: string;
+    password: string;
+    isNew: boolean;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -127,8 +131,11 @@ export default function UsersClient({
       });
       const data = await res.json();
       if (data.success) {
+        const creds = { username: creating.username.trim(), password: creating.password };
         setCreating(null);
         await load();
+        // Hiện lại mật khẩu để admin copy gửi cho tài khoản mới.
+        setRevealCreds({ ...creds, isNew: true });
       } else {
         alert("Error: " + data.error);
       }
@@ -186,7 +193,7 @@ export default function UsersClient({
       });
       const data = await res.json();
       if (data.success) {
-        setResetDone({ username: resetting.username, password: resetting.password });
+        setRevealCreds({ username: resetting.username, password: resetting.password, isNew: false });
         setResetting(null);
       } else {
         alert("Error: " + data.error);
@@ -440,15 +447,28 @@ export default function UsersClient({
             </Field>
 
             <Field label="Password" required>
-              <input
-                type="text"
-                value={creating.password}
-                onChange={(e) =>
-                  setCreating({ ...creating, password: e.target.value })
-                }
-                placeholder=">= 8 characters"
-                className="w-full px-3 py-2 rounded text-sm font-mono"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={creating.password}
+                  onChange={(e) =>
+                    setCreating({ ...creating, password: e.target.value })
+                  }
+                  placeholder=">= 8 characters"
+                  className="flex-1 px-3 py-2 rounded text-sm font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCreating({ ...creating, password: generateRandomPassword() })
+                  }
+                  className="px-3 py-2 rounded text-xs font-semibold whitespace-nowrap"
+                  style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+                  title="Generate a random 12-character password"
+                >
+                  Generate
+                </button>
+              </div>
             </Field>
 
             <Field label="Display Name" required>
@@ -469,13 +489,14 @@ export default function UsersClient({
                 onChange={(e) =>
                   setCreating({
                     ...creating,
-                    role: e.target.value as "STAFF" | "CUSTOMER",
-                    customerId: e.target.value === "STAFF" ? "" : creating.customerId,
+                    role: e.target.value as "SUPER_ADMIN" | "STAFF" | "CUSTOMER",
+                    customerId: e.target.value === "CUSTOMER" ? creating.customerId : "",
                   })
                 }
                 className="w-full px-3 py-2 rounded text-sm"
               >
                 <option value="STAFF">Staff</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
                 <option value="CUSTOMER">Customer</option>
               </select>
             </Field>
@@ -661,42 +682,56 @@ export default function UsersClient({
         </Modal>
       )}
 
-      {resetDone && (
-        <Modal title="Password Reset Successfully" onClose={() => setResetDone(null)}>
+      {revealCreds && (
+        <Modal
+          title={revealCreds.isNew ? "User Created" : "Password Reset Successfully"}
+          onClose={() => setRevealCreds(null)}
+        >
           <p
             className="text-xs mb-3"
             style={{ color: "var(--text-muted)" }}
           >
-            Copy the password below and send it to{" "}
+            {revealCreds.isNew
+              ? "Account created. Copy the credentials below and send them to "
+              : "Copy the password below and send it to "}
             <span className="font-mono" style={{ color: "var(--text-primary)" }}>
-              {resetDone.username}
+              {revealCreds.username}
             </span>{" "}
-            via a secure channel (Zalo, Telegram, in person, etc.). The user must
-            sign in again with the new password and should change it after first login.
+            via a secure channel (Zalo, Telegram, in person, etc.). They must
+            sign in with this password and should change it after first login.
           </p>
 
           <div
-            className="rounded p-3 font-mono text-base break-all"
+            className="rounded p-3 font-mono text-sm break-all space-y-1"
             style={{
               backgroundColor: "var(--bg-tertiary)",
               color: "var(--text-primary)",
               borderLeft: "3px solid var(--accent)",
             }}
           >
-            {resetDone.password}
+            <div>
+              <span style={{ color: "var(--text-muted)" }}>user: </span>
+              {revealCreds.username}
+            </div>
+            <div>
+              <span style={{ color: "var(--text-muted)" }}>pass: </span>
+              {revealCreds.password}
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
             <Button
               variant="secondary"
               onClick={() => {
-                navigator.clipboard.writeText(resetDone.password);
+                navigator.clipboard.writeText(
+                  `user: ${revealCreds.username}\npass: ${revealCreds.password}`,
+                );
               }}
               icon="content_copy"
             >
               Copy
             </Button>
-            <Button variant="primary" onClick={() => setResetDone(null)}>
+            <Button variant="primary" onClick={() => setRevealCreds(null)}>
               Close
             </Button>
           </div>

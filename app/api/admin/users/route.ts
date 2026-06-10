@@ -11,7 +11,7 @@ const CreateUserSchema = z.object({
   username: z.string().min(3).max(40).regex(/^[a-z0-9_.]+$/, "username chỉ dùng a-z, 0-9, _, ."),
   password: z.string().min(8, "password >= 8 ký tự"),
   name: z.string().min(1),
-  role: z.enum(["STAFF", "CUSTOMER"]),
+  role: z.enum(["SUPER_ADMIN", "STAFF", "CUSTOMER"]),
   customerId: z.string().nullable().optional(),
 });
 
