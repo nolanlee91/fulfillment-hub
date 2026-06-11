@@ -91,8 +91,22 @@ export default function BatchesPage() {
         setMessage({ text: err.error || "Sắp label thất bại", type: "error" });
         return;
       }
-      const unmatched = Number(res.headers.get("X-Unmatched-Pages") || "0");
-      const total = res.headers.get("X-Total-Pages") || "?";
+      // Báo cáo lệch thừa/thiếu (server encode bằng encodeURIComponent(JSON)).
+      let report: {
+        total: number;
+        matched: number;
+        extraPages: number;
+        extraIds: string[];
+        missingOrders: number;
+        missingIds: string[];
+      } | null = null;
+      try {
+        const raw = res.headers.get("X-Sort-Report");
+        if (raw) report = JSON.parse(decodeURIComponent(raw));
+      } catch {
+        report = null;
+      }
+
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -100,13 +114,26 @@ export default function BatchesPage() {
       a.download = `labels_${batchId}_sorted.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      const warn =
-        unmatched > 0
-          ? ` (${unmatched}/${total} trang không nhận ra Mã đơn — đẩy xuống cuối)`
-          : "";
+
+      const warnings: string[] = [];
+      if (report && report.extraPages > 0) {
+        const ids = report.extraIds.join(", ");
+        warnings.push(
+          `${report.extraPages} trang thừa không thuộc batch (đẩy xuống cuối): ${ids}${report.extraPages > report.extraIds.length ? "…" : ""}`,
+        );
+      }
+      if (report && report.missingOrders > 0) {
+        const ids = report.missingIds.join(", ");
+        warnings.push(
+          `${report.missingOrders} đơn trong batch chưa thấy label: ${ids}${report.missingOrders > report.missingIds.length ? "…" : ""}`,
+        );
+      }
       setMessage({
-        text: `Đã sắp lại label theo mặt hàng cho ${batchId}${warn}`,
-        type: unmatched > 0 ? "error" : "success",
+        text:
+          warnings.length > 0
+            ? `Đã sắp label ${batchId} — ⚠ ${warnings.join(" | ")}`
+            : `Đã sắp label theo mặt hàng cho ${batchId} (khớp đủ ${report?.matched ?? ""} đơn)`,
+        type: warnings.length > 0 ? "error" : "success",
       });
     } catch (e) {
       setMessage({ text: (e as Error).message, type: "error" });

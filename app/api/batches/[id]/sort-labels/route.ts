@@ -126,17 +126,50 @@ export const POST = withAuth<RouteContext>(
       copied.forEach((p) => outDoc.addPage(p));
       const outBytes = await outDoc.save();
 
-      const unmatched = pageRefs.filter((p) => !p.matched).length;
-      const filename = `labels_${batchId}_sorted.pdf`;
+      // 6. Báo cáo lệch thừa/thiếu để client cảnh báo.
+      //    - Trang thừa: trang không khớp đơn nào trong batch. Dò Mã đơn toàn cục
+      //      để biết nó thuộc đâu (vd lỡ gộp batch khác); không thì ghi số trang.
+      //    - Đơn thiếu: đơn trong batch nhưng không thấy trang label nào trong file.
+      const matchedOrderIds = new Set(
+        pageRefs.filter((p) => p.matched).map((p) => p.orderId),
+      );
+      const missingOrders = rows
+        .map((r) => r.orderId)
+        .filter((id) => !matchedOrderIds.has(id));
 
+      const extraIndexes = pageRefs.filter((p) => !p.matched).map((p) => p.index);
+      const extraIds: string[] = [];
+      if (extraIndexes.length > 0) {
+        const allIds = new Set(
+          (await db.select({ orderId: orders.orderId }).from(orders)).map(
+            (o) => o.orderId,
+          ),
+        );
+        for (const idx of extraIndexes) {
+          const tok = pageTexts[idx]
+            .split(/[^A-Za-z0-9]+/)
+            .find((t) => allIds.has(t));
+          extraIds.push(tok || `trang ${idx + 1}`);
+        }
+      }
+
+      const report = {
+        total: pageRefs.length,
+        matched: matchedOrderIds.size,
+        extraPages: extraIndexes.length,
+        extraIds: extraIds.slice(0, 20),
+        missingOrders: missingOrders.length,
+        missingIds: missingOrders.slice(0, 20),
+      };
+
+      const filename = `labels_${batchId}_sorted.pdf`;
       return new NextResponse(new Uint8Array(outBytes), {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
           "Content-Disposition": `attachment; filename="${filename}"`,
-          // Số trang không khớp Mã đơn (đẩy xuống cuối) — client đọc để cảnh báo.
-          "X-Unmatched-Pages": String(unmatched),
-          "X-Total-Pages": String(pageRefs.length),
+          // Báo cáo lệch (ASCII-safe) — client decode để hiện cảnh báo chi tiết.
+          "X-Sort-Report": encodeURIComponent(JSON.stringify(report)),
         },
       });
     } catch (error: unknown) {
