@@ -15,8 +15,9 @@ interface RouteContext {
 
 /**
  * POST /api/batches/[id]/sort-labels
- * Nhận file PDF label (download từ ClickShip) → sắp lại các trang theo
- * Mặt hàng → Mã đơn → trả về PDF mới để in, đóng gói tuần tự từng loại.
+ * Nhận file PDF label (download từ ClickShip, theo từng batch) → sắp lại các
+ * trang theo Kho → Mặt hàng → Mã đơn → trả về PDF mới để in, đóng gói tuần tự.
+ * (Kho đứng trước phòng khi 1 batch lẫn 2 kho; batch 1 kho thì coi như không ảnh hưởng.)
  *
  * Khớp trang ↔ Mã đơn bằng cách dò Mã đơn của batch trong text từng trang
  * (không đoán prefix). Trang không nhận ra Mã đơn → đẩy xuống cuối, không mất.
@@ -41,6 +42,7 @@ export const POST = withAuth<RouteContext>(
           orderId: orders.orderId,
           productId: orders.productId,
           productName: products.name,
+          warehouseCode: orders.warehouseCode,
         })
         .from(orders)
         .leftJoin(products, eq(orders.productId, products.id))
@@ -53,12 +55,17 @@ export const POST = withAuth<RouteContext>(
         );
       }
 
+      // Kho BC (WEST) trước, Ontario (EAST) sau, chưa gán → giữa.
+      const whRank = (wh: string | null): number =>
+        wh === "WEST" ? 0 : wh === "EAST" ? 1 : 2;
+
       const orderInfo = new Map<
         string,
-        { productKey: string; orderId: string }
+        { whRank: number; productKey: string; orderId: string }
       >();
       for (const r of rows) {
         orderInfo.set(r.orderId, {
+          whRank: whRank(r.warehouseCode),
           productKey: (r.productName || r.productId || "").toLowerCase(),
           orderId: r.orderId,
         });
@@ -78,6 +85,7 @@ export const POST = withAuth<RouteContext>(
       // 3. Mỗi trang → tìm Mã đơn của batch xuất hiện trong text trang đó.
       type PageRef = {
         index: number;
+        whRank: number;
         productKey: string;
         orderId: string;
         matched: boolean;
@@ -87,14 +95,21 @@ export const POST = withAuth<RouteContext>(
         for (const tok of tokens) {
           const info = orderInfo.get(tok);
           if (info) {
-            return { index, productKey: info.productKey, orderId: info.orderId, matched: true };
+            return {
+              index,
+              whRank: info.whRank,
+              productKey: info.productKey,
+              orderId: info.orderId,
+              matched: true,
+            };
           }
         }
-        return { index, productKey: "￿", orderId: "", matched: false };
+        return { index, whRank: 9, productKey: "￿", orderId: "", matched: false };
       });
 
-      // 4. Sắp xếp: mặt hàng → Mã đơn. Trang không nhận ra → cuối (giữ thứ tự gốc).
+      // 4. Sắp xếp: Kho → Mặt hàng → Mã đơn. Trang không nhận ra → cuối (giữ thứ tự gốc).
       const sorted = [...pageRefs].sort((a, b) => {
+        if (a.whRank !== b.whRank) return a.whRank - b.whRank;
         if (a.productKey !== b.productKey)
           return a.productKey < b.productKey ? -1 : 1;
         if (a.orderId !== b.orderId) return a.orderId < b.orderId ? -1 : 1;
