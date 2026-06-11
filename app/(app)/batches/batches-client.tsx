@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Topbar } from "@/components/topbar";
 import { Card, Button } from "@/components/ui";
 
@@ -26,6 +26,9 @@ export default function BatchesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Batch | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [sortingId, setSortingId] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const sortTargetRef = useRef<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -66,6 +69,50 @@ export default function BatchesPage() {
     } finally {
       setExporting(null);
       setTimeout(() => setMessage(null), 5000);
+    }
+  }
+
+  async function handleSortFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset để chọn lại cùng file được
+    const batchId = sortTargetRef.current;
+    if (!file || !batchId) return;
+    setSortingId(batchId);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(
+        `/api/batches/${encodeURIComponent(batchId)}/sort-labels`,
+        { method: "POST", body: fd },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setMessage({ text: err.error || "Sắp label thất bại", type: "error" });
+        return;
+      }
+      const unmatched = Number(res.headers.get("X-Unmatched-Pages") || "0");
+      const total = res.headers.get("X-Total-Pages") || "?";
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `labels_${batchId}_sorted.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const warn =
+        unmatched > 0
+          ? ` (${unmatched}/${total} trang không nhận ra Mã đơn — đẩy xuống cuối)`
+          : "";
+      setMessage({
+        text: `Đã sắp lại label theo mặt hàng cho ${batchId}${warn}`,
+        type: unmatched > 0 ? "error" : "success",
+      });
+    } catch (e) {
+      setMessage({ text: (e as Error).message, type: "error" });
+    } finally {
+      setSortingId(null);
+      setTimeout(() => setMessage(null), 8000);
     }
   }
 
@@ -111,6 +158,15 @@ export default function BatchesPage() {
   return (
     <>
       <Topbar title="Batches" subtitle="Operations" />
+
+      {/* Input ẩn dùng chung cho nút "Sắp label" của mọi batch */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={handleSortFile}
+      />
 
       <Card padding="none" className="mb-4 px-4 py-3 flex items-center justify-between">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -232,6 +288,18 @@ export default function BatchesPage() {
                               >
                                 <span className="material-symbols-outlined text-[16px]">download</span>
                                 {exporting === b.id ? "Downloading..." : isEst ? "Download CSV" : "Download Excel"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  sortTargetRef.current = b.id;
+                                  fileRef.current?.click();
+                                }}
+                                disabled={sortingId === b.id}
+                                className="btn btn-secondary"
+                                title="Tải file PDF label (từ ClickShip) lên → sắp lại trang theo mặt hàng để in đóng gói tuần tự"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">sort</span>
+                                {sortingId === b.id ? "Đang sắp..." : "Sắp label"}
                               </button>
                               <Button
                                 variant="danger"
