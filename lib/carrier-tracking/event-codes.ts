@@ -62,11 +62,24 @@ const NOTICE_CARD_CODES = new Set<string>([
   "2407",
 ]);
 
+// Event "thông tin", KHÔNG phải vận chuyển vật lý: label/thông tin điện tử đã tạo,
+// hệ thống cập nhật ngày giao dự kiến. Canada Post phát ngay khi tạo label (chưa
+// quét hàng) → KHÔNG được đẩy đơn từ LABEL_CREATED lên IN_TRANSIT.
+//   1200 / 1203 — Expected delivery date updated
+//   3000        — Electronic information submitted by shipper
+//   3002        — Return label created
+const INFO_ONLY_CODES = new Set<string>([
+  "1200", "1203",
+  "3000", "3002",
+]);
+
 export type TrackingStatus = "DELIVERED" | "FAILED" | "IN_TRANSIT";
 export type AttentionReason = "ADDRESS_ERROR" | "DELAYED" | "NOTICE_CARD" | "STUCK";
 
 export interface EventClassification {
-  status: TrackingStatus;
+  // status = null: event thông tin thuần, không mang tín hiệu vận chuyển → bỏ qua
+  // khi quyết định status (đơn giữ nguyên trạng thái hiện tại).
+  status: TrackingStatus | null;
   attention: AttentionReason | "CLEAR" | null;
 }
 
@@ -89,6 +102,9 @@ export function classifyEvent(
   if (ADDRESS_ERROR_CODES.has(code)) return { status: "IN_TRANSIT", attention: "ADDRESS_ERROR" };
   if (NOTICE_CARD_CODES.has(code)) return { status: "IN_TRANSIT", attention: "NOTICE_CARD" };
   if (DELAY_CODES.has(code)) return { status: "IN_TRANSIT", attention: "DELAYED" };
+
+  // Event thông tin thuần → không mang tín hiệu status (đơn giữ nguyên trạng thái).
+  if (INFO_ONLY_CODES.has(code)) return { status: null, attention: null };
 
   return { status: "IN_TRANSIT", attention: null };
 }

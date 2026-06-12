@@ -17,7 +17,9 @@ interface AttentionUpdate {
 interface PerTrackingSummary {
   trackingNumber: string;
   latestEvent: AptEvent;
-  finalStatus: TrackingStatus;
+  // null = batch event này chỉ toàn event "thông tin" (vd: cập nhật ngày giao,
+  // info điện tử) → không có tín hiệu status → giữ nguyên trạng thái hiện tại của đơn.
+  finalStatus: TrackingStatus | null;
   deliveredAt: Date | null;
   newAttention: AttentionUpdate | null;
 }
@@ -25,11 +27,14 @@ interface PerTrackingSummary {
 /**
  * Gộp event theo tracking number → tóm tắt status + attention từ batch event này.
  *
- * Logic finalStatus:
+ * Logic finalStatus (chỉ xét event có tín hiệu status, bỏ qua event "thông tin"):
  *   - Nếu có BẤT KỲ event nào classify = DELIVERED (forward delivery, không phải RTS-completed)
  *     → DELIVERED (terminal).
- *   - Nếu latest event classify = FAILED → FAILED.
- *   - Else → IN_TRANSIT.
+ *   - Nếu event-có-tín-hiệu mới nhất = FAILED → FAILED.
+ *   - Nếu có event vận chuyển thật → IN_TRANSIT.
+ *   - Nếu chỉ toàn event "thông tin" (status null) → null = không đổi trạng thái
+ *     (đơn vừa tạo label nhận event "Expected delivery date updated" sẽ KHÔNG bị
+ *     đẩy lên IN_TRANSIT, giữ LABEL_CREATED).
  *
  * Logic newAttention: đi từ event mới nhất ngược về cũ, lấy event đầu tiên có
  * `classification.attention !== null`. Nếu là "CLEAR" thì newAttention = null
@@ -53,8 +58,8 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
       cls: classifyEvent(ev.eventCode, ev.returnFlag),
     }));
 
-    // finalStatus
-    let finalStatus: TrackingStatus = "IN_TRANSIT";
+    // finalStatus — bỏ qua event "thông tin" (status null) khi quyết định.
+    let finalStatus: TrackingStatus | null = null;
     let deliveredAt: Date | null = null;
     for (const c of classified) {
       if (c.cls.status === "DELIVERED") {
@@ -63,8 +68,17 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
       }
     }
     if (finalStatus !== "DELIVERED") {
-      const latestCls = classified[classified.length - 1].cls;
-      if (latestCls.status === "FAILED") finalStatus = "FAILED";
+      // Event mang-tín-hiệu mới nhất (không tính event "thông tin") quyết định
+      // FAILED vs IN_TRANSIT. Nếu không có event nào mang tín hiệu → null (giữ nguyên).
+      let latestSignal: TrackingStatus | null = null;
+      for (let i = classified.length - 1; i >= 0; i--) {
+        if (classified[i].cls.status !== null) {
+          latestSignal = classified[i].cls.status;
+          break;
+        }
+      }
+      if (latestSignal === "FAILED") finalStatus = "FAILED";
+      else if (latestSignal === "IN_TRANSIT") finalStatus = "IN_TRANSIT";
     }
 
     // newAttention: đi từ cuối lên, lấy event đầu tiên có attention != null
