@@ -16,6 +16,7 @@ import {
 import { applyReconFilter } from "@/lib/recon-filter";
 import { ReconFilterMenu } from "@/components/recon-filter-menu";
 import { Dropdown } from "@/components/ui/dropdown";
+import { Pagination } from "@/components/ui/pagination";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -92,6 +93,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
   const [exporting, setExporting] = useState(false);
   const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
   const [listKey, setListKey] = useState(0);
+  const [page, setPage] = useState(1);
 
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
@@ -115,7 +117,7 @@ export default function DeliveredClient({ role }: { role: Role }) {
       setOrders(data.data);
       // Chỉ re-mount + replay animation khi user thay đổi filter/load lần đầu.
       // Refresh silent (sau khi drawer update) giữ nguyên DOM → không có "shuffle" visual.
-      if (!opts.silent) setListKey((k) => k + 1);
+      if (!opts.silent) { setListKey((k) => k + 1); setPage(1); }
     }
     if (!opts.silent) setLoading(false);
   }, [filterCustomer, filterProduct, filterPayment, filterRecon, search]);
@@ -195,6 +197,11 @@ export default function DeliveredClient({ role }: { role: Role }) {
     ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
     : productOpts;
 
+  const PAGE_SIZE = 100;
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageOrders = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <>
       <Topbar title="Delivered" subtitle="Operations" showSync={!isCustomer} />
@@ -252,6 +259,9 @@ export default function DeliveredClient({ role }: { role: Role }) {
       <div className="action-bar">
         <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
           <span className="font-bold">{orders.length}</span> delivered orders
+          {orders.length > PAGE_SIZE && (
+            <span style={{ color: "var(--text-muted)" }}> · trang {safePage}/{totalPages}</span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
@@ -300,8 +310,8 @@ export default function DeliveredClient({ role }: { role: Role }) {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Flag</th>
                 </tr>
               </thead>
-              <tbody key={listKey}>
-                {orders.map((o, index) => (
+              <tbody key={`${listKey}-${safePage}`}>
+                {pageOrders.map((o, index) => (
                   <tr
                     key={o.uniqueKey}
                     className="row-animate"
@@ -390,6 +400,8 @@ export default function DeliveredClient({ role }: { role: Role }) {
           </div>
         )}
       </div>
+
+      <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} />
     </>
   );
 }

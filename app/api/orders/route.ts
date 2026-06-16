@@ -150,7 +150,8 @@ export const GET = withAuth(async (req, user) => {
       // Tiebreaker uniqueKey để sort stable — nhiều đơn cùng 1 batch sync có cùng syncedAt,
       // không có tiebreaker thì PostgreSQL trả về thứ tự không deterministic sau UPDATE.
       .orderBy(desc(orders.syncedAt), desc(orders.uniqueKey))
-      .limit(500);
+      // Trả đủ dòng để client phân trang (100/trang). Cap an toàn tránh payload bất thường.
+      .limit(5000);
 
     // Gán kho đóng cho từng đơn (ưu tiên kho đã lưu; đơn chưa chốt theo định tuyến
     // region + tồn kho E; đơn cũ kiểm tra mặt hàng có track ở E không). Trả về để UI
