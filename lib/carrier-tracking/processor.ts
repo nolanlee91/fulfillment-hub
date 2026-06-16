@@ -58,7 +58,7 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
 
     const classified = list.map((ev) => ({
       ev,
-      cls: classifyEvent(ev.eventCode, ev.returnFlag),
+      cls: classifyEvent(ev.eventCode, ev.returnFlag, ev.descriptionEn),
     }));
 
     // finalStatus — quyết định theo event MANG-TÍN-HIỆU MỚI NHẤT (theo timestamp).

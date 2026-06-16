@@ -83,15 +83,23 @@ export interface EventClassification {
   attention: AttentionReason | "CLEAR" | null;
 }
 
+// Mô tả cho biết item đang/đã bị TRẢ VỀ người gửi. Canada Post đôi khi tái dùng
+// code "Delivered" (1496/1498) với mô tả "...returned to the sender" mà KHÔNG set
+// returnFlag → nếu chỉ dựa flag sẽ lọt thành DELIVERED. Bắt thêm theo mô tả.
+const RETURN_DESC = /returned to (the )?sender|being returned|return to sender|enroute to the sender/i;
+
 export function classifyEvent(
   eventCode: string,
   returnFlag: string,
+  descriptionEn: string = "",
 ): EventClassification {
   const code = (eventCode || "").trim();
   const flag = (returnFlag || "").trim().toUpperCase();
-  const isReturnFlow = flag === "R" || flag === "A" || flag === "B";
+  const isReturnFlow =
+    flag === "R" || flag === "A" || flag === "B" || RETURN_DESC.test(descriptionEn || "");
 
   if (isReturnFlow) {
+    // Code "Delivered" trong luồng trả về = đã giao trả về sender → FAILED.
     if (DELIVERED_CODES.has(code)) return { status: "FAILED", attention: "CLEAR" };
     return { status: "IN_TRANSIT", attention: null };
   }
