@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Topbar } from "@/components/topbar";
 import { Card, Button } from "@/components/ui";
+import { Dropdown } from "@/components/ui/dropdown";
 
 interface Warehouse {
   code: string;
@@ -194,19 +195,17 @@ export default function InventoryClient() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="filter-label">Track a product</label>
-            <select
-              value={addProductId}
-              onChange={(e) => setAddProductId(e.target.value)}
-              className="filter-input"
-              style={{ minWidth: 240 }}
-            >
-              <option value="">Select product…</option>
-              {available.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.customerId})
-                </option>
-              ))}
-            </select>
+            <div style={{ minWidth: 240 }}>
+              <Dropdown
+                value={addProductId}
+                onChange={setAddProductId}
+                placeholder="Select product…"
+                options={available.map((p) => ({
+                  value: p.id,
+                  label: `${p.name} (${p.customerId})`,
+                }))}
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="filter-label">Tracking since</label>

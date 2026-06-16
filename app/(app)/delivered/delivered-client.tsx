@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { applyReconFilter } from "@/lib/recon-filter";
 import { ReconFilterMenu } from "@/components/recon-filter-menu";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -204,32 +205,36 @@ export default function DeliveredClient({ role }: { role: Role }) {
       <FilterBar className={`grid gap-3 ${isCustomer ? "grid-cols-5" : "grid-cols-6"}`}>
         {!isCustomer && (
           <FilterField label="Customer">
-            <select
+            <Dropdown
               value={filterCustomer}
-              onChange={(e) => { setFilterCustomer(e.target.value); setFilterProduct(""); }}
-              className="filter-input"
-            >
-              <option value="">All</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+              onChange={(v) => { setFilterCustomer(v); setFilterProduct(""); }}
+              options={[
+                { value: "", label: "All" },
+                ...customers.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
           </FilterField>
         )}
         <FilterField label="Product">
-          <select value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} className="filter-input">
-            <option value="">All</option>
-            {filteredProducts.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <Dropdown
+            value={filterProduct}
+            onChange={setFilterProduct}
+            options={[
+              { value: "", label: "All" },
+              ...filteredProducts.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
         </FilterField>
         <FilterField label="Payment">
-          <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)} className="filter-input">
-            <option value="">All</option>
-            <option value="PREPAID">Prepaid</option>
-            <option value="COD">COD</option>
-          </select>
+          <Dropdown
+            value={filterPayment}
+            onChange={setFilterPayment}
+            options={[
+              { value: "", label: "All" },
+              { value: "PREPAID", label: "Prepaid" },
+              { value: "COD", label: "COD" },
+            ]}
+          />
         </FilterField>
         <FilterField label="Recon">
           <ReconFilterMenu value={filterRecon} onChange={setFilterRecon} />
