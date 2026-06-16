@@ -7,6 +7,7 @@ import { Card, Button } from "@/components/ui";
 interface Batch {
   id: string;
   totalOrders: number;
+  labeledCount: number;
   platform: "CLICKSHIP" | "EST" | null;
   createdAt: string;
   exportedAt: string | null;
@@ -242,8 +243,11 @@ export default function BatchesPage() {
                   <th className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Type
                   </th>
-                  <th className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
-                    Orders
+                  <th
+                    className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase"
+                    title="Số label đã up / tổng đơn trong batch"
+                  >
+                    Labeled / Total
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-bold tracking-widest uppercase">
                     Created
@@ -272,11 +276,21 @@ export default function BatchesPage() {
                           {isEst ? "COD" : "Standard"}
                         </span>
                       </td>
-                      <td
-                        className="px-4 py-3 text-right font-mono"
-                        style={{ color: "var(--accent)" }}
-                      >
-                        {b.totalOrders}
+                      <td className="px-4 py-3 text-right font-mono">
+                        <span
+                          style={{
+                            color:
+                              b.labeledCount >= b.totalOrders
+                                ? "var(--color-success)"
+                                : b.labeledCount > 0
+                                  ? "var(--accent)"
+                                  : "var(--text-muted)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {b.labeledCount}
+                        </span>
+                        <span style={{ color: "var(--text-muted)" }}>/{b.totalOrders}</span>
                       </td>
                       <td
                         className="px-4 py-3 text-xs"

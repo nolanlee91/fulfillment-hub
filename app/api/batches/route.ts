@@ -55,7 +55,18 @@ export const GET = withAuth(
       .from(batches)
       .orderBy(desc(batches.createdAt));
 
-    return NextResponse.json({ success: true, data: rows });
+    // Đếm số đơn ĐÃ CÓ LABEL (trackingNumber != null) theo từng batch → tiến độ up label.
+    const labeledRows = await db
+      .select({ batchId: orders.batchId, n: sql<number>`count(*)::int` })
+      .from(orders)
+      .where(sql`${orders.trackingNumber} IS NOT NULL`)
+      .groupBy(orders.batchId);
+    const labeledMap = new Map<string, number>();
+    for (const r of labeledRows) if (r.batchId) labeledMap.set(r.batchId, r.n);
+
+    const data = rows.map((b) => ({ ...b, labeledCount: labeledMap.get(b.id) ?? 0 }));
+
+    return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
