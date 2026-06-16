@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { applyReconFilter } from "@/lib/recon-filter";
 import { ReconFilterMenu } from "@/components/recon-filter-menu";
+import { Dropdown } from "@/components/ui/dropdown";
 import { provinceToRegion } from "@/lib/geo/province";
 
 type Role = "SUPER_ADMIN" | "STAFF" | "CUSTOMER";
@@ -343,12 +344,13 @@ function OrdersPageContent({ role }: { role: Role }) {
     ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
     : productOpts;
 
+  // NEW và ERROR_UPDATED là trạng thái trung gian thoáng qua (sync+validate chạy
+  // chung 1 nút → đơn luôn kết thúc ở READY/ERROR). Bỏ khỏi filter cho gọn UI.
+  // Enum/logic/badge giữ nguyên để lỡ đơn nào kẹt vẫn render đúng.
   const STATUS_TABS = [
-    { value: "",               label: "All",          dot: null },
-    { value: "NEW",            label: "New",          dot: "var(--color-info)" },
+    { value: "",               label: "All",          dot: "var(--text-muted)" },
     { value: "READY",          label: "Ready",        dot: "var(--color-success)" },
     { value: "ERROR",          label: "Error",        dot: "var(--color-danger)" },
-    { value: "ERROR_UPDATED",  label: "Updated",      dot: "var(--color-warning)" },
     { value: "EXPORTED",       label: "Exported",     dot: "var(--color-slate)" },
     { value: "LABEL_CREATED",  label: "Label",        dot: "var(--color-purple)" },
     { value: "IN_TRANSIT",     label: "In Transit",   dot: "var(--color-sky)" },
@@ -383,64 +385,56 @@ function OrdersPageContent({ role }: { role: Role }) {
       >
         {!isCustomer && (
           <FilterField label="Customer">
-            <select
+            <Dropdown
               value={filterCustomer}
-              onChange={(e) => {
-                setFilterCustomer(e.target.value);
+              onChange={(v) => {
+                setFilterCustomer(v);
                 setFilterProduct("");
               }}
-              className="filter-input"
-            >
-              <option value="">All</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: "", label: "All" },
+                ...customers.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
           </FilterField>
         )}
 
         <FilterField label="Product">
-          <select
+          <Dropdown
             value={filterProduct}
-            onChange={(e) => setFilterProduct(e.target.value)}
-            className="filter-input"
-          >
-            <option value="">All</option>
-            {filteredProducts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterProduct}
+            options={[
+              { value: "", label: "All" },
+              ...filteredProducts.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
         </FilterField>
 
         <FilterField label="Payment">
-          <select
+          <Dropdown
             value={filterPayment}
-            onChange={(e) => setFilterPayment(e.target.value)}
-            className="filter-input"
-          >
-            <option value="">All</option>
-            <option value="PREPAID">Prepaid</option>
-            <option value="COD">COD</option>
-          </select>
+            onChange={setFilterPayment}
+            options={[
+              { value: "", label: "All" },
+              { value: "PREPAID", label: "Prepaid" },
+              { value: "COD", label: "COD" },
+            ]}
+          />
         </FilterField>
 
         <FilterField label="Attention">
-          <select
+          <Dropdown
             value={filterAttention}
-            onChange={(e) => setFilterAttention(e.target.value)}
-            className="filter-input"
-          >
-            <option value="">All</option>
-            <option value="any">Any Flag</option>
-            <option value="ADDRESS_ERROR">Address Error</option>
-            <option value="DELAYED">Delayed</option>
-            <option value="NOTICE_CARD">Notice Card</option>
-            <option value="STUCK">No updates (3 business days)</option>
-          </select>
+            onChange={setFilterAttention}
+            options={[
+              { value: "", label: "All" },
+              { value: "any", label: "Any Flag" },
+              { value: "ADDRESS_ERROR", label: "Address Error" },
+              { value: "DELAYED", label: "Delayed" },
+              { value: "NOTICE_CARD", label: "Notice Card" },
+              { value: "STUCK", label: "No updates (3 business days)" },
+            ]}
+          />
         </FilterField>
 
         <FilterField label="Recon">
@@ -449,16 +443,16 @@ function OrdersPageContent({ role }: { role: Role }) {
 
         {!isCustomer && (
           <FilterField label="Warehouse">
-            <select
+            <Dropdown
               value={filterRegion}
-              onChange={(e) => setFilterRegion(e.target.value)}
-              className="filter-input"
+              onChange={setFilterRegion}
               title="Kho đóng hàng — theo khu vực giao + tồn kho. Đơn East mà kho Ontario không có hàng/đủ số lượng sẽ tự về kho BC."
-            >
-              <option value="">All</option>
-              <option value="WEST">Kho BC (West)</option>
-              <option value="EAST">Kho Ontario (East)</option>
-            </select>
+              options={[
+                { value: "", label: "All" },
+                { value: "WEST", label: "Kho BC (West)" },
+                { value: "EAST", label: "Kho Ontario (East)" },
+              ]}
+            />
           </FilterField>
         )}
 

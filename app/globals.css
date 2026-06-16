@@ -411,6 +411,93 @@ input::placeholder, textarea::placeholder {
   background-position: 10px center;
 }
 
+/* === Dropdown (custom select: panel nổi + đổ bóng + hiệu ứng xổ) === */
+/* Trigger nhìn y hệt <select> gốc (cùng bg/border/radius), nhưng list là panel
+   tự dựng nên style được đổ bóng + animation + hover (select gốc không làm được). */
+.dropdown {
+  position: relative;
+  width: 100%;
+}
+.dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  text-align: left;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.dropdown-trigger:hover {
+  border-color: rgba(15, 23, 42, 0.16);
+}
+.dropdown-trigger.open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+.dropdown-placeholder {
+  color: var(--text-muted);
+}
+.dropdown-chevron {
+  font-size: 18px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+.dropdown-trigger.open .dropdown-chevron {
+  transform: rotate(180deg);
+}
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+  transform-origin: top center;
+  animation: dropdown-in 130ms ease-out;
+}
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background var(--transition-fast);
+}
+.dropdown-item:hover {
+  background: var(--border);
+}
+.dropdown-item.selected {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* === Action bar === */
 .action-bar {
   background: var(--bg-secondary);

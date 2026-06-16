@@ -552,11 +552,7 @@ export default async function DashboardPage() {
           icon="inventory_2"
           accent="var(--accent)"
           href="/orders?status=READY"
-          subInfo={
-            stats.new > 0
-              ? { label: "new orders pending validation", value: stats.new }
-              : { label: "all validated", value: "✓" }
-          }
+          subInfo={{ label: "all validated", value: "✓" }}
         />
         <KpiCard
           label="Delivered"
