@@ -20,6 +20,9 @@ interface PerTrackingSummary {
   // null = batch event này chỉ toàn event "thông tin" (vd: cập nhật ngày giao,
   // info điện tử) → không có tín hiệu status → giữ nguyên trạng thái hiện tại của đơn.
   finalStatus: TrackingStatus | null;
+  // Thời điểm của event quyết định finalStatus — dùng để so với deliveredAt/lastTrackingAt
+  // khi xét có nên override trạng thái terminal hay không (chống event đến lệch thứ tự).
+  statusAt: Date | null;
   deliveredAt: Date | null;
   newAttention: AttentionUpdate | null;
 }
@@ -58,28 +61,37 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
       cls: classifyEvent(ev.eventCode, ev.returnFlag),
     }));
 
-    // finalStatus — bỏ qua event "thông tin" (status null) khi quyết định.
+    // finalStatus — quyết định theo event MANG-TÍN-HIỆU MỚI NHẤT (theo timestamp).
+    //   DELIVERED/FAILED = trạng thái "mạnh": cái mới nhất trong 2 cái này thắng
+    //   (giao rồi bị trả về → FAILED; trả rồi giao lại → DELIVERED).
+    //   IN_TRANSIT KHÔNG hạ được trạng thái mạnh (event "item processed" xuất hiện
+    //   sau khi đã giao không làm "mất giao").
+    //   Không có trạng thái mạnh → IN_TRANSIT nếu có event vận chuyển, else null.
     let finalStatus: TrackingStatus | null = null;
+    let statusAt: Date | null = null;
     let deliveredAt: Date | null = null;
+    let hasTransit = false;
     for (const c of classified) {
-      if (c.cls.status === "DELIVERED") {
-        finalStatus = "DELIVERED";
-        if (!deliveredAt || c.ev.eventAt < deliveredAt) deliveredAt = c.ev.eventAt;
+      // classified đã sort tăng dần theo eventAt → ghi đè để giữ cái mới nhất.
+      if (c.cls.status === "DELIVERED" || c.cls.status === "FAILED") {
+        finalStatus = c.cls.status;
+        statusAt = c.ev.eventAt;
+        if (c.cls.status === "DELIVERED") deliveredAt = c.ev.eventAt;
+      } else if (c.cls.status === "IN_TRANSIT") {
+        hasTransit = true;
       }
     }
-    if (finalStatus !== "DELIVERED") {
-      // Event mang-tín-hiệu mới nhất (không tính event "thông tin") quyết định
-      // FAILED vs IN_TRANSIT. Nếu không có event nào mang tín hiệu → null (giữ nguyên).
-      let latestSignal: TrackingStatus | null = null;
+    if (finalStatus === null && hasTransit) {
+      finalStatus = "IN_TRANSIT";
       for (let i = classified.length - 1; i >= 0; i--) {
-        if (classified[i].cls.status !== null) {
-          latestSignal = classified[i].cls.status;
+        if (classified[i].cls.status === "IN_TRANSIT") {
+          statusAt = classified[i].ev.eventAt;
           break;
         }
       }
-      if (latestSignal === "FAILED") finalStatus = "FAILED";
-      else if (latestSignal === "IN_TRANSIT") finalStatus = "IN_TRANSIT";
     }
+    // Chốt FAILED ở cuối → không lưu deliveredAt (đơn đã bị trả về).
+    if (finalStatus !== "DELIVERED") deliveredAt = null;
 
     // newAttention: đi từ cuối lên, lấy event đầu tiên có attention != null
     let newAttention: AttentionUpdate | null = null;
@@ -96,7 +108,7 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
       break;
     }
 
-    out.set(tn, { trackingNumber: tn, latestEvent, finalStatus, deliveredAt, newAttention });
+    out.set(tn, { trackingNumber: tn, latestEvent, finalStatus, statusAt, deliveredAt, newAttention });
   }
   return out;
 }
@@ -114,9 +126,11 @@ export interface ProcessResult {
 /**
  * Áp dụng kết quả parse lên DB.
  *
- * Status:
- *   - Không downgrade DELIVERED.
- *   - Không downgrade FAILED trừ khi status mới = DELIVERED.
+ * Status (DELIVERED/FAILED là "terminal mềm" — override nhau theo timestamp):
+ *   - DELIVERED giữ nguyên, trừ khi có event trả-về (FAILED) MỚI HƠN ngày giao
+ *     (giao rồi bị khách từ chối/trả về) → FAILED.
+ *   - FAILED giữ nguyên, trừ khi có event GIAO mới hơn → DELIVERED (giao lại).
+ *   - IN_TRANSIT/info KHÔNG bao giờ hạ được DELIVERED/FAILED.
  *
  * Attention (cờ "cần chú ý"):
  *   - Nếu status sau update = DELIVERED hoặc FAILED → CLEAR cờ (set null).
@@ -149,6 +163,7 @@ export async function processAptEvents(
       trackingNumber: orders.trackingNumber,
       status: orders.status,
       lastTrackingAt: orders.lastTrackingAt,
+      deliveredAt: orders.deliveredAt,
       attentionReason: orders.attentionReason,
     })
     .from(orders)
@@ -165,16 +180,45 @@ export async function processAptEvents(
     const sum = summaries.get(ord.trackingNumber!);
     if (!sum) continue;
 
-    let setStatus: TrackingStatus | null = sum.finalStatus;
-    if (ord.status === "DELIVERED") setStatus = null;
-    else if (ord.status === "FAILED" && sum.finalStatus !== "DELIVERED") setStatus = null;
+    const next = sum.finalStatus;
+    let setStatus: TrackingStatus | null = next;
+
+    if (ord.status === "DELIVERED") {
+      // Giữ DELIVERED, TRỪ KHI có event trả-về (FAILED) MỚI HƠN ngày giao → giao
+      // rồi bị trả về. So theo timestamp để không bị event đến lệch thứ tự hạ nhầm.
+      const deliveredRef = ord.deliveredAt ?? ord.lastTrackingAt;
+      if (
+        next === "FAILED" &&
+        sum.statusAt &&
+        (!deliveredRef || sum.statusAt.getTime() > deliveredRef.getTime())
+      ) {
+        setStatus = "FAILED";
+      } else {
+        setStatus = null;
+      }
+    } else if (ord.status === "FAILED") {
+      // Giữ FAILED, TRỪ KHI có event GIAO (DELIVERED) mới hơn event gần nhất → giao lại.
+      if (
+        next === "DELIVERED" &&
+        sum.statusAt &&
+        (!ord.lastTrackingAt || sum.statusAt.getTime() > ord.lastTrackingAt.getTime())
+      ) {
+        setStatus = "DELIVERED";
+      } else {
+        setStatus = null;
+      }
+    }
+    // else (NEW/READY/EXPORTED/LABEL_CREATED/IN_TRANSIT): setStatus = next (có thể null).
 
     const update: Record<string, unknown> = { updatedAt: now };
 
     if (setStatus) {
       update.status = setStatus;
       if (setStatus === "DELIVERED") {
-        update.deliveredAt = sum.deliveredAt ?? sum.latestEvent.eventAt;
+        update.deliveredAt = sum.deliveredAt ?? sum.statusAt ?? sum.latestEvent.eventAt;
+      } else if (setStatus === "FAILED") {
+        // Chuyển DELIVERED → FAILED (giao rồi trả) thì xóa ngày giao cũ.
+        update.deliveredAt = null;
       }
     }
 
