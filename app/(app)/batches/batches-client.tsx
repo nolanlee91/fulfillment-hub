@@ -244,7 +244,7 @@ export default function BatchesPage() {
                     Type
                   </th>
                   <th
-                    className="text-right px-4 py-3 text-[11px] font-bold tracking-widest uppercase"
+                    className="text-center px-4 py-3 text-[11px] font-bold tracking-widest uppercase"
                     title="Số label đã up / tổng đơn trong batch"
                   >
                     Labeled / Total
@@ -276,7 +276,7 @@ export default function BatchesPage() {
                           {isEst ? "COD" : "Standard"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono">
+                      <td className="px-4 py-3 text-center font-mono">
                         <span
                           style={{
                             color:
