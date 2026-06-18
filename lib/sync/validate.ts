@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { orders, boxes, boxRules } from "../db/schema";
 import { eq, or } from "drizzle-orm";
+import { checkCanadianPostal } from "./postal";
 
 export interface ValidateResult {
   total: number;
@@ -102,6 +103,23 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
         status: "ERROR",
         boxCode: null,
         errorNote: "Missing: " + missingFields.join(", "),
+      });
+      result.errors++;
+      result.validated++;
+      continue;
+    }
+
+    // Validate postal code Canada (format ANANAN) → bắt lỗi nhầm O↔0 ngay,
+    // không phải chờ ClickShip báo. Đơn US (zip toàn số) được bỏ qua.
+    const postal = checkCanadianPostal(order.zipcode || "");
+    if (!postal.ok) {
+      updates.push({
+        uniqueKey: order.uniqueKey,
+        status: "ERROR",
+        boxCode: null,
+        errorNote: postal.suggestion
+          ? `${postal.reason} → sửa thành: ${postal.suggestion}`
+          : (postal.reason ?? "Postal code sai định dạng"),
       });
       result.errors++;
       result.validated++;
