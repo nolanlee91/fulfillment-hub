@@ -206,7 +206,7 @@ export default function FailedClient({ role }: { role: Role }) {
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Order ID, Name, Phone, Zipcode..."
+            placeholder="Order ID, Name, Phone, Zipcode, Tracking..."
           />
         </FilterField>
       </FilterBar>

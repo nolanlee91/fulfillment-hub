@@ -101,6 +101,7 @@ export const GET = withAuth(async (req, user) => {
           sql`lower(${orders.name}) like ${s}`,
           sql`lower(${orders.phone}) like ${s}`,
           sql`lower(${orders.zipcode}) like ${s}`,
+          sql`lower(${orders.trackingNumber}) like ${s}`,
         ),
       );
     }
