@@ -10,6 +10,8 @@ interface UploadResult {
   unmatched: number;
   unmatchedOrderIds: string[];
   skippedCOD: number;
+  skippedBooked: number;
+  skippedBookedOrderIds: string[];
   message: string;
 }
 
@@ -131,9 +133,10 @@ function UploadSection() {
         <Card padding="lg" className="mb-4">
           <h3 className="font-bold text-lg mb-4">Results</h3>
 
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-4 gap-3 mb-4">
             <ResultCard label="Matched" value={result.matched} accent="emerald" hint="Ref assigned" />
             <ResultCard label="Unmatched" value={result.unmatched} accent="red" hint="Order ID not found" />
+            <ResultCard label="Already booked" value={result.skippedBooked} accent="amber" hint="Đã hạch toán — không ghi đè" />
             <ResultCard label="COD skipped" value={result.skippedCOD} accent="slate" hint="COD orders don't need reconciliation" />
           </div>
 
@@ -159,6 +162,29 @@ function UploadSection() {
               </p>
             </div>
           )}
+
+          {result.skippedBooked > 0 && (
+            <div
+              className="mt-4 px-4 py-3 rounded text-xs"
+              style={{
+                backgroundColor: "rgba(245, 158, 11, 0.08)",
+                color: "#a16207",
+                border: "1px solid rgba(245, 158, 11, 0.2)",
+              }}
+            >
+              <p className="font-semibold mb-2">
+                {result.skippedBooked} mã đã hạch toán — KHÔNG ghi đè Ref (
+                {result.skippedBookedOrderIds.length}
+                {result.skippedBooked > result.skippedBookedOrderIds.length ? `+, hiện 50 mã đầu` : ""} hiển thị):
+              </p>
+              <p className="font-mono text-[11px] leading-relaxed">
+                {result.skippedBookedOrderIds.join(", ")}
+              </p>
+              <p className="mt-2" style={{ color: "#a16207" }}>
+                Mã đã chốt sổ không sửa được qua upload. Cần sửa Ref các mã này, vui lòng liên hệ KDExpress.
+              </p>
+            </div>
+          )}
         </Card>
       )}
     </>
@@ -174,13 +200,14 @@ function ResultCard({
 }: {
   label: string;
   value: number;
-  accent: "emerald" | "red" | "slate";
+  accent: "emerald" | "red" | "slate" | "amber";
   hint: string;
 }) {
   const palette: Record<string, { bg: string; fg: string; border: string }> = {
     emerald: { bg: "rgba(74, 222, 128, 0.08)", fg: "#15803d", border: "#15803d" },
     red: { bg: "rgba(220, 38, 38, 0.08)", fg: "#dc2626", border: "#ef4444" },
     slate: { bg: "rgba(100, 116, 139, 0.08)", fg: "#475569", border: "#475569" },
+    amber: { bg: "rgba(245, 158, 11, 0.08)", fg: "#a16207", border: "#f59e0b" },
   };
   const c = palette[accent];
   return (

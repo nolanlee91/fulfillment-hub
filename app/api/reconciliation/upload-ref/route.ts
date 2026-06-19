@@ -107,6 +107,7 @@ export const POST = withAuth(
           uniqueKey: orders.uniqueKey,
           orderId: orders.orderId,
           paymentMethod: orders.paymentMethod,
+          accountedAt: orders.accountedAt,
         })
         .from(orders)
         .where(
@@ -116,12 +117,21 @@ export const POST = withAuth(
           ),
         );
 
-      // Skip COD orders (đối soát chỉ áp dụng prepaid)
+      // Phân loại:
+      //  - COD: bỏ qua (đối soát chỉ áp prepaid)
+      //  - Đã hạch toán (accountedAt != null): KHÔNG ghi đè — kế toán đã chốt sổ,
+      //    chỉ cảnh báo để khách biết không sửa được. Muốn sửa phải nhờ KDExpress.
+      //  - Còn lại: ghi đè Ref bình thường.
       const matched: Array<{ uniqueKey: string; orderId: string; refNumber: string }> = [];
       const skippedCOD: string[] = [];
+      const skippedBooked: string[] = [];
       for (const o of dbOrders) {
         if (o.paymentMethod === "COD") {
           skippedCOD.push(o.orderId);
+          continue;
+        }
+        if (o.accountedAt) {
+          skippedBooked.push(o.orderId);
           continue;
         }
         matched.push({
@@ -134,7 +144,7 @@ export const POST = withAuth(
       const matchedOrderIds = new Set(dbOrders.map((d) => d.orderId));
       const unmatched = orderIds.filter((oid) => !matchedOrderIds.has(oid));
 
-      // Update DB
+      // Update DB — chỉ các đơn chưa hạch toán
       const now = new Date();
       for (const m of matched) {
         await db
@@ -155,7 +165,9 @@ export const POST = withAuth(
         unmatched: unmatched.length,
         unmatchedOrderIds: unmatched.slice(0, 50), // cap để response không quá to
         skippedCOD: skippedCOD.length,
-        message: `Đối soát: ${matched.length} đơn khớp${unmatched.length > 0 ? `, ${unmatched.length} đơn không khớp` : ""}${skippedCOD.length > 0 ? ` (bỏ qua ${skippedCOD.length} đơn COD)` : ""}.`,
+        skippedBooked: skippedBooked.length,
+        skippedBookedOrderIds: skippedBooked.slice(0, 50),
+        message: `Đối soát: ${matched.length} đơn khớp${unmatched.length > 0 ? `, ${unmatched.length} đơn không khớp` : ""}${skippedBooked.length > 0 ? `, ${skippedBooked.length} đơn ĐÃ hạch toán nên không ghi đè` : ""}${skippedCOD.length > 0 ? ` (bỏ qua ${skippedCOD.length} đơn COD)` : ""}.`,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
