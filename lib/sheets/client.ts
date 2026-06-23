@@ -56,12 +56,14 @@ function getSheets() {
 export async function readSheet(
   spreadsheetId: string,
   sheetName: string,
+  valueRenderOption?: "FORMATTED_VALUE" | "UNFORMATTED_VALUE" | "FORMULA",
 ): Promise<string[][]> {
   const sheets = getSheets();
   const range = `'${sheetName}'`;
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range,
+    valueRenderOption,
   });
   return (res.data.values as string[][]) ?? [];
 }
