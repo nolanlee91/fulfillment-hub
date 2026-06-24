@@ -35,6 +35,10 @@ export const attentionReasonEnum = pgEnum("attention_reason", [
   "DELAYED",
   "NOTICE_CARD",
   "STUCK",
+  // Có chuyển động vận chuyển SAU ngày giao → nghi hàng bị trả về (carrier không
+  // phát mã RTS, vd giao vào parcel locker rồi thu hồi). Set bởi processor, KHÔNG
+  // do classifyEvent sinh ra.
+  "RETURN_SUSPECTED",
 ]);
 
 export const userRoleEnum = pgEnum("user_role", [

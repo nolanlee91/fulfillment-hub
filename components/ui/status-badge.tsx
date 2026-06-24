@@ -15,7 +15,8 @@ export type AttentionReason =
   | "ADDRESS_ERROR"
   | "DELAYED"
   | "NOTICE_CARD"
-  | "STUCK";
+  | "STUCK"
+  | "RETURN_SUSPECTED";
 
 export type PaymentMethod = "PREPAID" | "COD";
 
@@ -36,6 +37,7 @@ const ATTENTION_LABEL: Record<AttentionReason, string> = {
   DELAYED: "Delayed",
   NOTICE_CARD: "Notice Card",
   STUCK: "No Updates",
+  RETURN_SUSPECTED: "Returned?",
 };
 
 const PAYMENT_LABEL: Record<PaymentMethod, string> = {

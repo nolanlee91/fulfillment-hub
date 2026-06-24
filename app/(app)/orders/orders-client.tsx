@@ -60,6 +60,7 @@ interface Order {
     | "DELAYED"
     | "NOTICE_CARD"
     | "STUCK"
+    | "RETURN_SUSPECTED"
     | null;
   attentionAt: string | null;
   attentionNote: string | null;
@@ -77,6 +78,7 @@ const ATTENTION_LABELS: Record<string, string> = {
   DELAYED: "Delayed",
   NOTICE_CARD: "Notice Card",
   STUCK: "No Updates",
+  RETURN_SUSPECTED: "Returned?",
 };
 
 function buildTrackingUrl(o: { trackingUrl: string | null; trackingNumber: string | null }): string | null {
@@ -433,6 +435,7 @@ function OrdersPageContent({ role }: { role: Role }) {
               { value: "DELAYED", label: "Delayed" },
               { value: "NOTICE_CARD", label: "Notice Card" },
               { value: "STUCK", label: "No updates (3 business days)" },
+              { value: "RETURN_SUSPECTED", label: "Returned?" },
             ]}
           />
         </FilterField>

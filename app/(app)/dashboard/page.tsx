@@ -77,6 +77,7 @@ async function getDashboardData() {
     delayed: 0,
     noticeCard: 0,
     stuck: 0,
+    returned: 0,
   };
   for (const r of attentionRows) {
     const c = Number(r.count);
@@ -85,6 +86,7 @@ async function getDashboardData() {
     else if (r.reason === "DELAYED") attention.delayed = c;
     else if (r.reason === "NOTICE_CARD") attention.noticeCard = c;
     else if (r.reason === "STUCK") attention.stuck = c;
+    else if (r.reason === "RETURN_SUSPECTED") attention.returned = c;
   }
 
   const [batchCount] = await db
@@ -517,6 +519,7 @@ const ATTENTION_LABELS: Record<string, string> = {
   DELAYED: "Delayed",
   NOTICE_CARD: "Notice card",
   STUCK: "No updates",
+  RETURN_SUSPECTED: "Returned?",
 };
 
 export default async function DashboardPage() {
@@ -577,6 +580,7 @@ export default async function DashboardPage() {
                     attention.addressError ? `${attention.addressError} address` : null,
                     attention.delayed ? `${attention.delayed} delay` : null,
                     attention.stuck ? `${attention.stuck} stuck` : null,
+                    attention.returned ? `${attention.returned} returned` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "—",

@@ -14,6 +14,10 @@ interface AttentionUpdate {
   note: string;
 }
 
+// Ngưỡng coi 1 event vận chuyển (IN_TRANSIT) sau ngày giao là "nghi trả về".
+// Để >24h nhằm bỏ qua event đến lệch thứ tự (out-of-order) cùng quanh lúc giao.
+const POST_DELIVERY_MOVE_MARGIN_MS = 24 * 60 * 60 * 1000;
+
 interface PerTrackingSummary {
   trackingNumber: string;
   latestEvent: AptEvent;
@@ -223,8 +227,45 @@ export async function processAptEvents(
     }
 
     const finalStatusAfter = setStatus ?? ord.status;
-    if (finalStatusAfter === "DELIVERED" || finalStatusAfter === "FAILED") {
+
+    // Heuristic: đơn đã DELIVERED nhưng có event vận chuyển (IN_TRANSIT) MỚI HƠN
+    // ngày giao quá ngưỡng → nghi hàng bị trả về. Carrier không hạ DELIVERED và
+    // không phát mã RTS (vd giao vào parcel locker rồi thu hồi) nên đây là tín
+    // hiệu duy nhất. KHÔNG đổi status (giữ DELIVERED), chỉ nổi cờ cho CSKH.
+    const deliveredRefForMove = ord.deliveredAt ?? ord.lastTrackingAt;
+    const isPostDeliveryMove =
+      finalStatusAfter === "DELIVERED" &&
+      next === "IN_TRANSIT" &&
+      !!sum.statusAt &&
+      !!deliveredRefForMove &&
+      sum.statusAt.getTime() >
+        deliveredRefForMove.getTime() + POST_DELIVERY_MOVE_MARGIN_MS;
+
+    if (isPostDeliveryMove) {
+      // Set một lần (không spam attentionAt mỗi file event sau đó).
+      if (ord.attentionReason !== "RETURN_SUSPECTED") {
+        update.attentionReason = "RETURN_SUSPECTED";
+        update.attentionAt = sum.statusAt;
+        update.attentionNote =
+          `Có chuyển động sau khi đã giao (${sum.latestEvent.eventCode} — ${sum.latestEvent.descriptionEn}) — nghi hàng bị trả về`.slice(
+            0,
+            200,
+          );
+      }
+    } else if (finalStatusAfter === "FAILED") {
+      // FAILED rõ ràng → trạng thái đã nói hết, clear mọi cờ (kể cả RETURN_SUSPECTED).
       if (ord.attentionReason !== null) {
+        update.attentionReason = null;
+        update.attentionAt = null;
+        update.attentionNote = null;
+      }
+    } else if (finalStatusAfter === "DELIVERED") {
+      // Đã giao → clear cờ giao-hàng, NHƯNG GIỮ cờ RETURN_SUSPECTED (post-delivery,
+      // event "info"/transit sau đó không được xóa nghi-ngờ trả về).
+      if (
+        ord.attentionReason !== null &&
+        ord.attentionReason !== "RETURN_SUSPECTED"
+      ) {
         update.attentionReason = null;
         update.attentionAt = null;
         update.attentionNote = null;

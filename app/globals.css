@@ -157,6 +157,11 @@ body {
   color: #475569;
   border: 1px solid rgba(100, 116, 139, 0.20);
 }
+.attention-RETURN_SUSPECTED {
+  background: rgba(147, 51, 234, 0.10);
+  color: #7e22ce;
+  border: 1px solid rgba(147, 51, 234, 0.20);
+}
 
 /* === Payment === */
 .payment-PREPAID {
