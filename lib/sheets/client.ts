@@ -126,6 +126,78 @@ export async function appendRows(
 }
 
 /**
+ * Tạo 1 tab (sheet) mới trong spreadsheet. Trả về sheetId của tab vừa tạo.
+ * Throw nếu tab trùng tên (Google trả lỗi).
+ */
+export async function addSheet(
+  spreadsheetId: string,
+  title: string,
+  opts?: { rowCount?: number; columnCount?: number },
+): Promise<number> {
+  const sheets = getSheets();
+  const res = await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          addSheet: {
+            properties: {
+              title,
+              gridProperties: {
+                rowCount: opts?.rowCount ?? 1000,
+                columnCount: opts?.columnCount ?? 26,
+              },
+            },
+          },
+        },
+      ],
+    },
+  });
+  const sheetId = res.data.replies?.[0]?.addSheet?.properties?.sheetId;
+  if (sheetId == null) throw new Error("addSheet: không lấy được sheetId trả về");
+  return sheetId;
+}
+
+/**
+ * Copy 1 range nguồn sang range đích (PASTE_NORMAL → tự điều chỉnh tham chiếu
+ * tương đối của công thức). Index theo chuẩn API (0-based, end exclusive).
+ * Dùng để fill-down công thức template xuống nhiều dòng.
+ */
+export async function copyPasteRange(
+  spreadsheetId: string,
+  source: { sheetId: number; startRow: number; endRow: number; startCol: number; endCol: number },
+  dest: { sheetId: number; startRow: number; endRow: number; startCol: number; endCol: number },
+): Promise<void> {
+  const sheets = getSheets();
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          copyPaste: {
+            source: {
+              sheetId: source.sheetId,
+              startRowIndex: source.startRow,
+              endRowIndex: source.endRow,
+              startColumnIndex: source.startCol,
+              endColumnIndex: source.endCol,
+            },
+            destination: {
+              sheetId: dest.sheetId,
+              startRowIndex: dest.startRow,
+              endRowIndex: dest.endRow,
+              startColumnIndex: dest.startCol,
+              endColumnIndex: dest.endCol,
+            },
+            pasteType: "PASTE_NORMAL",
+          },
+        },
+      ],
+    },
+  });
+}
+
+/**
  * Lấy metadata của spreadsheet.
  */
 export async function getSpreadsheetMeta(spreadsheetId: string) {
