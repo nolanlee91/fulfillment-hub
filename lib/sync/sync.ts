@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { sourceSheets, orders, syncLogs } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { parseSheet } from "./parser";
 import type { ParsedOrder } from "./parser";
 
@@ -61,16 +61,27 @@ function hasChanges(
  *      - Không đổi → SKIP
  *  - Đơn ĐÃ có và status khác (NEW/READY/EXPORTED) → SKIP (không touch)
  */
-export async function syncAllSheets(triggeredBy: string = "manual"): Promise<SyncResult> {
+export async function syncAllSheets(
+  triggeredBy: string = "manual",
+  customerId?: string,
+): Promise<SyncResult> {
   const startedAt = new Date();
 
-  // 1. Cấu hình sources
+  // 1. Cấu hình sources — scope theo customer khi khách tự sync (chỉ sheet của họ)
   const sources = await db
     .select()
     .from(sourceSheets)
-    .where(eq(sourceSheets.active, true));
+    .where(
+      customerId
+        ? and(eq(sourceSheets.active, true), eq(sourceSheets.customerId, customerId))
+        : eq(sourceSheets.active, true),
+    );
 
   if (sources.length === 0) {
+    // Khách chưa có sheet cấu hình → trả rỗng (không throw, để UI báo nhẹ nhàng).
+    if (customerId) {
+      return { totalAdded: 0, totalUpdated: 0, totalErrors: 0, perSheet: [], durationMs: 0 };
+    }
     throw new Error("No active source sheets configured. Run `npm run seed` first.");
   }
 
@@ -82,8 +93,10 @@ export async function syncAllSheets(triggeredBy: string = "manual"): Promise<Syn
     }),
   );
 
-  // 3. Đọc tất cả đơn hiện có để check tồn tại + status
-  const existingOrders = await db.select().from(orders);
+  // 3. Đọc đơn hiện có để check tồn tại + status (scope theo customer nếu có)
+  const existingOrders = customerId
+    ? await db.select().from(orders).where(eq(orders.customerId, customerId))
+    : await db.select().from(orders);
   const existingMap: Record<string, typeof orders.$inferSelect> = {};
   for (const o of existingOrders) {
     existingMap[o.uniqueKey] = o;

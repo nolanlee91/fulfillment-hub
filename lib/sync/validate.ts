@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { orders, boxes, boxRules } from "../db/schema";
-import { eq, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { checkCanadianPostal } from "./postal";
 
 export interface ValidateResult {
@@ -22,7 +22,7 @@ export interface ValidateResult {
  *  4. Verify box active
  *  5. Update DB
  */
-export async function validateAndAssignAll(): Promise<ValidateResult> {
+export async function validateAndAssignAll(customerId?: string): Promise<ValidateResult> {
   const startedAt = Date.now();
 
   // 1. Load Box Master (active only) → map code → box info
@@ -52,11 +52,18 @@ export async function validateAndAssignAll(): Promise<ValidateResult> {
     });
   }
 
-  // 3. Load orders cần validate (NEW, READY, ERROR — chưa đóng batch)
+  // 3. Load orders cần validate (NEW, READY, ERROR — chưa đóng batch).
+  //    Scope theo customer khi khách tự validate (chỉ đơn của họ).
+  const statusFilter = or(
+    eq(orders.status, "NEW"),
+    eq(orders.status, "READY"),
+    eq(orders.status, "ERROR"),
+    eq(orders.status, "ERROR_UPDATED"),
+  );
   const ordersToProcess = await db
     .select()
     .from(orders)
-    .where(or(eq(orders.status, "NEW"), eq(orders.status, "READY"), eq(orders.status, "ERROR"), eq(orders.status, "ERROR_UPDATED")));
+    .where(customerId ? and(statusFilter, eq(orders.customerId, customerId)) : statusFilter);
 
   const result: ValidateResult = {
     total: ordersToProcess.length,

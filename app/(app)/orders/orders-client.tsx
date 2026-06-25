@@ -360,7 +360,9 @@ function OrdersPageContent({ role }: { role: Role }) {
 
   return (
     <>
-      <Topbar title="Active Orders" subtitle="Operations" showSync={!isCustomer} />
+      {/* Khách cũng được Sync: kéo sheet riêng + validate → tự thấy đơn ERROR và
+          tự sửa ngay, không phải chờ KDExpress (chống trễ do lệch múi giờ). */}
+      <Topbar title="Active Orders" subtitle="Operations" showSync />
 
       {/* Status tabs */}
       <div className="status-tabs-bar">
