@@ -55,6 +55,22 @@ export const inventoryMovementTypeEnum = pgEnum("inventory_movement_type", [
   "ADJUST", // kiểm kê / sửa tay (±)
 ]);
 
+// Module Lưu kho (3PL): khách gửi pallet ở kho rồi đến pick up.
+export const storagePalletStatusEnum = pgEnum("storage_pallet_status", [
+  "IN_STORAGE", // còn hàng trong kho
+  "PICKED_UP", // đã lấy hết unit → rời kho
+  "DISPOSED", // tiêu hủy
+]);
+
+export const storageMovementTypeEnum = pgEnum("storage_movement_type", [
+  "RECEIVE_IN", // nhập kho (+ unit)
+  "PICKUP_OUT", // xuất/khách lấy (− unit)
+  "ADJUST", // kiểm kê / sửa tay (±)
+]);
+
+// Đơn vị tính phí nhận/xuất: nguyên pallet ($10) hoặc lẻ từng unit ($1).
+export const storageUomEnum = pgEnum("storage_uom", ["PALLET", "UNIT"]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -424,3 +440,64 @@ export const syncLogs = pgTable("sync_logs", {
   details: text("details"),
   triggeredBy: text("triggered_by"),
 });
+
+// ============================================================================
+// STORAGE (Lưu kho 3PL) — Phase 1
+//   - storage_pallets: mỗi pallet 1 record (1 SKU/pallet), có tồn unit hiện tại.
+//   - storage_movements: ledger nhập/xuất unit theo pallet (audit + phí nhận/xuất).
+// Phase 2 (khách + pickup request) và Phase 3 (phí lưu kho + hóa đơn) thêm sau.
+// ============================================================================
+
+export const storagePallets = pgTable(
+  "storage_pallets",
+  {
+    id: text("id").primaryKey(),
+    palletCode: text("pallet_code").notNull(), // mã in barcode dán pallet
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id),
+    warehouseCode: text("warehouse_code")
+      .notNull()
+      .references(() => warehouses.code),
+    productName: text("product_name").notNull(), // 1 SKU/pallet (vd "Original")
+    unitCount: integer("unit_count").default(0).notNull(), // tồn unit HIỆN TẠI
+    initialUnits: integer("initial_units").default(0).notNull(), // unit lúc nhập
+    status: storagePalletStatusEnum("status").default("IN_STORAGE").notNull(),
+    receivedAt: timestamp("received_at").defaultNow().notNull(),
+    pickedUpAt: timestamp("picked_up_at"), // khi unitCount về 0
+    photoUrl: text("photo_url"),
+    note: text("note"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    codeUnique: uniqueIndex("storage_pallets_code_unique").on(t.palletCode),
+    customerIdx: index("storage_pallets_customer_idx").on(t.customerId),
+    statusIdx: index("storage_pallets_status_idx").on(t.status),
+  }),
+);
+
+export const storageMovements = pgTable(
+  "storage_movements",
+  {
+    id: text("id").primaryKey(),
+    palletId: text("pallet_id")
+      .notNull()
+      .references(() => storagePallets.id),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id), // denormalize để query theo khách nhanh
+    type: storageMovementTypeEnum("type").notNull(),
+    units: integer("units").notNull(), // + nhập, − xuất (signed như inventory.delta)
+    uom: storageUomEnum("uom").notNull(), // PALLET / UNIT → cơ sở tính phí nhận/xuất
+    occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+    note: text("note"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    palletIdx: index("storage_movements_pallet_idx").on(t.palletId),
+    customerIdx: index("storage_movements_customer_idx").on(t.customerId),
+  }),
+);

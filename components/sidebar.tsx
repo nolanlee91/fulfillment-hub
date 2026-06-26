@@ -70,6 +70,17 @@ const sections: NavSection[] = [
     ],
   },
   {
+    label: "Lưu kho",
+    items: [
+      {
+        href: "/storage",
+        icon: "pallet",
+        label: "Tồn pallet",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+    ],
+  },
+  {
     label: "Settings",
     items: [
       {
