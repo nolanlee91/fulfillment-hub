@@ -424,7 +424,10 @@ export const inventoryMovements = pgTable(
       .references(() => products.id),
     delta: integer("delta").notNull(), // + nhập, − xuất
     type: inventoryMovementTypeEnum("type").notNull(),
-    refOrderKey: text("ref_order_key").references(() => orders.uniqueKey), // ORDER_OUT: đơn nguồn
+    // ORDER_OUT: đơn nguồn. SET NULL khi xóa đơn → không chặn xóa, giữ ledger audit.
+    refOrderKey: text("ref_order_key").references(() => orders.uniqueKey, {
+      onDelete: "set null",
+    }),
     note: text("note"),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
