@@ -22,16 +22,11 @@ interface Customer {
   id: string;
   name: string;
 }
-interface Warehouse {
-  code: string;
-  name: string;
-  region: string;
-}
 
 const STATUS_LABEL: Record<Pallet["status"], string> = {
-  IN_STORAGE: "Trong kho",
-  PICKED_UP: "Đã lấy",
-  DISPOSED: "Đã hủy",
+  IN_STORAGE: "In storage",
+  PICKED_UP: "Picked up",
+  DISPOSED: "Disposed",
 };
 const STATUS_COLOR: Record<Pallet["status"], string> = {
   IN_STORAGE: "#15803d",
@@ -51,11 +46,9 @@ function fmtDate(iso: string | null): string {
 export default function StorageClient() {
   const [pallets, setPallets] = useState<Pallet[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [fStatus, setFStatus] = useState<string>("IN_STORAGE");
-  const [fWarehouse, setFWarehouse] = useState<string>("");
 
   const [showReceive, setShowReceive] = useState(false);
   const [pickup, setPickup] = useState<Pallet | null>(null);
@@ -70,16 +63,14 @@ export default function StorageClient() {
     setLoading(true);
     const params = new URLSearchParams();
     if (fStatus) params.set("status", fStatus);
-    if (fWarehouse) params.set("warehouse", fWarehouse);
     const res = await fetch(`/api/storage/pallets?${params.toString()}`);
     const data = await res.json();
     if (data.success) {
       setPallets(data.data.pallets);
       setCustomers(data.data.customers);
-      setWarehouses(data.data.warehouses);
     }
     setLoading(false);
-  }, [fStatus, fWarehouse]);
+  }, [fStatus]);
 
   useEffect(() => {
     load();
@@ -90,20 +81,20 @@ export default function StorageClient() {
 
   return (
     <>
-      <Topbar title="Storage" subtitle="Lưu kho" showSync={false} />
+      <Topbar title="Storage" subtitle="Warehouse" showSync={false} />
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <Card>
-          <div className="text-xs text-[var(--text-secondary)]">Pallet trong kho</div>
+          <div className="text-xs text-[var(--text-secondary)]">Pallets in storage</div>
           <div className="text-2xl font-bold">{inStorage.length}</div>
         </Card>
         <Card>
-          <div className="text-xs text-[var(--text-secondary)]">Tổng unit tồn</div>
+          <div className="text-xs text-[var(--text-secondary)]">Units in storage</div>
           <div className="text-2xl font-bold">{totalUnits.toLocaleString()}</div>
         </Card>
         <Card>
-          <div className="text-xs text-[var(--text-secondary)]">Số khách gửi</div>
+          <div className="text-xs text-[var(--text-secondary)]">Customers</div>
           <div className="text-2xl font-bold">
             {new Set(inStorage.map((p) => p.customerId)).size}
           </div>
@@ -116,23 +107,14 @@ export default function StorageClient() {
           value={fStatus}
           onChange={setFStatus}
           options={[
-            { value: "IN_STORAGE", label: "Trong kho" },
-            { value: "PICKED_UP", label: "Đã lấy" },
-            { value: "", label: "Tất cả trạng thái" },
-          ]}
-        />
-        <Dropdown
-          value={fWarehouse}
-          onChange={setFWarehouse}
-          placeholder="Tất cả kho"
-          options={[
-            { value: "", label: "Tất cả kho" },
-            ...warehouses.map((w) => ({ value: w.code, label: w.name })),
+            { value: "IN_STORAGE", label: "In storage" },
+            { value: "PICKED_UP", label: "Picked up" },
+            { value: "", label: "All statuses" },
           ]}
         />
         <div className="ml-auto">
           <Button icon="add" onClick={() => setShowReceive(true)}>
-            Nhập kho
+            Receive
           </Button>
         </div>
       </div>
@@ -142,28 +124,27 @@ export default function StorageClient() {
         <table className="w-full border-collapse">
           <thead>
             <tr className="text-left text-xs text-[var(--text-secondary)] border-b">
-              <th className="px-3 py-2">Mã pallet</th>
-              <th className="px-3 py-2">Khách</th>
-              <th className="px-3 py-2">Sản phẩm</th>
-              <th className="px-3 py-2 text-right">Tồn / Nhập</th>
-              <th className="px-3 py-2">Kho</th>
-              <th className="px-3 py-2">Ngày nhập</th>
-              <th className="px-3 py-2 text-right">Số ngày</th>
-              <th className="px-3 py-2">Trạng thái</th>
+              <th className="px-3 py-2">Pallet</th>
+              <th className="px-3 py-2">Customer</th>
+              <th className="px-3 py-2">Product</th>
+              <th className="px-3 py-2 text-right">On hand / Received</th>
+              <th className="px-3 py-2">Received</th>
+              <th className="px-3 py-2 text-right">Days</th>
+              <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-[var(--text-secondary)]">
-                  Đang tải…
+                <td colSpan={8} className="px-3 py-8 text-center text-[var(--text-secondary)]">
+                  Loading…
                 </td>
               </tr>
             ) : pallets.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-[var(--text-secondary)]">
-                  Chưa có pallet. Bấm <span className="font-semibold">Nhập kho</span> để thêm.
+                <td colSpan={8} className="px-3 py-8 text-center text-[var(--text-secondary)]">
+                  No pallets yet. Click <span className="font-semibold">Receive</span> to add.
                 </td>
               </tr>
             ) : (
@@ -176,7 +157,6 @@ export default function StorageClient() {
                     <span className="font-semibold">{p.unitCount}</span>
                     <span className="text-[var(--text-secondary)]"> / {p.initialUnits}</span>
                   </td>
-                  <td className="px-3 py-2">{p.warehouseCode}</td>
                   <td className="px-3 py-2">{fmtDate(p.receivedAt)}</td>
                   <td className="px-3 py-2 text-right">{daysStored(p.receivedAt, p.pickedUpAt)}</td>
                   <td className="px-3 py-2">
@@ -209,7 +189,6 @@ export default function StorageClient() {
       {showReceive && (
         <ReceiveModal
           customers={customers}
-          warehouses={warehouses}
           onClose={() => setShowReceive(false)}
           onDone={async () => {
             setShowReceive(false);
@@ -273,17 +252,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ReceiveModal({
   customers,
-  warehouses,
   onClose,
   onDone,
 }: {
   customers: Customer[];
-  warehouses: Warehouse[];
   onClose: () => void;
   onDone: () => void;
 }) {
   const [customerId, setCustomerId] = useState("");
-  const [warehouseCode, setWarehouseCode] = useState(warehouses[0]?.code ?? "");
   const [productName, setProductName] = useState("");
   const [unitsPerPallet, setUnitsPerPallet] = useState("");
   const [palletCount, setPalletCount] = useState("1");
@@ -292,12 +268,12 @@ function ReceiveModal({
   const [error, setError] = useState("");
 
   const nPallet = Math.max(0, Math.floor(Number(palletCount) || 0));
-  const estFee = nPallet * 10; // $10/pallet phí nhận
+  const estFee = nPallet * 10; // $10/pallet handling
 
   async function submit() {
     setError("");
-    if (!customerId || !warehouseCode || !productName.trim()) {
-      setError("Nhập đủ khách hàng, kho, tên sản phẩm");
+    if (!customerId || !productName.trim()) {
+      setError("Select a customer and enter a product");
       return;
     }
     setSaving(true);
@@ -307,7 +283,6 @@ function ReceiveModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId,
-          warehouseCode,
           productName: productName.trim(),
           unitsPerPallet: Number(unitsPerPallet) || 0,
           palletCount: nPallet,
@@ -316,7 +291,7 @@ function ReceiveModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setError(data.error || "Lỗi nhập kho");
+        setError(data.error || "Receive failed");
         return;
       }
       onDone();
@@ -326,32 +301,25 @@ function ReceiveModal({
   }
 
   return (
-    <ModalShell title="Nhập kho" onClose={onClose}>
-      <Field label="Khách hàng">
+    <ModalShell title="Receive pallets" onClose={onClose}>
+      <Field label="Customer">
         <Dropdown
           value={customerId}
           onChange={setCustomerId}
-          placeholder="Chọn khách"
+          placeholder="Select customer"
           options={customers.map((c) => ({ value: c.id, label: c.name }))}
         />
       </Field>
-      <Field label="Kho">
-        <Dropdown
-          value={warehouseCode}
-          onChange={setWarehouseCode}
-          options={warehouses.map((w) => ({ value: w.code, label: w.name }))}
-        />
-      </Field>
-      <Field label="Tên sản phẩm (1 SKU/pallet)">
+      <Field label="Product (1 SKU / pallet)">
         <input
           className="filter-input w-full"
           value={productName}
           onChange={(e) => setProductName(e.target.value)}
-          placeholder="VD: Original"
+          placeholder="e.g. Original"
         />
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Số unit / pallet">
+        <Field label="Units / pallet">
           <input
             className="filter-input w-full"
             type="number"
@@ -361,7 +329,7 @@ function ReceiveModal({
             placeholder="100"
           />
         </Field>
-        <Field label="Số pallet">
+        <Field label="Pallets">
           <input
             className="filter-input w-full"
             type="number"
@@ -371,7 +339,7 @@ function ReceiveModal({
           />
         </Field>
       </div>
-      <Field label="Ghi chú (tùy chọn)">
+      <Field label="Note (optional)">
         <input
           className="filter-input w-full"
           value={note}
@@ -379,15 +347,15 @@ function ReceiveModal({
         />
       </Field>
       <p className="text-xs text-[var(--text-secondary)] mb-3">
-        Phí nhận ước tính: <span className="font-semibold">${estFee}</span> ({nPallet} pallet × $10)
+        Est. handling fee: <span className="font-semibold">${estFee}</span> ({nPallet} pallet × $10)
       </p>
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
-          Hủy
+          Cancel
         </Button>
         <Button onClick={submit} disabled={saving} icon={saving ? "hourglass_empty" : "add"}>
-          {saving ? "Đang lưu…" : `Tạo ${nPallet} pallet`}
+          {saving ? "Saving…" : `Create ${nPallet} pallet${nPallet === 1 ? "" : "s"}`}
         </Button>
       </div>
     </ModalShell>
@@ -415,7 +383,7 @@ function PickupModal({
   async function submit() {
     setError("");
     if (mode === "UNIT" && (!Number(units) || Number(units) < 1)) {
-      setError("Nhập số unit cần lấy");
+      setError("Enter the number of units to pick");
       return;
     }
     setSaving(true);
@@ -432,7 +400,7 @@ function PickupModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setError(data.error || "Lỗi pickup");
+        setError(data.error || "Pickup failed");
         return;
       }
       onDone();
@@ -444,24 +412,24 @@ function PickupModal({
   return (
     <ModalShell title={`Pickup — ${pallet.palletCode}`} onClose={onClose}>
       <p className="text-sm mb-3">
-        {pallet.productName} · còn <span className="font-semibold">{pallet.unitCount}</span> unit
+        {pallet.productName} · <span className="font-semibold">{pallet.unitCount}</span> units left
       </p>
       <div className="flex gap-2 mb-3">
         <button
           className={`btn ${mode === "PALLET" ? "btn-primary" : "btn-secondary"} text-xs`}
           onClick={() => setMode("PALLET")}
         >
-          Lấy nguyên pallet ($10)
+          Whole pallet ($10)
         </button>
         <button
           className={`btn ${mode === "UNIT" ? "btn-primary" : "btn-secondary"} text-xs`}
           onClick={() => setMode("UNIT")}
         >
-          Lấy lẻ unit ($1/unit)
+          By unit ($1/unit)
         </button>
       </div>
       {mode === "UNIT" && (
-        <Field label={`Số unit lấy (tối đa ${pallet.unitCount})`}>
+        <Field label={`Units to pick (max ${pallet.unitCount})`}>
           <input
             className="filter-input w-full"
             type="number"
@@ -472,21 +440,25 @@ function PickupModal({
           />
         </Field>
       )}
-      <Field label="Ghi chú (tùy chọn)">
-        <input className="form-input" value={note} onChange={(e) => setNote(e.target.value)} />
+      <Field label="Note (optional)">
+        <input
+          className="filter-input w-full"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
       </Field>
       <p className="text-xs text-[var(--text-secondary)] mb-3">
-        Lấy <span className="font-semibold">{taking}</span> unit · phí xuất ước tính{" "}
+        Picking <span className="font-semibold">{taking}</span> units · est. fee{" "}
         <span className="font-semibold">${estFee}</span>
-        {mode === "PALLET" && " · pallet sẽ rời kho"}
+        {mode === "PALLET" && " · pallet leaves storage"}
       </p>
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
-          Hủy
+          Cancel
         </Button>
         <Button onClick={submit} disabled={saving} icon={saving ? "hourglass_empty" : "outbox"}>
-          {saving ? "Đang lưu…" : "Xác nhận lấy"}
+          {saving ? "Saving…" : "Confirm pickup"}
         </Button>
       </div>
     </ModalShell>

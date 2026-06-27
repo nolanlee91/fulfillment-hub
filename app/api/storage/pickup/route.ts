@@ -13,13 +13,13 @@ async function handler(req: NextRequest, user: CurrentUser) {
 
     if (!palletId) {
       return NextResponse.json(
-        { success: false, error: "Thiếu palletId" },
+        { success: false, error: "Missing palletId" },
         { status: 400 },
       );
     }
     if (uom === "UNIT" && (!Number.isFinite(units) || (units ?? 0) < 1)) {
       return NextResponse.json(
-        { success: false, error: "Số unit lấy phải ≥ 1" },
+        { success: false, error: "Units to pick must be at least 1" },
         { status: 400 },
       );
     }

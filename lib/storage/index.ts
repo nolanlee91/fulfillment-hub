@@ -4,6 +4,9 @@ import { storagePallets, storageMovements } from "@/lib/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { StorageUom } from "./rates";
 
+// Module Lưu kho chỉ chạy ở kho BC (WEST). ON (EAST) không dùng.
+export const STORAGE_WAREHOUSE_CODE = "WEST";
+
 /** Sinh mã pallet kế tiếp dạng KDE-PLT-00001 (lấy max số đuôi hiện có +1). */
 async function nextPalletNumber(): Promise<number> {
   const rows = await db.select({ code: storagePallets.palletCode }).from(storagePallets);
@@ -96,16 +99,16 @@ export async function pickupFromPallet(input: PickupInput) {
     .select()
     .from(storagePallets)
     .where(eq(storagePallets.id, input.palletId));
-  if (!pallet) throw new Error("Không tìm thấy pallet");
-  if (pallet.status !== "IN_STORAGE") throw new Error("Pallet không còn trong kho");
+  if (!pallet) throw new Error("Pallet not found");
+  if (pallet.status !== "IN_STORAGE") throw new Error("Pallet is no longer in storage");
 
   const taken =
     input.uom === "PALLET"
       ? pallet.unitCount
       : Math.min(pallet.unitCount, Math.max(1, Math.floor(input.units ?? 0)));
-  if (taken <= 0) throw new Error("Số unit lấy phải > 0");
+  if (taken <= 0) throw new Error("Units to pick must be greater than 0");
   if (taken > pallet.unitCount)
-    throw new Error(`Chỉ còn ${pallet.unitCount} unit trên pallet`);
+    throw new Error(`Only ${pallet.unitCount} units left on this pallet`);
 
   const now = new Date();
   const remaining = pallet.unitCount - taken;
