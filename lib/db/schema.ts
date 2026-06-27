@@ -71,6 +71,13 @@ export const storageMovementTypeEnum = pgEnum("storage_movement_type", [
 // Đơn vị tính phí nhận/xuất: nguyên pallet ($10) hoặc lẻ từng unit ($1).
 export const storageUomEnum = pgEnum("storage_uom", ["PALLET", "UNIT"]);
 
+// Yêu cầu lấy hàng của khách (Phase 2). PENDING editable tới khi staff chốt DONE.
+export const storageRequestStatusEnum = pgEnum("storage_request_status", [
+  "PENDING",
+  "DONE",
+  "CANCELLED",
+]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -499,5 +506,49 @@ export const storageMovements = pgTable(
   (t) => ({
     palletIdx: index("storage_movements_pallet_idx").on(t.palletId),
     customerIdx: index("storage_movements_customer_idx").on(t.customerId),
+  }),
+);
+
+// Phase 2: khách tự tạo yêu cầu lấy hàng (unit-level, cắt nhiều pallet).
+// PENDING = còn sửa được; staff nhập confirmedUnits số thực khi hàng ra kho → DONE.
+export const storagePickupRequests = pgTable(
+  "storage_pickup_requests",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id),
+    status: storageRequestStatusEnum("status").default("PENDING").notNull(),
+    requestedDate: timestamp("requested_date"), // ngày khách muốn lấy
+    note: text("note"),
+    createdBy: text("created_by"),
+    confirmedBy: text("confirmed_by"),
+    confirmedAt: timestamp("confirmed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    customerIdx: index("storage_requests_customer_idx").on(t.customerId),
+    statusIdx: index("storage_requests_status_idx").on(t.status),
+  }),
+);
+
+export const storagePickupRequestItems = pgTable(
+  "storage_pickup_request_items",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id")
+      .notNull()
+      .references(() => storagePickupRequests.id),
+    palletId: text("pallet_id")
+      .notNull()
+      .references(() => storagePallets.id),
+    units: integer("units").notNull(), // số unit khách YÊU CẦU lấy
+    uom: storageUomEnum("uom").notNull(), // PALLET (nguyên) / UNIT (lẻ)
+    confirmedUnits: integer("confirmed_units"), // số THỰC khi DONE (NULL tới lúc chốt)
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    requestIdx: index("storage_request_items_request_idx").on(t.requestId),
   }),
 );

@@ -78,6 +78,18 @@ const sections: NavSection[] = [
         label: "Pallets",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
+      {
+        href: "/storage/requests",
+        icon: "local_shipping",
+        label: "Pickup Requests",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+      {
+        href: "/my-storage",
+        icon: "pallet",
+        label: "My Storage",
+        roles: ["CUSTOMER"],
+      },
     ],
   },
   {

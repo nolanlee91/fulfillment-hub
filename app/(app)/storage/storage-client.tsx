@@ -51,6 +51,7 @@ export default function StorageClient() {
   const [fStatus, setFStatus] = useState<string>("IN_STORAGE");
 
   const [showReceive, setShowReceive] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [pickup, setPickup] = useState<Pallet | null>(null);
 
   const custName = useMemo(() => {
@@ -112,7 +113,10 @@ export default function StorageClient() {
             { value: "", label: "All statuses" },
           ]}
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button variant="secondary" icon="download" onClick={() => setShowExport(true)}>
+            Export
+          </Button>
           <Button icon="add" onClick={() => setShowReceive(true)}>
             Receive
           </Button>
@@ -195,6 +199,9 @@ export default function StorageClient() {
             await load();
           }}
         />
+      )}
+      {showExport && (
+        <ExportModal customers={customers} onClose={() => setShowExport(false)} />
       )}
       {pickup && (
         <PickupModal
@@ -459,6 +466,78 @@ function PickupModal({
         </Button>
         <Button onClick={submit} disabled={saving} icon={saving ? "hourglass_empty" : "outbox"}>
           {saving ? "Saving…" : "Confirm pickup"}
+        </Button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ExportModal({
+  customers,
+  onClose,
+}: {
+  customers: Customer[];
+  onClose: () => void;
+}) {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [error, setError] = useState("");
+
+  function download() {
+    setError("");
+    if (!from || !to) {
+      setError("Pick a from and to date");
+      return;
+    }
+    const params = new URLSearchParams({ from, to });
+    if (customerId) params.set("customer", customerId);
+    window.location.href = `/api/storage/report?${params.toString()}`;
+    onClose();
+  }
+
+  return (
+    <ModalShell title="Export storage report" onClose={onClose}>
+      <p className="text-xs text-[var(--text-secondary)] mb-3">
+        Excel with two sheets (Storage + Movements), no prices — accounting applies each
+        customer&apos;s rate.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="From">
+          <input
+            className="filter-input w-full"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </Field>
+        <Field label="To">
+          <input
+            className="filter-input w-full"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </Field>
+      </div>
+      <Field label="Customer (optional — all if blank)">
+        <Dropdown
+          value={customerId}
+          onChange={setCustomerId}
+          placeholder="All customers"
+          options={[
+            { value: "", label: "All customers" },
+            ...customers.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
+      </Field>
+      {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={download} icon="download">
+          Download
         </Button>
       </div>
     </ModalShell>
