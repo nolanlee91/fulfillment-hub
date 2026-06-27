@@ -275,7 +275,6 @@ function ReceiveModal({
   const [error, setError] = useState("");
 
   const nPallet = Math.max(0, Math.floor(Number(palletCount) || 0));
-  const estFee = nPallet * 10; // $10/pallet handling
 
   async function submit() {
     setError("");
@@ -353,9 +352,6 @@ function ReceiveModal({
           onChange={(e) => setNote(e.target.value)}
         />
       </Field>
-      <p className="text-xs text-[var(--text-secondary)] mb-3">
-        Est. handling fee: <span className="font-semibold">${estFee}</span> ({nPallet} pallet × $10)
-      </p>
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
@@ -385,7 +381,6 @@ function PickupModal({
   const [error, setError] = useState("");
 
   const taking = mode === "PALLET" ? pallet.unitCount : Math.min(pallet.unitCount, Number(units) || 0);
-  const estFee = mode === "PALLET" ? 10 : (Number(units) || 0) * 1;
 
   async function submit() {
     setError("");
@@ -426,13 +421,13 @@ function PickupModal({
           className={`btn ${mode === "PALLET" ? "btn-primary" : "btn-secondary"} text-xs`}
           onClick={() => setMode("PALLET")}
         >
-          Whole pallet ($10)
+          Whole pallet
         </button>
         <button
           className={`btn ${mode === "UNIT" ? "btn-primary" : "btn-secondary"} text-xs`}
           onClick={() => setMode("UNIT")}
         >
-          By unit ($1/unit)
+          By unit
         </button>
       </div>
       {mode === "UNIT" && (
@@ -455,8 +450,7 @@ function PickupModal({
         />
       </Field>
       <p className="text-xs text-[var(--text-secondary)] mb-3">
-        Picking <span className="font-semibold">{taking}</span> units · est. fee{" "}
-        <span className="font-semibold">${estFee}</span>
+        Picking <span className="font-semibold">{taking}</span> units
         {mode === "PALLET" && " · pallet leaves storage"}
       </p>
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
@@ -499,8 +493,8 @@ function ExportModal({
   return (
     <ModalShell title="Export storage report" onClose={onClose}>
       <p className="text-xs text-[var(--text-secondary)] mb-3">
-        Excel with two sheets (Storage + Movements), no prices — accounting applies each
-        customer&apos;s rate.
+        Excel with two sheets (Storage + Movements). Amounts are computed from each
+        customer&apos;s stored rate.
       </p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="From">

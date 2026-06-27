@@ -16,7 +16,7 @@ export default async function AppLayout({
   return (
     <>
       <Sidebar user={user} />
-      <main className="ml-60 min-h-screen p-8">
+      <main className="lg:ml-60 min-h-screen p-4 lg:p-8 pt-[4.5rem] lg:pt-8">
         <PageTransition>{children}</PageTransition>
       </main>
     </>

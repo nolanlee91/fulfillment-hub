@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, customers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getSessionUserId } from "./session";
 
@@ -12,6 +12,9 @@ export interface CurrentUser {
   name: string;
   role: Role;
   customerId: string | null;
+  // Dịch vụ khách được dùng (quyết định menu). Staff/Admin = cả hai (thấy tất cả).
+  fulfillmentEnabled: boolean;
+  storageEnabled: boolean;
 }
 
 /**
@@ -37,12 +40,30 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const row = rows[0];
   if (!row || !row.active) return null;
 
+  // Staff/Admin thấy tất cả; CUSTOMER theo cờ dịch vụ của khách họ thuộc về.
+  let fulfillmentEnabled = true;
+  let storageEnabled = true;
+  if (row.role === "CUSTOMER" && row.customerId) {
+    const [cust] = await db
+      .select({
+        fulfillmentEnabled: customers.fulfillmentEnabled,
+        storageEnabled: customers.storageEnabled,
+      })
+      .from(customers)
+      .where(eq(customers.id, row.customerId))
+      .limit(1);
+    fulfillmentEnabled = cust?.fulfillmentEnabled ?? true;
+    storageEnabled = cust?.storageEnabled ?? false;
+  }
+
   return {
     id: row.id,
     username: row.username,
     name: row.name,
     role: row.role,
     customerId: row.customerId,
+    fulfillmentEnabled,
+    storageEnabled,
   };
 }
 
@@ -76,4 +97,11 @@ export async function requirePageRole(
   if (!u) redirect("/login");
   if (!allowed.includes(u.role)) redirect(fallback);
   return u;
+}
+
+/** Trang chủ đúng theo dịch vụ: storage-only khách → /my-storage; còn lại → /orders; staff → /dashboard. */
+export function customerHome(user: CurrentUser): string {
+  if (user.role !== "CUSTOMER") return "/dashboard";
+  if (!user.fulfillmentEnabled && user.storageEnabled) return "/my-storage";
+  return "/orders";
 }

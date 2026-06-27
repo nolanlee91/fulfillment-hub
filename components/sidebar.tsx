@@ -11,6 +11,9 @@ interface NavItem {
   icon: string;
   label: string;
   roles?: Role[]; // undefined = tất cả role; có list = chỉ role trong list
+  // Gate theo dịch vụ cho CUSTOMER: chỉ hiện nếu khách bật dịch vụ này.
+  // Không tag = luôn hiện (vd Account). Staff/Admin bỏ qua tag (thấy hết).
+  service?: "fulfillment" | "storage";
 }
 
 interface NavSection {
@@ -33,10 +36,10 @@ const sections: NavSection[] = [
   {
     label: "Operations",
     items: [
-      { href: "/orders", icon: "inventory_2", label: "Active Orders" },
-      { href: "/flags", icon: "flag", label: "Flagged" },
-      { href: "/delivered", icon: "task_alt", label: "Delivered" },
-      { href: "/failed", icon: "assignment_return", label: "Failed" },
+      { href: "/orders", icon: "inventory_2", label: "Active Orders", service: "fulfillment" },
+      { href: "/flags", icon: "flag", label: "Flagged", service: "fulfillment" },
+      { href: "/delivered", icon: "task_alt", label: "Delivered", service: "fulfillment" },
+      { href: "/failed", icon: "assignment_return", label: "Failed", service: "fulfillment" },
       {
         href: "/batches",
         icon: "package_2",
@@ -60,6 +63,7 @@ const sections: NavSection[] = [
         icon: "receipt_long",
         label: "Reconciliation",
         roles: ["CUSTOMER"],
+        service: "fulfillment",
       },
       {
         href: "/reconciliation-lookup",
@@ -89,6 +93,7 @@ const sections: NavSection[] = [
         icon: "pallet",
         label: "My Storage",
         roles: ["CUSTOMER"],
+        service: "storage",
       },
     ],
   },
@@ -121,6 +126,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -136,9 +142,15 @@ export function Sidebar({ user }: { user: CurrentUser }) {
   const visibleSections = sections
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) => !item.roles || item.roles.includes(user.role),
-      ),
+      items: section.items.filter((item) => {
+        if (item.roles && !item.roles.includes(user.role)) return false;
+        // Gate theo dịch vụ chỉ áp cho CUSTOMER; staff/admin thấy hết.
+        if (user.role === "CUSTOMER" && item.service) {
+          if (item.service === "fulfillment" && !user.fulfillmentEnabled) return false;
+          if (item.service === "storage" && !user.storageEnabled) return false;
+        }
+        return true;
+      }),
     }))
     .filter((section) => section.items.length > 0);
 
@@ -154,8 +166,34 @@ export function Sidebar({ user }: { user: CurrentUser }) {
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 
   return (
+    <>
+      {/* Mobile top bar (chỉ màn nhỏ) */}
+      <div
+        className="lg:hidden fixed top-0 left-0 right-0 h-14 z-30 flex items-center justify-between px-4 border-b"
+        style={{ backgroundColor: "#ffffff", borderColor: "rgba(0,0,0,0.08)" }}
+      >
+        <Image src="/logo.png" alt="KDExpress" width={120} height={59} priority className="h-7 w-auto" />
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="material-symbols-outlined text-[26px]"
+          style={{ color: "var(--text-primary)" }}
+          aria-label="Open menu"
+        >
+          menu
+        </button>
+      </div>
+
+      {/* Backdrop khi drawer mở (mobile) */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
     <aside
-      className="fixed left-0 top-0 h-full w-60 flex flex-col z-20 border-r"
+      className={`fixed left-0 top-0 h-full w-60 flex flex-col z-40 border-r transition-transform lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       style={{
         backgroundColor: "var(--sidebar-bg)",
         borderColor: "var(--sidebar-border)",
@@ -195,6 +233,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]"
                     style={{
                       color: isActive
@@ -238,6 +277,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         <div className="sidebar-section-label">Account</div>
         <Link
           href="/account"
+          onClick={() => setMobileOpen(false)}
           className="flex items-center gap-3 mx-2 px-3 py-2 text-[13px] rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]"
           style={{
             color: accountActive ? "var(--sidebar-text)" : "var(--sidebar-text-secondary)",
@@ -304,5 +344,6 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         </div>
       </div>
     </aside>
+    </>
   );
 }

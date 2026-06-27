@@ -78,6 +78,9 @@ export const storageRequestStatusEnum = pgEnum("storage_request_status", [
   "CANCELLED",
 ]);
 
+// Cơ sở tính phí lưu kho của khách: theo tuần hoặc theo tháng.
+export const storageBasisEnum = pgEnum("storage_basis", ["WEEK", "MONTH"]);
+
 // ============================================================================
 // CUSTOMERS
 // ============================================================================
@@ -86,6 +89,10 @@ export const customers = pgTable("customers", {
   id: text("id").primaryKey(), // VD: "venatureco", "skylane"
   name: text("name").notNull(),
   active: boolean("active").default(true).notNull(),
+  // Phân loại dịch vụ: 1 khách có thể dùng Fulfillment, Storage, hoặc cả hai.
+  // Quyết định menu khách thấy khi đăng nhập (storage-only không thấy Fulfillment).
+  fulfillmentEnabled: boolean("fulfillment_enabled").default(true).notNull(),
+  storageEnabled: boolean("storage_enabled").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -532,6 +539,28 @@ export const storagePickupRequests = pgTable(
     statusIdx: index("storage_requests_status_idx").on(t.status),
   }),
 );
+
+// Rate lưu kho RIÊNG từng khách (mỗi khách 1 mức). Excel report áp rate này để
+// tự tính tiền. Seed mặc định theo bảng giá June 2026 khi bật Storage cho khách.
+export const storageCustomerRates = pgTable("storage_customer_rates", {
+  customerId: text("customer_id")
+    .primaryKey()
+    .references(() => customers.id),
+  handlingPerPallet: numeric("handling_per_pallet", { precision: 10, scale: 2 })
+    .default("10")
+    .notNull(),
+  handlingPerUnit: numeric("handling_per_unit", { precision: 10, scale: 2 })
+    .default("1")
+    .notNull(),
+  storagePerWeek: numeric("storage_per_week", { precision: 10, scale: 2 })
+    .default("15")
+    .notNull(),
+  storagePerMonth: numeric("storage_per_month", { precision: 10, scale: 2 })
+    .default("50")
+    .notNull(),
+  basis: storageBasisEnum("basis").default("MONTH").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const storagePickupRequestItems = pgTable(
   "storage_pickup_request_items",
