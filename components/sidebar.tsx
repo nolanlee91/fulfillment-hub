@@ -144,6 +144,13 @@ export function Sidebar({ user }: { user: CurrentUser }) {
 
   const initial = (user.name || user.username).charAt(0).toUpperCase();
 
+  // Chỉ MỘT item active: chọn href khớp DÀI NHẤT (tránh /storage sáng cùng
+  // /storage/requests vì cả 2 đều là prefix của pathname).
+  const activeHref = visibleSections
+    .flatMap((s) => s.items.map((i) => i.href))
+    .filter((h) => pathname === h || pathname.startsWith(h + "/"))
+    .sort((a, b) => b.length - a.length)[0];
+
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 
   return (
@@ -183,9 +190,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
             <div className="sidebar-section-label">{section.label}</div>
             <div className="space-y-px">
               {section.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
+                const isActive = item.href === activeHref;
                 return (
                   <Link
                     key={item.href}
