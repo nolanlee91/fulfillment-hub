@@ -247,13 +247,14 @@ export const orders = pgTable(
     attentionAt: timestamp("attention_at"),
     attentionNote: text("attention_note"),
 
-    // Đối soát (kế toán dùng, hiển thị trong drawer)
-    paymentType: text("payment_type"),           // ETF / BANK_TRANSFER / CHEQUE / MONEY_ORDER
-    refNumber: text("ref_number"),               // Mã Ref từ email noti (chỉ ETF)
-    paymentProofUrl: text("payment_proof_url"),  // URL ảnh chứng từ (non-ETF, Phase 2)
-    reconciledAt: timestamp("reconciled_at"),    // Đối soát: khách đã up ảnh/ref
-    accountedAt: timestamp("accounted_at"),      // Hạch toán: KDExpress đã ghi sổ
-    accountedBy: text("accounted_by"),           // username người hạch toán
+    // Đối soát — SUMMARY denormalized của bảng con `order_payments` (recompute
+    // sau mỗi mutation qua recomputeOrderReconSummary). 1 đơn có thể có NHIỀU khoản.
+    paymentType: text("payment_type"),           // type của khoản mới nhất (representative)
+    refNumber: text("ref_number"),               // ref của khoản ETF mới nhất
+    paymentProofUrl: text("payment_proof_url"),  // proof của khoản non-ETF mới nhất
+    reconciledAt: timestamp("reconciled_at"),    // MIN reconciledAt các khoản (null nếu chưa có khoản nào)
+    accountedAt: timestamp("accounted_at"),      // chỉ set khi MỌI khoản đã booked (fully booked)
+    accountedBy: text("accounted_by"),           // username người book khoản cuối
 
     syncedAt: timestamp("synced_at").defaultNow().notNull(),
     syncedToSheetAt: timestamp("synced_to_sheet_at"),
@@ -265,6 +266,37 @@ export const orders = pgTable(
     batchIdx: index("orders_batch_idx").on(t.batchId),
     attentionIdx: index("orders_attention_idx").on(t.attentionReason),
     unsyncedSheetIdx: index("orders_unsynced_sheet_idx").on(t.syncedToSheetAt),
+  }),
+);
+
+// ============================================================================
+// ORDER PAYMENTS (đối soát: 1 dòng / khoản thanh toán — 1 đơn có thể nhiều khoản)
+// ============================================================================
+//
+// Trước đây mỗi đơn chỉ lưu 1 khoản đối soát ngay trên `orders`. Thực tế khách
+// có thể thanh toán NHIỀU lần cho 1 đơn (vd trả 2 lần) → tách bảng con này.
+// Booked (accountedAt) tính THEO TỪNG KHOẢN. Các cột reconciliation trên `orders`
+// còn lại làm summary denormalized để list/filter không phải join.
+
+export const orderPayments = pgTable(
+  "order_payments",
+  {
+    id: text("id").primaryKey(), // vd `pay_<ts>_<rand>`
+    orderUniqueKey: text("order_unique_key")
+      .notNull()
+      .references(() => orders.uniqueKey, { onDelete: "cascade" }),
+    paymentType: text("payment_type").notNull(), // ETF | BANK_TRANSFER | CHEQUE | MONEY_ORDER
+    refNumber: text("ref_number"), // chỉ ETF
+    proofUrl: text("payment_proof_url"), // chỉ non-ETF (R2 URL)
+    reconciledAt: timestamp("reconciled_at").defaultNow().notNull(),
+    accountedAt: timestamp("accounted_at"), // booked per-khoản
+    accountedBy: text("accounted_by"),
+    createdBy: text("created_by"), // username hoặc "CUSTOMER:<id>"
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orderIdx: index("order_payments_order_idx").on(t.orderUniqueKey),
+    refIdx: index("order_payments_ref_idx").on(t.refNumber),
   }),
 );
 

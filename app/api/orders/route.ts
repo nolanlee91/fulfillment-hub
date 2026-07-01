@@ -82,15 +82,15 @@ export const GET = withAuth(async (req, user) => {
     } else if (accounted === "no") {
       conditions.push(sql`${orders.accountedAt} IS NULL`);
     }
+    // recpay dựa trên bảng con order_payments (1 đơn có thể có nhiều loại khoản).
     if (recpay === "ETF") {
-      conditions.push(eq(orders.paymentType, "ETF"));
-    } else if (recpay === "NON_ETF") {
-      // non-ETF = đã đối soát nhưng loại thanh toán khác ETF (bank/cheque/money order).
       conditions.push(
-        and(
-          sql`${orders.reconciledAt} IS NOT NULL`,
-          sql`${orders.paymentType} IS DISTINCT FROM 'ETF'`,
-        )!,
+        sql`EXISTS (SELECT 1 FROM order_payments p WHERE p.order_unique_key = ${orders.uniqueKey} AND p.payment_type = 'ETF')`,
+      );
+    } else if (recpay === "NON_ETF") {
+      // non-ETF = có ít nhất 1 khoản loại khác ETF (bank/cheque/money order).
+      conditions.push(
+        sql`EXISTS (SELECT 1 FROM order_payments p WHERE p.order_unique_key = ${orders.uniqueKey} AND p.payment_type <> 'ETF')`,
       );
     }
     if (search) {

@@ -6,13 +6,21 @@ import { Button, Card } from "@/components/ui";
 
 interface UploadResult {
   totalInFile: number;
-  matched: number;
+  added: number;
+  updated: number;
   unmatched: number;
   unmatchedOrderIds: string[];
   skippedCOD: number;
-  skippedBooked: number;
-  skippedBookedOrderIds: string[];
+  blockedBooked: number;
+  blockedBookedOrderIds: string[];
   message: string;
+}
+
+interface Conflict {
+  orderId: string;
+  existingRefs: string[];
+  hasBooked: boolean;
+  canUpdate: boolean;
 }
 
 export default function ReconciliationClient() {
@@ -32,35 +40,57 @@ function UploadSection() {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Popup conflict — khi có Order ID đã có mã ETF trước đó.
+  const [conflicts, setConflicts] = useState<Conflict[] | null>(null);
+  const [resolutions, setResolutions] = useState<Record<string, "update" | "add">>({});
 
-  async function runUpload() {
+  function clearFileInput() {
+    setFile(null);
+    const input = document.getElementById("ref-file-input") as HTMLInputElement;
+    if (input) input.value = "";
+  }
+
+  /** Gửi request. resolutions != null → pha 2 (đã chọn xong ở popup). */
+  async function submit(withResolutions: Record<string, "update" | "add"> | null) {
     if (!file) return;
     setUploading(true);
     setError(null);
-    setResult(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (withResolutions) fd.append("resolutions", JSON.stringify(withResolutions));
 
       const res = await fetch("/api/reconciliation/upload-ref", {
         method: "POST",
         body: fd,
       });
       const data = await res.json();
-      if (data.success) {
-        setResult(data);
-        setFile(null);
-        const input = document.getElementById("ref-file-input") as HTMLInputElement;
-        if (input) input.value = "";
-      } else {
+      if (!data.success) {
         setError(data.error);
+        return;
       }
+      if (data.needsResolution) {
+        // Mở popup — mặc định: đơn khóa update → "add", còn lại → "update" (thay mã nhầm).
+        const conf = data.conflicts as Conflict[];
+        const init: Record<string, "update" | "add"> = {};
+        for (const c of conf) init[c.orderId] = c.canUpdate ? "update" : "add";
+        setConflicts(conf);
+        setResolutions(init);
+        return;
+      }
+      // Đã apply xong
+      setResult(data);
+      setConflicts(null);
+      clearFileInput();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setUploading(false);
     }
   }
+
+  const runUpload = () => submit(null);
+  const confirmResolutions = () => submit(resolutions);
 
   return (
     <>
@@ -134,9 +164,9 @@ function UploadSection() {
           <h3 className="font-bold text-lg mb-4">Results</h3>
 
           <div className="grid grid-cols-4 gap-3 mb-4">
-            <ResultCard label="Matched" value={result.matched} accent="emerald" hint="Ref assigned" />
+            <ResultCard label="Added" value={result.added} accent="emerald" hint="New payments assigned" />
+            <ResultCard label="Updated" value={result.updated} accent="sky" hint="Replaced wrong ref" />
             <ResultCard label="Unmatched" value={result.unmatched} accent="red" hint="Order ID not found" />
-            <ResultCard label="Already booked" value={result.skippedBooked} accent="amber" hint="Đã hạch toán — không ghi đè" />
             <ResultCard label="COD skipped" value={result.skippedCOD} accent="slate" hint="COD orders don't need reconciliation" />
           </div>
 
@@ -163,7 +193,7 @@ function UploadSection() {
             </div>
           )}
 
-          {result.skippedBooked > 0 && (
+          {result.blockedBooked > 0 && (
             <div
               className="mt-4 px-4 py-3 rounded text-xs"
               style={{
@@ -173,21 +203,153 @@ function UploadSection() {
               }}
             >
               <p className="font-semibold mb-2">
-                {result.skippedBooked} mã đã hạch toán — KHÔNG ghi đè Ref (
-                {result.skippedBookedOrderIds.length}
-                {result.skippedBooked > result.skippedBookedOrderIds.length ? `+, hiện 50 mã đầu` : ""} hiển thị):
+                {result.blockedBooked} mã đã hạch toán — KHÔNG cho Update (chỉ Bổ sung):
               </p>
               <p className="font-mono text-[11px] leading-relaxed">
-                {result.skippedBookedOrderIds.join(", ")}
-              </p>
-              <p className="mt-2" style={{ color: "#a16207" }}>
-                Mã đã chốt sổ không sửa được qua upload. Cần sửa Ref các mã này, vui lòng liên hệ KDExpress.
+                {result.blockedBookedOrderIds.join(", ")}
               </p>
             </div>
           )}
         </Card>
       )}
+
+      {conflicts && (
+        <ConflictModal
+          conflicts={conflicts}
+          resolutions={resolutions}
+          setResolutions={setResolutions}
+          onCancel={() => setConflicts(null)}
+          onConfirm={confirmResolutions}
+          busy={uploading}
+        />
+      )}
     </>
+  );
+}
+
+// ============================================================================
+// Popup chọn Update / Bổ sung cho từng Order ID trùng mã
+// ============================================================================
+function ConflictModal({
+  conflicts,
+  resolutions,
+  setResolutions,
+  onCancel,
+  onConfirm,
+  busy,
+}: {
+  conflicts: Conflict[];
+  resolutions: Record<string, "update" | "add">;
+  setResolutions: (r: Record<string, "update" | "add">) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  busy: boolean;
+}) {
+  function setChoice(orderId: string, choice: "update" | "add") {
+    setResolutions({ ...resolutions, [orderId]: choice });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center p-6"
+      style={{ background: "rgba(0,0,0,0.55)", zIndex: 100 }}
+    >
+      <div
+        className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-lg shadow-2xl"
+        style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border)" }}
+      >
+        <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+          <h3 className="font-bold text-lg">These orders already have a Ref</h3>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+            For each order, choose <b>Update</b> (replace a wrong ref) or <b>Add</b> (a second
+            payment). Orders already booked can only be added to.
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {conflicts.map((c) => (
+            <div
+              key={c.orderId}
+              className="flex items-center gap-3 py-3 border-b"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-mono text-sm font-semibold">{c.orderId}</p>
+                <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
+                  Existing: {c.existingRefs.join(", ") || "—"}
+                  {c.hasBooked && (
+                    <span className="ml-2 font-semibold" style={{ color: "#a16207" }}>
+                      · booked
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <ChoiceButton
+                  active={resolutions[c.orderId] === "update"}
+                  disabled={!c.canUpdate}
+                  onClick={() => c.canUpdate && setChoice(c.orderId, "update")}
+                  title={c.canUpdate ? "Replace the existing ref" : "Booked — cannot update"}
+                >
+                  Update
+                </ChoiceButton>
+                <ChoiceButton
+                  active={resolutions[c.orderId] === "add"}
+                  disabled={false}
+                  onClick={() => setChoice(c.orderId, "add")}
+                  title="Add as a second payment"
+                >
+                  Add
+                </ChoiceButton>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="px-5 py-3 border-t flex justify-end gap-2"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <Button variant="secondary" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant="primary" icon="check" onClick={onConfirm} disabled={busy}>
+            {busy ? "Processing..." : "Confirm"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceButton({
+  active,
+  disabled,
+  onClick,
+  title,
+  children,
+}: {
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="px-3 py-1.5 rounded text-[12px] font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      style={{
+        backgroundColor: active ? "var(--accent)" : "var(--bg-tertiary)",
+        color: active ? "#fff" : "var(--text-secondary)",
+        border: "1px solid var(--border)",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -200,7 +362,7 @@ function ResultCard({
 }: {
   label: string;
   value: number;
-  accent: "emerald" | "red" | "slate" | "amber";
+  accent: "emerald" | "red" | "slate" | "amber" | "sky";
   hint: string;
 }) {
   const palette: Record<string, { bg: string; fg: string; border: string }> = {
@@ -208,6 +370,7 @@ function ResultCard({
     red: { bg: "rgba(220, 38, 38, 0.08)", fg: "#dc2626", border: "#ef4444" },
     slate: { bg: "rgba(100, 116, 139, 0.08)", fg: "#475569", border: "#475569" },
     amber: { bg: "rgba(245, 158, 11, 0.08)", fg: "#a16207", border: "#f59e0b" },
+    sky: { bg: "rgba(14, 165, 233, 0.08)", fg: "#0369a1", border: "#0ea5e9" },
   };
   const c = palette[accent];
   return (

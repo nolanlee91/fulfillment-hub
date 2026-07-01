@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, customers } from "@/lib/db/schema";
+import { orders, customers, orderPayments } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
 
@@ -46,10 +46,11 @@ export const POST = withAuth(
         });
       }
 
-      // Query orders + customer name
+      // Query order_payments (per-khoản) join orders + customer name.
+      // Mỗi khoản ETF là 1 dòng → 1 ref có thể khớp đúng 1 khoản của 1 đơn.
       const rows = await db
         .select({
-          refNumber: orders.refNumber,
+          refNumber: orderPayments.refNumber,
           orderId: orders.orderId,
           uniqueKey: orders.uniqueKey,
           customerId: orders.customerId,
@@ -57,14 +58,16 @@ export const POST = withAuth(
           name: orders.name,
           quantity: orders.quantity,
           paymentMethod: orders.paymentMethod,
-          paymentType: orders.paymentType,
+          paymentType: orderPayments.paymentType,
           codAmount: orders.codAmount,
-          reconciledAt: orders.reconciledAt,
+          reconciledAt: orderPayments.reconciledAt,
+          accountedAt: orderPayments.accountedAt,
           status: orders.status,
         })
-        .from(orders)
+        .from(orderPayments)
+        .innerJoin(orders, eq(orderPayments.orderUniqueKey, orders.uniqueKey))
         .leftJoin(customers, eq(orders.customerId, customers.id))
-        .where(inArray(orders.refNumber, refs));
+        .where(inArray(orderPayments.refNumber, refs));
 
       const matchedRefs = new Set(rows.map((r) => r.refNumber).filter((r): r is string => !!r));
       const unmatched = refs.filter((r) => !matchedRefs.has(r));

@@ -2,9 +2,9 @@
 // Dùng chung cho Active Orders + Delivered.
 //
 // 1 lựa chọn ánh xạ ra tối đa 3 query param của /api/orders:
-//   reconciled = yes|no   (khách đã up ảnh/ref chưa)
-//   accounted  = yes|no   (KDExpress đã ghi sổ chưa)
-//   recpay     = ETF|NON_ETF (loại thanh toán — chỉ áp khi đã reconciled)
+//   reconciled = yes|no   (đơn có ÍT NHẤT 1 khoản thanh toán chưa)
+//   accounted  = yes|no   (đơn FULLY BOOKED — mọi khoản đã ghi sổ — hay chưa)
+//   recpay     = ETF|NON_ETF (đơn có khoản loại ETF / non-ETF — EXISTS trên order_payments)
 //
 // Value scheme: "<base>" hoặc "<base>:<type>" với type = etf|nonetf.
 //   base: "" | unreconciled | reconciled_unbooked | booked

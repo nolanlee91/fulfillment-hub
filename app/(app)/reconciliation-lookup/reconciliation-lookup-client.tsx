@@ -16,6 +16,7 @@ interface Match {
   paymentType: string | null;
   codAmount: string | null;
   reconciledAt: string | null;
+  accountedAt: string | null;
   status: string;
 }
 
@@ -150,6 +151,7 @@ export default function ReconciliationLookupClient() {
                       <th className="py-2 pr-3 text-right">Qty</th>
                       <th className="py-2 pr-3">Type</th>
                       <th className="py-2 pr-3">Reconciled</th>
+                      <th className="py-2 pr-3">Booked</th>
                       <th className="py-2 pr-3">Status</th>
                     </tr>
                   </thead>
@@ -173,6 +175,21 @@ export default function ReconciliationLookupClient() {
                         </td>
                         <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--text-secondary)" }}>
                           {m.reconciledAt ? fmtDate(m.reconciledAt) : "—"}
+                        </td>
+                        <td className="py-2 pr-3 text-[12px]">
+                          {m.accountedAt ? (
+                            <span className="inline-flex items-center gap-1" style={{ color: "#15803d" }}>
+                              <span
+                                className="material-symbols-outlined text-[15px]"
+                                style={{ fontVariationSettings: '"FILL" 1' }}
+                              >
+                                check_circle
+                              </span>
+                              {fmtDate(m.accountedAt)}
+                            </span>
+                          ) : (
+                            <span style={{ color: "var(--text-muted)" }}>—</span>
+                          )}
                         </td>
                         <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--text-secondary)" }}>
                           {m.status}

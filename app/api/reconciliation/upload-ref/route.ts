@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { orders } from "@/lib/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { orders, orderPayments } from "@/lib/db/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
+import { recomputeOrderReconSummary } from "@/lib/reconciliation/summary";
 
 export const maxDuration = 60;
 
@@ -55,9 +57,16 @@ async function parseRefFile(buffer: ArrayBuffer): Promise<ParsedRow[]> {
 }
 
 /**
- * Upload file Ref đối soát.
+ * Upload file Ref đối soát (ETF). 2 pha stateless:
+ *   Pha 1 (không kèm `resolutions`): nếu có Order ID đã có mã ETF trước đó → trả
+ *     `needsResolution` + danh sách conflict. Client mở popup cho khách chọn
+ *     Update (thay mã cũ) / Bổ sung (thêm khoản mới) từng Order ID rồi gửi lại.
+ *   Pha 2 (kèm `resolutions`): thực thi add/update theo lựa chọn.
+ *   Nếu KHÔNG có conflict nào → pha 1 apply luôn (không cần popup).
+ *
  * CUSTOMER role: chỉ match đơn của customer mình (security).
- * STAFF/SUPER_ADMIN: match toàn bộ DB (giúp khách up hộ).
+ * COD: bỏ qua (đối soát chỉ áp prepaid).
+ * Đơn đã có khoản ETF BOOKED: không cho Update, chỉ cho Bổ sung.
  */
 export const POST = withAuth(
   async (req, user) => {
@@ -79,6 +88,20 @@ export const POST = withAuth(
         );
       }
 
+      // resolutions: map orderId -> "update" | "add" (chỉ có ở pha 2)
+      let resolutions: Record<string, "update" | "add"> | null = null;
+      const rawResolutions = formData.get("resolutions");
+      if (typeof rawResolutions === "string" && rawResolutions.trim()) {
+        try {
+          resolutions = JSON.parse(rawResolutions);
+        } catch {
+          return NextResponse.json(
+            { success: false, error: "resolutions không hợp lệ (JSON)" },
+            { status: 400 },
+          );
+        }
+      }
+
       // Parse file
       const buffer = await file.arrayBuffer();
       let rows: ParsedRow[];
@@ -96,7 +119,7 @@ export const POST = withAuth(
         );
       }
 
-      // Map orderId → refNumber (dedup, lấy entry cuối nếu duplicate)
+      // Map orderId → refNumber (dedup, lấy entry cuối nếu duplicate trong file)
       const refByOrderId: Record<string, string> = {};
       for (const r of rows) refByOrderId[r.orderId] = r.refNumber;
       const orderIds = Object.keys(refByOrderId);
@@ -107,7 +130,6 @@ export const POST = withAuth(
           uniqueKey: orders.uniqueKey,
           orderId: orders.orderId,
           paymentMethod: orders.paymentMethod,
-          accountedAt: orders.accountedAt,
         })
         .from(orders)
         .where(
@@ -117,57 +139,159 @@ export const POST = withAuth(
           ),
         );
 
-      // Phân loại:
-      //  - COD: bỏ qua (đối soát chỉ áp prepaid)
-      //  - Đã hạch toán (accountedAt != null): KHÔNG ghi đè — kế toán đã chốt sổ,
-      //    chỉ cảnh báo để khách biết không sửa được. Muốn sửa phải nhờ KDExpress.
-      //  - Còn lại: ghi đè Ref bình thường.
-      const matched: Array<{ uniqueKey: string; orderId: string; refNumber: string }> = [];
-      const skippedCOD: string[] = [];
-      const skippedBooked: string[] = [];
-      for (const o of dbOrders) {
-        if (o.paymentMethod === "COD") {
-          skippedCOD.push(o.orderId);
-          continue;
-        }
-        if (o.accountedAt) {
-          skippedBooked.push(o.orderId);
-          continue;
-        }
-        matched.push({
-          uniqueKey: o.uniqueKey,
-          orderId: o.orderId,
-          refNumber: refByOrderId[o.orderId],
-        });
-      }
-
+      const orderByOrderId = new Map(dbOrders.map((o) => [o.orderId, o]));
       const matchedOrderIds = new Set(dbOrders.map((d) => d.orderId));
       const unmatched = orderIds.filter((oid) => !matchedOrderIds.has(oid));
 
-      // Update DB — chỉ các đơn chưa hạch toán
-      const now = new Date();
-      for (const m of matched) {
-        await db
-          .update(orders)
-          .set({
-            paymentType: "ETF",
-            refNumber: m.refNumber,
-            reconciledAt: now,
-            updatedAt: now,
-          })
-          .where(eq(orders.uniqueKey, m.uniqueKey));
+      // Load các khoản ETF hiện có của những đơn khớp
+      const matchedKeys = dbOrders.map((o) => o.uniqueKey);
+      const existingEtf = matchedKeys.length
+        ? await db
+            .select({
+              orderUniqueKey: orderPayments.orderUniqueKey,
+              refNumber: orderPayments.refNumber,
+              accountedAt: orderPayments.accountedAt,
+            })
+            .from(orderPayments)
+            .where(
+              and(
+                inArray(orderPayments.orderUniqueKey, matchedKeys),
+                eq(orderPayments.paymentType, "ETF"),
+              ),
+            )
+        : [];
+
+      const etfByKey = new Map<string, { refs: string[]; hasBooked: boolean }>();
+      for (const p of existingEtf) {
+        const cur = etfByKey.get(p.orderUniqueKey) ?? { refs: [], hasBooked: false };
+        if (p.refNumber) cur.refs.push(p.refNumber);
+        if (p.accountedAt) cur.hasBooked = true;
+        etfByKey.set(p.orderUniqueKey, cur);
       }
+
+      // Phân loại
+      const skippedCOD: string[] = [];
+      const conflicts: Array<{
+        orderId: string;
+        existingRefs: string[];
+        hasBooked: boolean;
+        canUpdate: boolean;
+      }> = [];
+      // Order IDs không conflict (chưa có khoản ETF) → auto add
+      const autoAddOrderIds: string[] = [];
+
+      for (const oid of orderIds) {
+        const o = orderByOrderId.get(oid);
+        if (!o) continue; // unmatched (đã tính ở trên)
+        if (o.paymentMethod === "COD") {
+          skippedCOD.push(oid);
+          continue;
+        }
+        const etf = etfByKey.get(o.uniqueKey);
+        if (etf && etf.refs.length > 0) {
+          conflicts.push({
+            orderId: oid,
+            existingRefs: etf.refs,
+            hasBooked: etf.hasBooked,
+            canUpdate: !etf.hasBooked,
+          });
+        } else {
+          autoAddOrderIds.push(oid);
+        }
+      }
+
+      // Pha 1: có conflict nhưng chưa có resolutions → yêu cầu khách chọn (chưa ghi gì)
+      if (conflicts.length > 0 && !resolutions) {
+        return NextResponse.json({
+          success: true,
+          needsResolution: true,
+          conflicts,
+          autoAddCount: autoAddOrderIds.length,
+          unmatched: unmatched.length,
+          unmatchedOrderIds: unmatched.slice(0, 50),
+          skippedCOD: skippedCOD.length,
+        });
+      }
+
+      // Apply — auto-add + resolutions
+      const now = new Date();
+      const createdBy = `CUSTOMER:${customerId}`;
+      const touchedKeys = new Set<string>();
+      let added = 0;
+      let updated = 0;
+      const blockedBooked: string[] = []; // update bị chặn vì đã booked (an toàn kép)
+
+      const insertEtf = async (uniqueKey: string, refNumber: string) => {
+        await db.insert(orderPayments).values({
+          id: randomUUID(),
+          orderUniqueKey: uniqueKey,
+          paymentType: "ETF",
+          refNumber,
+          reconciledAt: now,
+          createdBy,
+          createdAt: now,
+        });
+        touchedKeys.add(uniqueKey);
+      };
+
+      // 1) Auto-add các đơn chưa có khoản ETF
+      for (const oid of autoAddOrderIds) {
+        const o = orderByOrderId.get(oid)!;
+        await insertEtf(o.uniqueKey, refByOrderId[oid]);
+        added++;
+      }
+
+      // 2) Conflict → theo resolution (mặc định "add" nếu thiếu để không mất dữ liệu)
+      for (const c of conflicts) {
+        const o = orderByOrderId.get(c.orderId)!;
+        const choice = resolutions?.[c.orderId] ?? "add";
+        if (choice === "update") {
+          if (!c.canUpdate) {
+            blockedBooked.push(c.orderId);
+            continue; // đơn đã booked — không cho ghi đè
+          }
+          // Xóa các khoản ETF CHƯA booked cũ rồi thêm mới
+          await db
+            .delete(orderPayments)
+            .where(
+              and(
+                eq(orderPayments.orderUniqueKey, o.uniqueKey),
+                eq(orderPayments.paymentType, "ETF"),
+                isNull(orderPayments.accountedAt),
+              ),
+            );
+          await insertEtf(o.uniqueKey, refByOrderId[c.orderId]);
+          updated++;
+        } else {
+          await insertEtf(o.uniqueKey, refByOrderId[c.orderId]);
+          added++;
+        }
+      }
+
+      // Recompute summary cho mọi đơn đụng tới
+      for (const key of touchedKeys) {
+        await recomputeOrderReconSummary(key);
+      }
+
+      const messageParts = [`${added} khoản thêm`];
+      if (updated > 0) messageParts.push(`${updated} khoản cập nhật`);
+      if (unmatched.length > 0) messageParts.push(`${unmatched.length} không khớp`);
+      if (blockedBooked.length > 0)
+        messageParts.push(`${blockedBooked.length} đã hạch toán nên không ghi đè`);
+      if (skippedCOD.length > 0) messageParts.push(`bỏ qua ${skippedCOD.length} đơn COD`);
 
       return NextResponse.json({
         success: true,
+        needsResolution: false,
         totalInFile: rows.length,
-        matched: matched.length,
+        added,
+        updated,
         unmatched: unmatched.length,
-        unmatchedOrderIds: unmatched.slice(0, 50), // cap để response không quá to
+        unmatchedOrderIds: unmatched.slice(0, 50),
         skippedCOD: skippedCOD.length,
-        skippedBooked: skippedBooked.length,
-        skippedBookedOrderIds: skippedBooked.slice(0, 50),
-        message: `Đối soát: ${matched.length} đơn khớp${unmatched.length > 0 ? `, ${unmatched.length} đơn không khớp` : ""}${skippedBooked.length > 0 ? `, ${skippedBooked.length} đơn ĐÃ hạch toán nên không ghi đè` : ""}${skippedCOD.length > 0 ? ` (bỏ qua ${skippedCOD.length} đơn COD)` : ""}.`,
+        blockedBooked: blockedBooked.length,
+        blockedBookedOrderIds: blockedBooked.slice(0, 50),
+        message: `Đối soát: ${messageParts.join(", ")}.`,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);

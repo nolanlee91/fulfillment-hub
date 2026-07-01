@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { orders } from "@/lib/db/schema";
+import { orders, orderPayments } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
-import { buildProofKey, deleteObject, keyFromPublicUrl, uploadObject } from "@/lib/storage/r2";
+import { buildProofKey, uploadObject } from "@/lib/storage/r2";
+import { recomputeOrderReconSummary } from "@/lib/reconciliation/summary";
 
 export const maxDuration = 60;
 
@@ -24,7 +26,8 @@ const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
  * POST /api/orders/[uniqueKey]/payment-proof
  * Multipart: paymentType + image
  * CUSTOMER role only — verify đơn thuộc customer của user.
- * Upload ảnh lên R2 + update DB.
+ * Upload ảnh lên R2 + THÊM 1 khoản thanh toán non-ETF (append, không ghi đè —
+ * 1 đơn có thể trả nhiều lần). Xóa/book per-khoản qua /payments/[paymentId].
  */
 export const POST = withAuth(
   async (req, user, { params }: { params: Promise<{ uniqueKey: string }> }) => {
@@ -114,18 +117,22 @@ export const POST = withAuth(
         );
       }
 
-      await db
-        .update(orders)
-        .set({
-          paymentType,
-          paymentProofUrl: publicUrl,
-          reconciledAt: now,
-          updatedAt: now,
-        })
-        .where(eq(orders.uniqueKey, uniqueKey));
+      const paymentId = randomUUID();
+      await db.insert(orderPayments).values({
+        id: paymentId,
+        orderUniqueKey: uniqueKey,
+        paymentType,
+        proofUrl: publicUrl,
+        reconciledAt: now,
+        createdBy: `CUSTOMER:${user.customerId}`,
+        createdAt: now,
+      });
+
+      await recomputeOrderReconSummary(uniqueKey);
 
       return NextResponse.json({
         success: true,
+        paymentId,
         paymentType,
         paymentProofUrl: publicUrl,
         reconciledAt: now.toISOString(),
@@ -140,66 +147,4 @@ export const POST = withAuth(
     }
   },
   { roles: ["CUSTOMER"] },
-);
-
-/**
- * DELETE /api/orders/[uniqueKey]/payment-proof
- * STAFF/SUPER_ADMIN only — gỡ reconciliation của đơn (kể cả ETF ref hoặc proof image).
- * Nếu có ảnh trong R2 → xóa luôn object. Clear tất cả 4 field reconciliation trong DB.
- */
-export const DELETE = withAuth(
-  async (_req, _user, { params }: { params: Promise<{ uniqueKey: string }> }) => {
-    try {
-      const { uniqueKey } = await params;
-
-      const [order] = await db
-        .select({
-          uniqueKey: orders.uniqueKey,
-          paymentProofUrl: orders.paymentProofUrl,
-        })
-        .from(orders)
-        .where(eq(orders.uniqueKey, uniqueKey));
-
-      if (!order) {
-        return NextResponse.json(
-          { success: false, error: "Order not found" },
-          { status: 404 },
-        );
-      }
-
-      // Xóa R2 object nếu có (best-effort, không fail toàn request nếu R2 lỗi)
-      if (order.paymentProofUrl) {
-        const key = keyFromPublicUrl(order.paymentProofUrl);
-        if (key) {
-          try {
-            await deleteObject(key);
-          } catch (e) {
-            console.error("R2 delete failed (continuing):", e);
-          }
-        }
-      }
-
-      const now = new Date();
-      await db
-        .update(orders)
-        .set({
-          paymentType: null,
-          refNumber: null,
-          paymentProofUrl: null,
-          reconciledAt: null,
-          updatedAt: now,
-        })
-        .where(eq(orders.uniqueKey, uniqueKey));
-
-      return NextResponse.json({ success: true });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error("Payment proof delete error:", error);
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 },
-      );
-    }
-  },
-  { roles: ["STAFF", "SUPER_ADMIN"] },
 );

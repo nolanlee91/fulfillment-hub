@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { orders, orderPayments } from "@/lib/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
+import { recomputeOrderReconSummary } from "@/lib/reconciliation/summary";
 
 /**
  * POST /api/orders/[uniqueKey]/accounted
- * Body: { accounted: boolean } — đánh dấu đơn đã/chưa hạch toán (ghi sổ).
+ * Body: { accounted: boolean } — book/unbook TẤT CẢ khoản của đơn (tiện lợi bulk).
+ * Muốn book từng khoản riêng dùng /payments/[paymentId].
  * STAFF/SUPER_ADMIN only.
  */
 export const POST = withAuth(
@@ -29,14 +31,26 @@ export const POST = withAuth(
       }
 
       const now = new Date();
-      await db
-        .update(orders)
-        .set({
-          accountedAt: accounted ? now : null,
-          accountedBy: accounted ? user.username : null,
-          updatedAt: now,
-        })
-        .where(eq(orders.uniqueKey, uniqueKey));
+      if (accounted) {
+        // Book mọi khoản CHƯA booked (giữ nguyên khoản đã book trước đó)
+        await db
+          .update(orderPayments)
+          .set({ accountedAt: now, accountedBy: user.username })
+          .where(
+            and(
+              eq(orderPayments.orderUniqueKey, uniqueKey),
+              isNull(orderPayments.accountedAt),
+            ),
+          );
+      } else {
+        // Unbook tất cả
+        await db
+          .update(orderPayments)
+          .set({ accountedAt: null, accountedBy: null })
+          .where(eq(orderPayments.orderUniqueKey, uniqueKey));
+      }
+
+      await recomputeOrderReconSummary(uniqueKey);
 
       return NextResponse.json({
         success: true,

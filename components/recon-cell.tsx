@@ -3,8 +3,9 @@
 /**
  * Ô "Recon" 2 trạng thái cho bảng đơn:
  *   Đối soát (reconciled, khách up ảnh/ref) / Hạch toán (accounted, KDExpress ghi sổ)
- * - Icon đối soát: read-only (do khách).
- * - Icon hạch toán: STAFF/SUPER_ADMIN bấm để toggle (canToggle); CUSTOMER chỉ xem.
+ * - Icon đối soát: read-only (do khách). = đơn có ÍT NHẤT 1 khoản.
+ * - Icon hạch toán: = đơn FULLY BOOKED (mọi khoản đã book). STAFF/SUPER_ADMIN bấm
+ *   để toggle book/unbook TẤT CẢ khoản (canToggle); book từng khoản riêng làm trong drawer.
  */
 export function ReconCell({
   order,
@@ -55,8 +56,8 @@ export function ReconCell({
           className="inline-flex items-center transition-opacity hover:opacity-70"
           title={
             accounted
-              ? `Booked${order.accountedBy ? ` by ${order.accountedBy}` : ""} — click to undo`
-              : "Not booked — click to mark"
+              ? `All payments booked${order.accountedBy ? ` (last by ${order.accountedBy})` : ""} — click to unbook all`
+              : "Not fully booked — click to book all payments"
           }
         >
           {accounted ? (
