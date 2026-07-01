@@ -6,6 +6,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { withAuth } from "@/lib/auth/api-guard";
 import { recomputeOrderReconSummary } from "@/lib/reconciliation/summary";
+import { deleteObject, keyFromPublicUrl } from "@/lib/storage/r2";
 
 export const maxDuration = 60;
 
@@ -143,41 +144,47 @@ export const POST = withAuth(
       const matchedOrderIds = new Set(dbOrders.map((d) => d.orderId));
       const unmatched = orderIds.filter((oid) => !matchedOrderIds.has(oid));
 
-      // Load các khoản ETF hiện có của những đơn khớp
+      // Load MỌI khoản hiện có (ETF lẫn non-ETF) của những đơn khớp — để phát hiện
+      // conflict kể cả khi đơn trước đó chỉ có ảnh non-ETF.
       const matchedKeys = dbOrders.map((o) => o.uniqueKey);
-      const existingEtf = matchedKeys.length
+      const existingPayments = matchedKeys.length
         ? await db
             .select({
+              id: orderPayments.id,
               orderUniqueKey: orderPayments.orderUniqueKey,
+              paymentType: orderPayments.paymentType,
               refNumber: orderPayments.refNumber,
+              proofUrl: orderPayments.proofUrl,
               accountedAt: orderPayments.accountedAt,
             })
             .from(orderPayments)
-            .where(
-              and(
-                inArray(orderPayments.orderUniqueKey, matchedKeys),
-                eq(orderPayments.paymentType, "ETF"),
-              ),
-            )
+            .where(inArray(orderPayments.orderUniqueKey, matchedKeys))
         : [];
 
-      const etfByKey = new Map<string, { refs: string[]; hasBooked: boolean }>();
-      for (const p of existingEtf) {
-        const cur = etfByKey.get(p.orderUniqueKey) ?? { refs: [], hasBooked: false };
-        if (p.refNumber) cur.refs.push(p.refNumber);
+      type ExistingItem = { type: string; ref: string | null };
+      type UnbookedRow = { id: string; proofUrl: string | null };
+      const payByKey = new Map<
+        string,
+        { items: ExistingItem[]; hasBooked: boolean; unbooked: UnbookedRow[] }
+      >();
+      for (const p of existingPayments) {
+        const cur =
+          payByKey.get(p.orderUniqueKey) ?? { items: [], hasBooked: false, unbooked: [] };
+        cur.items.push({ type: p.paymentType, ref: p.refNumber });
         if (p.accountedAt) cur.hasBooked = true;
-        etfByKey.set(p.orderUniqueKey, cur);
+        else cur.unbooked.push({ id: p.id, proofUrl: p.proofUrl });
+        payByKey.set(p.orderUniqueKey, cur);
       }
 
       // Phân loại
       const skippedCOD: string[] = [];
       const conflicts: Array<{
         orderId: string;
-        existingRefs: string[];
+        existing: ExistingItem[];
         hasBooked: boolean;
         canUpdate: boolean;
       }> = [];
-      // Order IDs không conflict (chưa có khoản ETF) → auto add
+      // Order IDs không conflict (đơn CHƯA có khoản nào) → auto add
       const autoAddOrderIds: string[] = [];
 
       for (const oid of orderIds) {
@@ -187,13 +194,13 @@ export const POST = withAuth(
           skippedCOD.push(oid);
           continue;
         }
-        const etf = etfByKey.get(o.uniqueKey);
-        if (etf && etf.refs.length > 0) {
+        const existing = payByKey.get(o.uniqueKey);
+        if (existing && existing.items.length > 0) {
           conflicts.push({
             orderId: oid,
-            existingRefs: etf.refs,
-            hasBooked: etf.hasBooked,
-            canUpdate: !etf.hasBooked,
+            existing: existing.items,
+            hasBooked: existing.hasBooked,
+            canUpdate: !existing.hasBooked,
           });
         } else {
           autoAddOrderIds.push(oid);
@@ -250,13 +257,25 @@ export const POST = withAuth(
             blockedBooked.push(c.orderId);
             continue; // đơn đã booked — không cho ghi đè
           }
-          // Xóa các khoản ETF CHƯA booked cũ rồi thêm mới
+          // Xóa MỌI khoản CHƯA booked cũ (kể cả ảnh non-ETF) + dọn object R2, rồi thêm mã ETF mới.
+          const unbooked = payByKey.get(o.uniqueKey)?.unbooked ?? [];
+          for (const u of unbooked) {
+            if (u.proofUrl) {
+              const key = keyFromPublicUrl(u.proofUrl);
+              if (key) {
+                try {
+                  await deleteObject(key);
+                } catch (e) {
+                  console.error("R2 delete failed (continuing):", e);
+                }
+              }
+            }
+          }
           await db
             .delete(orderPayments)
             .where(
               and(
                 eq(orderPayments.orderUniqueKey, o.uniqueKey),
-                eq(orderPayments.paymentType, "ETF"),
                 isNull(orderPayments.accountedAt),
               ),
             );

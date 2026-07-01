@@ -18,9 +18,26 @@ interface UploadResult {
 
 interface Conflict {
   orderId: string;
-  existingRefs: string[];
+  existing: { type: string; ref: string | null }[];
   hasBooked: boolean;
   canUpdate: boolean;
+}
+
+const PAYMENT_TYPE_LABEL: Record<string, string> = {
+  ETF: "ETF",
+  BANK_TRANSFER: "Bank transfer",
+  CHEQUE: "Cheque",
+  MONEY_ORDER: "Money order",
+};
+
+function describeExisting(items: { type: string; ref: string | null }[]): string {
+  return items
+    .map((it) =>
+      it.ref
+        ? `${PAYMENT_TYPE_LABEL[it.type] ?? it.type} ${it.ref}`
+        : `${PAYMENT_TYPE_LABEL[it.type] ?? it.type} (image)`,
+    )
+    .join(", ");
 }
 
 export default function ReconciliationClient() {
@@ -70,10 +87,11 @@ function UploadSection() {
         return;
       }
       if (data.needsResolution) {
-        // Mở popup — mặc định: đơn khóa update → "add", còn lại → "update" (thay mã nhầm).
+        // Mở popup — mặc định "add" (an toàn, không xóa dữ liệu cũ). Khách chủ động
+        // chọn "update" khi muốn thay khoản nhầm.
         const conf = data.conflicts as Conflict[];
         const init: Record<string, "update" | "add"> = {};
-        for (const c of conf) init[c.orderId] = c.canUpdate ? "update" : "add";
+        for (const c of conf) init[c.orderId] = "add";
         setConflicts(conf);
         setResolutions(init);
         return;
@@ -261,8 +279,8 @@ function ConflictModal({
         <div className="px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
           <h3 className="font-bold text-lg">These orders already have a Ref</h3>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            For each order, choose <b>Update</b> (replace a wrong ref) or <b>Add</b> (a second
-            payment). Orders already booked can only be added to.
+            For each order, choose <b>Update</b> (replace the existing entry — a wrong ref/image)
+            or <b>Add</b> (a second payment). Orders already booked can only be added to.
           </p>
         </div>
 
@@ -276,7 +294,7 @@ function ConflictModal({
               <div className="flex-1 min-w-0">
                 <p className="font-mono text-sm font-semibold">{c.orderId}</p>
                 <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
-                  Existing: {c.existingRefs.join(", ") || "—"}
+                  Existing: {describeExisting(c.existing) || "—"}
                   {c.hasBooked && (
                     <span className="ml-2 font-semibold" style={{ color: "#a16207" }}>
                       · booked
@@ -289,7 +307,7 @@ function ConflictModal({
                   active={resolutions[c.orderId] === "update"}
                   disabled={!c.canUpdate}
                   onClick={() => c.canUpdate && setChoice(c.orderId, "update")}
-                  title={c.canUpdate ? "Replace the existing ref" : "Booked — cannot update"}
+                  title={c.canUpdate ? "Replace the existing entry" : "Booked — cannot update"}
                 >
                   Update
                 </ChoiceButton>
