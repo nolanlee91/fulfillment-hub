@@ -146,6 +146,55 @@ export async function cancelRequest(requestId: string, customerId?: string) {
   return { id: requestId };
 }
 
+/**
+ * Xóa hẳn request + items (dọn test / nhầm).
+ * - Khách (truyền customerId): chỉ xóa request CỦA MÌNH và chỉ khi PENDING/CANCELLED
+ *   (không xóa DONE vì đã trừ kho thật).
+ * - Staff (không truyền customerId): xóa được mọi request.
+ */
+export async function deleteRequest(requestId: string, customerId?: string) {
+  const r = await getRequest(requestId);
+  if (!r) throw new Error("Request not found");
+  if (customerId) {
+    if (r.customerId !== customerId) throw new Error("Not allowed");
+    if (r.status === "DONE")
+      throw new Error("Đơn đã thực hiện pickup, không thể xóa");
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(storagePickupRequestItems)
+      .where(eq(storagePickupRequestItems.requestId, requestId));
+    await tx.delete(storagePickupRequests).where(eq(storagePickupRequests.id, requestId));
+  });
+  return { id: requestId };
+}
+
+/**
+ * Khách bấm "Đồng ý" xác nhận số cuối (phương án A: sau khi STAFF đã chốt → DONE).
+ * Ghi customerConfirmedBy/At. Cả 2 phía có timestamp = đã thống nhất.
+ */
+export async function customerConfirm(
+  requestId: string,
+  customerId: string,
+  confirmedBy: string,
+) {
+  const r = await getRequest(requestId);
+  if (!r) throw new Error("Request not found");
+  if (r.customerId !== customerId) throw new Error("Not allowed");
+  if (r.status !== "DONE")
+    throw new Error("Chỉ xác nhận được sau khi kho đã chốt số cuối");
+  if (r.customerConfirmedAt) return { id: requestId }; // đã xác nhận rồi, idempotent
+  await db
+    .update(storagePickupRequests)
+    .set({
+      customerConfirmedBy: confirmedBy,
+      customerConfirmedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(storagePickupRequests.id, requestId));
+  return { id: requestId };
+}
+
 export interface ConfirmInput {
   requestId: string;
   /** itemId → số unit thực lấy (mặc định = số yêu cầu). 0 = không lấy item đó. */

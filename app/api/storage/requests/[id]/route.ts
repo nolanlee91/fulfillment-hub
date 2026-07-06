@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/api-guard";
 import type { CurrentUser } from "@/lib/auth/current-user";
-import { cancelRequest, confirmRequest, editRequest } from "@/lib/storage/requests";
+import {
+  cancelRequest,
+  confirmRequest,
+  editRequest,
+  deleteRequest,
+  customerConfirm,
+} from "@/lib/storage/requests";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -12,6 +18,8 @@ interface RouteContext {
  *   - action "edit"    : sửa items/ngày/note (chỉ PENDING). Khách scope theo customerId.
  *   - action "cancel"  : hủy (chỉ PENDING).
  *   - action "confirm" : staff chốt số cuối → DONE (thực hiện pickup). CHỈ staff.
+ *   - action "delete"  : xóa hẳn request (khách: của mình + không DONE; staff: mọi cái).
+ *   - action "customer_confirm": khách "Đồng ý" số cuối sau khi DONE. CHỈ khách.
  */
 export const POST = withAuth<RouteContext>(
   async (req, user, ctx) => {
@@ -54,6 +62,25 @@ export const POST = withAuth<RouteContext>(
 
       if (action === "cancel") {
         const res = await cancelRequest(id, scopeCustomer);
+        return NextResponse.json({ success: true, ...res });
+      }
+
+      if (action === "delete") {
+        // khách: scope theo customerId (chỉ xóa của mình, không xóa DONE);
+        // staff: scopeCustomer undefined → xóa được mọi request.
+        const res = await deleteRequest(id, scopeCustomer);
+        return NextResponse.json({ success: true, ...res });
+      }
+
+      if (action === "customer_confirm") {
+        // Phương án A: khách "Đồng ý" số cuối sau khi staff đã chốt (DONE).
+        if (!isCustomer || !scopeCustomer) {
+          return NextResponse.json(
+            { success: false, error: "Not allowed" },
+            { status: 403 },
+          );
+        }
+        const res = await customerConfirm(id, scopeCustomer, user.username);
         return NextResponse.json({ success: true, ...res });
       }
 

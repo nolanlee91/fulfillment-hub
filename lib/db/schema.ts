@@ -564,8 +564,12 @@ export const storagePickupRequests = pgTable(
     requestedDate: timestamp("requested_date"), // ngày khách muốn lấy
     note: text("note"),
     createdBy: text("created_by"),
-    confirmedBy: text("confirmed_by"),
+    // Xác nhận 2 phía: STAFF chốt số thực (trừ kho) + CUSTOMER đồng ý số cuối.
+    // Cả 2 có timestamp = 2 bên đã thống nhất.
+    confirmedBy: text("confirmed_by"), // = STAFF confirm (username người chốt)
     confirmedAt: timestamp("confirmed_at"),
+    customerConfirmedBy: text("customer_confirmed_by"), // username khách bấm "Đồng ý"
+    customerConfirmedAt: timestamp("customer_confirmed_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

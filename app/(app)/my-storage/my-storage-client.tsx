@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
-import { Card, Button } from "@/components/ui";
+import { Button } from "@/components/ui";
 
 interface Pallet {
   id: string;
@@ -27,12 +27,16 @@ interface PickupRequest {
   requestedDate: string | null;
   note: string | null;
   createdAt: string;
+  confirmedBy: string | null;
+  confirmedAt: string | null;
+  customerConfirmedBy: string | null;
+  customerConfirmedAt: string | null;
   items: ReqItem[];
 }
 
 const STATUS_LABEL: Record<PickupRequest["status"], string> = {
   PENDING: "Pending",
-  DONE: "Done",
+  DONE: "Picked up",
   CANCELLED: "Cancelled",
 };
 const STATUS_COLOR: Record<PickupRequest["status"], string> = {
@@ -58,6 +62,7 @@ export default function MyStorageClient() {
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [builder, setBuilder] = useState<PickupRequest | "new" | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,146 +79,179 @@ export default function MyStorageClient() {
     load();
   }, [load]);
 
-  async function cancel(id: string) {
-    if (!confirm("Cancel this request?")) return;
-    const res = await fetch(`/api/storage/requests/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "cancel" }),
-    });
-    const data = await res.json();
-    if (!data.success) alert(data.error);
-    await load();
+  async function act(id: string, action: string, confirmMsg?: string) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    setBusy(id);
+    try {
+      const res = await fetch(`/api/storage/requests/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!data.success) alert(data.error);
+      await load();
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
     <>
       <Topbar title="My Storage" subtitle="Warehouse" showSync={false} />
 
-      {/* Pallets in storage */}
+      {/* ---- Pallets in storage ---- */}
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold">Pallets in storage</h2>
+        <h2 className="text-sm font-semibold">Hàng đang lưu kho</h2>
         <Button
           icon="local_shipping"
           onClick={() => setBuilder("new")}
           disabled={pallets.length === 0}
         >
-          Request pickup
+          Yêu cầu lấy hàng
         </Button>
       </div>
-      <Card padding="none" className="overflow-x-auto mb-6">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="text-left text-xs text-[var(--text-secondary)] border-b">
-              <th className="px-3 py-2">Pallet</th>
-              <th className="px-3 py-2">Product</th>
-              <th className="px-3 py-2 text-right">Units</th>
-              <th className="px-3 py-2">Received</th>
-              <th className="px-3 py-2 text-right">Days</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-[var(--text-secondary)]">
-                  Loading…
-                </td>
-              </tr>
-            ) : pallets.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-[var(--text-secondary)]">
-                  No pallets in storage.
-                </td>
-              </tr>
-            ) : (
-              pallets.map((p) => (
-                <tr key={p.id} className="border-b text-sm">
-                  <td className="px-3 py-2 font-mono text-xs">{p.palletCode}</td>
-                  <td className="px-3 py-2">{p.productName}</td>
-                  <td className="px-3 py-2 text-right font-semibold">{p.unitCount}</td>
-                  <td className="px-3 py-2">{fmtDate(p.receivedAt)}</td>
-                  <td className="px-3 py-2 text-right">{daysStored(p.receivedAt)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </Card>
 
-      {/* My requests */}
-      <h2 className="text-sm font-semibold mb-2">My pickup requests</h2>
-      <Card padding="none" className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="text-left text-xs text-[var(--text-secondary)] border-b">
-              <th className="px-3 py-2">Created</th>
-              <th className="px-3 py-2">Wanted date</th>
-              <th className="px-3 py-2">Items</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-[var(--text-secondary)]">
-                  No requests yet.
-                </td>
-              </tr>
-            ) : (
-              requests.map((r) => (
-                <tr key={r.id} className="border-b text-sm align-top">
-                  <td className="px-3 py-2">{fmtDate(r.createdAt)}</td>
-                  <td className="px-3 py-2">{fmtDate(r.requestedDate)}</td>
-                  <td className="px-3 py-2">
-                    <ul className="space-y-0.5">
-                      {r.items.map((it) => (
-                        <li key={it.id} className="text-xs">
-                          {itemLabel(it)}
-                          {r.status === "DONE" && it.confirmedUnits != null && (
-                            <span className="text-[var(--text-secondary)]">
-                              {" "}
-                              → took {it.confirmedUnits}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className="text-xs font-semibold"
-                      style={{ color: STATUS_COLOR[r.status] }}
-                    >
-                      {STATUS_LABEL[r.status]}
+      {loading ? (
+        <p className="text-sm text-[var(--text-secondary)] py-8 text-center">Loading…</p>
+      ) : pallets.length === 0 ? (
+        <p className="text-sm text-[var(--text-secondary)] py-8 text-center">
+          Chưa có pallet nào trong kho.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          {pallets.map((p) => (
+            <div
+              key={p.id}
+              className="rounded-lg border p-3"
+              style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-sm">{p.productName}</div>
+                  <div className="font-mono text-[11px] text-[var(--text-secondary)]">
+                    {p.palletCode}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold leading-none">{p.unitCount}</div>
+                  <div className="text-[10px] text-[var(--text-secondary)]">còn / {p.initialUnits}</div>
+                </div>
+              </div>
+              <div className="mt-2 text-[11px] text-[var(--text-secondary)]">
+                Nhận {fmtDate(p.receivedAt)} · {daysStored(p.receivedAt)} ngày
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ---- My pickup requests ---- */}
+      <h2 className="text-sm font-semibold mb-2">Yêu cầu lấy hàng của tôi</h2>
+      {requests.length === 0 ? (
+        <p className="text-sm text-[var(--text-secondary)] py-6 text-center">
+          Chưa có yêu cầu nào.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((r) => {
+            const canConfirm = r.status === "DONE" && !r.customerConfirmedAt;
+            const canDelete = r.status === "PENDING" || r.status === "CANCELLED";
+            const agreed = r.confirmedAt && r.customerConfirmedAt;
+            return (
+              <div
+                key={r.id}
+                className="rounded-lg border p-3"
+                style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+              >
+                {/* header row */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[11px] text-[var(--text-secondary)]">
+                    Tạo {fmtDate(r.createdAt)}
+                    {r.requestedDate && ` · muốn lấy ${fmtDate(r.requestedDate)}`}
+                  </div>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: STATUS_COLOR[r.status] }}
+                  >
+                    {STATUS_LABEL[r.status]}
+                  </span>
+                </div>
+
+                {/* items */}
+                <ul className="space-y-0.5 mb-2">
+                  {r.items.map((it) => (
+                    <li key={it.id} className="text-sm">
+                      {itemLabel(it)}
+                      {r.status === "DONE" && it.confirmedUnits != null && (
+                        <span className="text-[var(--text-secondary)]"> → đã lấy {it.confirmedUnits}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* two-sided confirm */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <ConfirmBadge
+                    label="Kho"
+                    ok={!!r.confirmedAt}
+                    detail={r.confirmedAt ? `${r.confirmedBy ?? ""} · ${fmtDate(r.confirmedAt)}` : "chờ kho chốt"}
+                  />
+                  <ConfirmBadge
+                    label="Khách"
+                    ok={!!r.customerConfirmedAt}
+                    detail={r.customerConfirmedAt ? fmtDate(r.customerConfirmedAt) : "chưa đồng ý"}
+                  />
+                  {agreed && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: "rgba(22,163,74,0.12)", color: "#15803d" }}>
+                      ✓ Đã thống nhất
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
-                    {r.status === "PENDING" && (
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="secondary"
-                          className="text-xs"
-                          onClick={() => setBuilder(r)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          className="text-xs"
-                          onClick={() => cancel(r.id)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </Card>
+                  )}
+                </div>
+
+                {/* actions */}
+                <div className="flex flex-wrap gap-2">
+                  {canConfirm && (
+                    <Button
+                      icon="check_circle"
+                      disabled={busy === r.id}
+                      onClick={() => act(r.id, "customer_confirm")}
+                    >
+                      Đồng ý
+                    </Button>
+                  )}
+                  {r.status === "PENDING" && (
+                    <>
+                      <Button variant="secondary" className="text-xs" onClick={() => setBuilder(r)}>
+                        Sửa
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="text-xs"
+                        disabled={busy === r.id}
+                        onClick={() => act(r.id, "cancel", "Hủy yêu cầu này?")}
+                      >
+                        Hủy
+                      </Button>
+                    </>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="secondary"
+                      icon="delete"
+                      className="text-xs"
+                      disabled={busy === r.id}
+                      onClick={() => act(r.id, "delete", "Xóa hẳn yêu cầu này?")}
+                    >
+                      Xóa
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {builder && (
         <RequestBuilder
@@ -227,6 +265,24 @@ export default function MyStorageClient() {
         />
       )}
     </>
+  );
+}
+
+function ConfirmBadge({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
+  return (
+    <span
+      className="px-2 py-0.5 rounded text-[10px] font-medium inline-flex items-center gap-1"
+      style={
+        ok
+          ? { backgroundColor: "rgba(22,163,74,0.10)", color: "#15803d" }
+          : { backgroundColor: "rgba(100,116,139,0.12)", color: "#64748b" }
+      }
+    >
+      <span className="material-symbols-outlined text-[13px]">
+        {ok ? "check_circle" : "schedule"}
+      </span>
+      <b>{label}:</b> {detail}
+    </span>
   );
 }
 
@@ -283,18 +339,18 @@ function RequestBuilder({
       } else {
         const u = Number(row.units);
         if (!u || u < 1) {
-          setError(`Enter units for ${p.palletCode} (or pick the whole pallet)`);
+          setError(`Nhập số units cho ${p.palletCode} (hoặc chọn cả pallet)`);
           return;
         }
         if (u > p.unitCount) {
-          setError(`${p.palletCode} only has ${p.unitCount} units`);
+          setError(`${p.palletCode} chỉ còn ${p.unitCount} units`);
           return;
         }
         items.push({ palletId: p.id, units: u, uom: "UNIT" });
       }
     }
     if (items.length === 0) {
-      setError("Select at least one pallet");
+      setError("Chọn ít nhất 1 pallet");
       return;
     }
 
@@ -324,17 +380,17 @@ function RequestBuilder({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto"
+        className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-lg bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">
-            {existing ? "Edit pickup request" : "Request pickup"}
+            {existing ? "Sửa yêu cầu lấy hàng" : "Yêu cầu lấy hàng"}
           </h2>
           <button onClick={onClose} className="material-symbols-outlined text-[20px]">
             close
@@ -350,6 +406,7 @@ function RequestBuilder({
                   type="checkbox"
                   checked={row.include}
                   onChange={(e) => setRow(p.id, { include: e.target.checked })}
+                  className="w-4 h-4"
                 />
                 <div className="flex-1">
                   <span className="font-mono text-xs">{p.palletCode}</span> · {p.productName}
@@ -362,7 +419,7 @@ function RequestBuilder({
                     checked={row.whole}
                     onChange={(e) => setRow(p.id, { whole: e.target.checked })}
                   />
-                  whole
+                  cả pallet
                 </label>
                 <input
                   className="filter-input w-20"
@@ -381,7 +438,7 @@ function RequestBuilder({
 
         <label className="flex flex-col gap-1 mb-3">
           <span className="text-xs font-medium text-[var(--text-secondary)]">
-            Preferred pickup date (optional)
+            Ngày muốn lấy (không bắt buộc)
           </span>
           <input
             className="filter-input w-full"
@@ -391,7 +448,7 @@ function RequestBuilder({
           />
         </label>
         <label className="flex flex-col gap-1 mb-3">
-          <span className="text-xs font-medium text-[var(--text-secondary)]">Note (optional)</span>
+          <span className="text-xs font-medium text-[var(--text-secondary)]">Ghi chú (không bắt buộc)</span>
           <input
             className="filter-input w-full"
             value={note}
@@ -400,19 +457,19 @@ function RequestBuilder({
         </label>
 
         <p className="text-xs text-[var(--text-secondary)] mb-3">
-          You can edit this request until our staff confirm the final amount at pickup.
+          Bạn có thể sửa yêu cầu tới khi kho chốt số cuối lúc lấy hàng.
         </p>
         {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            Đóng
           </Button>
           <Button
             onClick={submit}
             disabled={saving}
             icon={saving ? "hourglass_empty" : "local_shipping"}
           >
-            {saving ? "Saving…" : existing ? "Save changes" : "Submit request"}
+            {saving ? "Đang lưu…" : existing ? "Lưu thay đổi" : "Gửi yêu cầu"}
           </Button>
         </div>
       </div>

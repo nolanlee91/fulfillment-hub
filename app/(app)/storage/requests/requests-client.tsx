@@ -23,6 +23,9 @@ interface PickupRequest {
   note: string | null;
   createdAt: string;
   confirmedAt: string | null;
+  confirmedBy: string | null;
+  customerConfirmedAt: string | null;
+  customerConfirmedBy: string | null;
   items: ReqItem[];
 }
 interface Customer {
@@ -80,16 +83,23 @@ export default function RequestsClient() {
     load();
   }, [load]);
 
-  async function cancel(id: string) {
-    if (!confirm("Cancel this request?")) return;
+  async function post(id: string, action: string) {
     const res = await fetch(`/api/storage/requests/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "cancel" }),
+      body: JSON.stringify({ action }),
     });
     const data = await res.json();
     if (!data.success) alert(data.error);
     await load();
+  }
+  async function cancel(id: string) {
+    if (!confirm("Cancel this request?")) return;
+    await post(id, "cancel");
+  }
+  async function del(id: string) {
+    if (!confirm("Xóa hẳn yêu cầu này? Không hoàn tác.")) return;
+    await post(id, "delete");
   }
 
   return (
@@ -118,19 +128,21 @@ export default function RequestsClient() {
               <th className="px-3 py-2">Wanted date</th>
               <th className="px-3 py-2">Items</th>
               <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Staff confirm</th>
+              <th className="px-3 py-2">Customer confirm</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-[var(--text-secondary)]">
+                <td colSpan={8} className="px-3 py-8 text-center text-[var(--text-secondary)]">
                   Loading…
                 </td>
               </tr>
             ) : requests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-[var(--text-secondary)]">
+                <td colSpan={8} className="px-3 py-8 text-center text-[var(--text-secondary)]">
                   No requests.
                 </td>
               </tr>
@@ -166,25 +178,50 @@ export default function RequestsClient() {
                       {STATUS_LABEL[r.status]}
                     </span>
                   </td>
+                  <td className="px-3 py-2">
+                    <ConfirmCell
+                      at={r.confirmedAt}
+                      who={r.confirmedBy}
+                      pending="chờ chốt"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <ConfirmCell
+                      at={r.customerConfirmedAt}
+                      who={r.customerConfirmedBy}
+                      pending="chưa đồng ý"
+                    />
+                  </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    {r.status === "PENDING" && (
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="secondary"
-                          className="text-xs"
-                          onClick={() => cancel(r.id)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          icon="check"
-                          className="text-xs"
-                          onClick={() => setConfirming(r)}
-                        >
-                          Confirm
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 justify-end">
+                      {r.status === "PENDING" && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            className="text-xs"
+                            onClick={() => cancel(r.id)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            icon="check"
+                            className="text-xs"
+                            onClick={() => setConfirming(r)}
+                          >
+                            Confirm
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="secondary"
+                        icon="delete"
+                        className="text-xs"
+                        title="Delete request"
+                        onClick={() => del(r.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -205,6 +242,27 @@ export default function RequestsClient() {
         />
       )}
     </>
+  );
+}
+
+function ConfirmCell({
+  at,
+  who,
+  pending,
+}: {
+  at: string | null;
+  who: string | null;
+  pending: string;
+}) {
+  if (!at) {
+    return <span className="text-xs text-[var(--text-secondary)]">— {pending}</span>;
+  }
+  return (
+    <span className="text-xs font-medium" style={{ color: "#15803d" }}>
+      <span className="material-symbols-outlined text-[13px] align-middle">check_circle</span>{" "}
+      {who ?? ""}
+      <span className="block text-[10px] text-[var(--text-secondary)]">{fmtDate(at)}</span>
+    </span>
   );
 }
 
