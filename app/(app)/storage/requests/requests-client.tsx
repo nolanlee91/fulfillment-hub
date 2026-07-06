@@ -48,9 +48,8 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-CA");
 }
 function itemLabel(it: ReqItem): string {
-  return it.uom === "PALLET"
-    ? `${it.palletCode} (whole pallet)`
-    : `${it.palletCode} × ${it.units} units`;
+  const head = it.productName ? `${it.productName} · ${it.palletCode}` : it.palletCode;
+  return it.uom === "PALLET" ? `${head} (whole pallet)` : `${head} × ${it.units} units`;
 }
 
 export default function RequestsClient() {
