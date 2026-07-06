@@ -56,7 +56,7 @@ export default function RequestsClient() {
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fStatus, setFStatus] = useState("PENDING");
+  const [fStatus, setFStatus] = useState("");
   const [confirming, setConfirming] = useState<PickupRequest | null>(null);
 
   const custName = useMemo(() => {
