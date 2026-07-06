@@ -52,9 +52,8 @@ function daysStored(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 }
 function itemLabel(it: ReqItem): string {
-  return it.uom === "PALLET"
-    ? `${it.palletCode} (whole pallet)`
-    : `${it.palletCode} × ${it.units} units`;
+  const head = it.productName ? `${it.productName} · ${it.palletCode}` : it.palletCode;
+  return it.uom === "PALLET" ? `${head} (cả pallet)` : `${head} × ${it.units} units`;
 }
 
 export default function MyStorageClient() {
@@ -401,36 +400,54 @@ function RequestBuilder({
           {pallets.map((p) => {
             const row = rows[p.id];
             return (
-              <div key={p.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={row.include}
-                  onChange={(e) => setRow(p.id, { include: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <div className="flex-1">
-                  <span className="font-mono text-xs">{p.palletCode}</span> · {p.productName}
-                  <span className="text-[var(--text-secondary)]"> ({p.unitCount}u)</span>
-                </div>
-                <label className="flex items-center gap-1 text-xs">
+              <div
+                key={p.id}
+                className="rounded-lg border p-2.5"
+                style={{
+                  borderColor: row.include ? "var(--accent)" : "var(--border)",
+                  background: row.include ? "var(--accent-bg)" : "transparent",
+                }}
+              >
+                {/* Dòng 1: tên sản phẩm nổi bật + mã pallet + tồn */}
+                <label className="flex items-start gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    disabled={!row.include}
-                    checked={row.whole}
-                    onChange={(e) => setRow(p.id, { whole: e.target.checked })}
+                    checked={row.include}
+                    onChange={(e) => setRow(p.id, { include: e.target.checked })}
+                    className="w-4 h-4 mt-0.5 shrink-0"
                   />
-                  cả pallet
+                  <span className="text-sm leading-tight">
+                    <b>{p.productName}</b>
+                    <span className="text-[var(--text-secondary)]"> · còn {p.unitCount}u</span>
+                    <span className="block font-mono text-[11px] text-[var(--text-secondary)]">
+                      {p.palletCode}
+                    </span>
+                  </span>
                 </label>
-                <input
-                  className="filter-input w-20"
-                  type="number"
-                  min={1}
-                  max={p.unitCount}
-                  placeholder="units"
-                  disabled={!row.include || row.whole}
-                  value={row.units}
-                  onChange={(e) => setRow(p.id, { units: e.target.value })}
-                />
+
+                {/* Dòng 2: chỉ hiện khi đã chọn — cả pallet / nhập units */}
+                {row.include && (
+                  <div className="flex items-center gap-3 mt-2 pl-6">
+                    <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={row.whole}
+                        onChange={(e) => setRow(p.id, { whole: e.target.checked })}
+                      />
+                      cả pallet
+                    </label>
+                    <input
+                      className="filter-input flex-1"
+                      type="number"
+                      min={1}
+                      max={p.unitCount}
+                      placeholder={`số units (tối đa ${p.unitCount})`}
+                      disabled={row.whole}
+                      value={row.units}
+                      onChange={(e) => setRow(p.id, { units: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
