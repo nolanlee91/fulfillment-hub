@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { storagePallets, storageMovements } from "@/lib/db/schema";
+import {
+  storagePallets,
+  storageMovements,
+  storagePickupRequestItems,
+} from "@/lib/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { StorageUom } from "./rates";
 
@@ -168,4 +172,32 @@ export async function listMovements(palletIds: string[]) {
     .from(storageMovements)
     .where(inArray(storageMovements.palletId, palletIds))
     .orderBy(desc(storageMovements.occurredAt));
+}
+
+/**
+ * Xóa hẳn 1 pallet (dọn dữ liệu test / nhập nhầm). CHỈ staff gọi.
+ * Chặn nếu pallet đang bị pickup request tham chiếu (phải hủy request trước).
+ * Xóa kèm mọi movement của pallet trong 1 transaction (giữ toàn vẹn).
+ */
+export async function deletePallet(id: string): Promise<void> {
+  const [pallet] = await db
+    .select({ id: storagePallets.id })
+    .from(storagePallets)
+    .where(eq(storagePallets.id, id));
+  if (!pallet) throw new Error("Không tìm thấy pallet.");
+
+  const refs = await db
+    .select({ id: storagePickupRequestItems.id })
+    .from(storagePickupRequestItems)
+    .where(eq(storagePickupRequestItems.palletId, id));
+  if (refs.length > 0) {
+    throw new Error(
+      "Pallet đang nằm trong một pickup request — hãy hủy request liên quan trước khi xóa.",
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(storageMovements).where(eq(storageMovements.palletId, id));
+    await tx.delete(storagePallets).where(eq(storagePallets.id, id));
+  });
 }

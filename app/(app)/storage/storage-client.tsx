@@ -77,6 +77,22 @@ export default function StorageClient() {
     load();
   }, [load]);
 
+  async function delPallet(p: Pallet) {
+    if (
+      !confirm(
+        `Xóa pallet ${p.palletCode} (${p.productName})?\nDùng để dọn pallet test/nhập nhầm — KHÔNG hoàn tác được.`,
+      )
+    )
+      return;
+    const res = await fetch(`/api/storage/pallets/${p.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.error || "Delete failed");
+      return;
+    }
+    await load();
+  }
+
   const inStorage = pallets.filter((p) => p.status === "IN_STORAGE");
   const totalUnits = inStorage.reduce((s, p) => s + p.unitCount, 0);
 
@@ -172,16 +188,27 @@ export default function StorageClient() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {p.status === "IN_STORAGE" && (
+                    <div className="flex gap-2 justify-end">
+                      {p.status === "IN_STORAGE" && (
+                        <Button
+                          variant="secondary"
+                          icon="outbox"
+                          className="text-xs"
+                          onClick={() => setPickup(p)}
+                        >
+                          Pickup
+                        </Button>
+                      )}
                       <Button
                         variant="secondary"
-                        icon="outbox"
+                        icon="delete"
                         className="text-xs"
-                        onClick={() => setPickup(p)}
+                        title="Delete pallet (test cleanup)"
+                        onClick={() => delPallet(p)}
                       >
-                        Pickup
+                        Delete
                       </Button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))
