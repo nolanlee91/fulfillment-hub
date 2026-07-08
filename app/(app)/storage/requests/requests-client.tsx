@@ -211,7 +211,7 @@ export default function RequestsClient() {
                           </Button>
                         </>
                       )}
-                      {!(r.confirmedAt && r.customerConfirmedAt) && (
+                      {r.status !== "DONE" && (
                         <Button
                           variant="secondary"
                           icon="delete"

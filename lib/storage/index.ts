@@ -174,6 +174,60 @@ export async function listMovements(palletIds: string[]) {
     .orderBy(desc(storageMovements.occurredAt));
 }
 
+export interface EditPalletInput {
+  palletId: string;
+  productName?: string;
+  unitCount?: number; // tồn hiện tại MỚI (chênh so với cũ → ghi ADJUST)
+  note?: string | null;
+  createdBy: string;
+}
+
+/**
+ * Sửa pallet (staff): đổi tên SP / ghi chú / chỉnh tồn tay.
+ * Nếu unitCount đổi → ghi 1 movement ADJUST (±delta) để giữ audit tồn kho.
+ */
+export async function editPallet(input: EditPalletInput) {
+  const [p] = await db
+    .select()
+    .from(storagePallets)
+    .where(eq(storagePallets.id, input.palletId));
+  if (!p) throw new Error("Pallet not found");
+
+  const now = new Date();
+  const set: Partial<typeof storagePallets.$inferInsert> = { updatedAt: now };
+  if (input.productName != null && input.productName.trim())
+    set.productName = input.productName.trim();
+  if (input.note !== undefined) set.note = input.note || null;
+
+  let delta = 0;
+  if (input.unitCount != null) {
+    const newCount = Math.max(0, Math.floor(input.unitCount));
+    delta = newCount - p.unitCount;
+    set.unitCount = newCount;
+    set.status = newCount === 0 ? "PICKED_UP" : "IN_STORAGE";
+    set.pickedUpAt = newCount === 0 ? (p.pickedUpAt ?? now) : null;
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.update(storagePallets).set(set).where(eq(storagePallets.id, p.id));
+    if (delta !== 0) {
+      await tx.insert(storageMovements).values({
+        id: randomUUID(),
+        palletId: p.id,
+        customerId: p.customerId,
+        type: "ADJUST",
+        units: delta,
+        uom: "UNIT",
+        occurredAt: now,
+        note: input.note ?? "Sửa tồn tay",
+        createdBy: input.createdBy,
+        createdAt: now,
+      });
+    }
+  });
+  return { id: p.id, delta };
+}
+
 /**
  * Xóa hẳn 1 pallet (dọn dữ liệu test / nhập nhầm). CHỈ staff gọi.
  * Chặn nếu pallet đang bị pickup request tham chiếu (phải hủy request trước).

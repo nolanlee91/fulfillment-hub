@@ -155,14 +155,11 @@ export async function cancelRequest(requestId: string, customerId?: string) {
 export async function deleteRequest(requestId: string, customerId?: string) {
   const r = await getRequest(requestId);
   if (!r) throw new Error("Request not found");
-  // Đã thống nhất 2 phía (kho + khách cùng confirm) → khóa như chứng từ đã ký, không xóa.
-  if (r.confirmedAt && r.customerConfirmedAt)
-    throw new Error("Đơn đã được 2 bên xác nhận, không thể xóa.");
-  if (customerId) {
-    if (r.customerId !== customerId) throw new Error("Not allowed");
-    if (r.status === "DONE")
-      throw new Error("Đơn đã thực hiện pickup, không thể xóa");
-  }
+  // DONE = staff đã confirm + trừ kho THẬT → khóa, xóa sẽ mất dấu + lệch tồn.
+  // Chỉ PENDING/CANCELLED mới xóa được (dọn nháp). Áp cho CẢ staff lẫn khách.
+  if (r.status === "DONE")
+    throw new Error("Đơn đã xác nhận (pickup), không thể xóa.");
+  if (customerId && r.customerId !== customerId) throw new Error("Not allowed");
   await db.transaction(async (tx) => {
     await tx
       .delete(storagePickupRequestItems)

@@ -53,6 +53,7 @@ export default function StorageClient() {
   const [showReceive, setShowReceive] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [pickup, setPickup] = useState<Pallet | null>(null);
+  const [editing, setEditing] = useState<Pallet | null>(null);
 
   const custName = useMemo(() => {
     const m: Record<string, string> = {};
@@ -201,6 +202,15 @@ export default function StorageClient() {
                       )}
                       <Button
                         variant="secondary"
+                        icon="edit"
+                        className="text-xs"
+                        title="Edit pallet"
+                        onClick={() => setEditing(p)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="secondary"
                         icon="delete"
                         className="text-xs"
                         title="Delete pallet (test cleanup)"
@@ -240,7 +250,106 @@ export default function StorageClient() {
           }}
         />
       )}
+      {editing && (
+        <EditPalletModal
+          pallet={editing}
+          onClose={() => setEditing(null)}
+          onDone={async () => {
+            setEditing(null);
+            await load();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function EditPalletModal({
+  pallet,
+  onClose,
+  onDone,
+}: {
+  pallet: Pallet;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [productName, setProductName] = useState(pallet.productName);
+  const [unitCount, setUnitCount] = useState(String(pallet.unitCount));
+  const [note, setNote] = useState(pallet.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const newCount = Number(unitCount);
+  const delta = Number.isFinite(newCount) ? newCount - pallet.unitCount : 0;
+
+  async function submit() {
+    setError("");
+    if (!productName.trim()) {
+      setError("Nhập tên sản phẩm");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/storage/pallets/${pallet.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: productName.trim(),
+          unitCount: newCount,
+          note: note.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || "Save failed");
+        return;
+      }
+      onDone();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <ModalShell title={`Edit — ${pallet.palletCode}`} onClose={onClose}>
+      <Field label="Product (1 SKU / pallet)">
+        <input
+          className="filter-input w-full"
+          value={productName}
+          onChange={(e) => setProductName(e.target.value)}
+        />
+      </Field>
+      <Field label={`Units on hand (đang ${pallet.unitCount})`}>
+        <input
+          className="filter-input w-full"
+          type="number"
+          min={0}
+          value={unitCount}
+          onChange={(e) => setUnitCount(e.target.value)}
+        />
+      </Field>
+      {delta !== 0 && Number.isFinite(newCount) && (
+        <p className="text-xs mb-3" style={{ color: delta > 0 ? "#15803d" : "#b45309" }}>
+          Chỉnh tồn {delta > 0 ? "+" : ""}{delta} → ghi 1 movement ADJUST (audit).
+        </p>
+      )}
+      <Field label="Note (optional)">
+        <input
+          className="filter-input w-full"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </Field>
+      {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={submit} disabled={saving} icon={saving ? "hourglass_empty" : "save"}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </ModalShell>
   );
 }
 
