@@ -220,19 +220,9 @@ export default function MyStorageClient() {
                     </Button>
                   )}
                   {r.status === "PENDING" && (
-                    <>
-                      <Button variant="secondary" className="text-xs" onClick={() => setBuilder(r)}>
-                        Sửa
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        className="text-xs"
-                        disabled={busy === r.id}
-                        onClick={() => act(r.id, "cancel", "Hủy yêu cầu này?")}
-                      >
-                        Hủy
-                      </Button>
-                    </>
+                    <Button variant="secondary" className="text-xs" onClick={() => setBuilder(r)}>
+                      Sửa
+                    </Button>
                   )}
                   {canDelete && (
                     <Button
