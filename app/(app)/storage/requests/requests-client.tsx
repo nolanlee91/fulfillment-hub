@@ -333,21 +333,30 @@ function ConfirmModal({
 
         <div className="space-y-2 mb-4">
           {request.items.map((it) => (
-            <div key={it.id} className="flex items-center gap-3">
-              <div className="flex-1 text-sm">
-                <span className="font-mono text-xs">{it.palletCode}</span> · {it.productName}
+            <div
+              key={it.id}
+              className="rounded-lg border p-2.5"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <div className="text-sm leading-tight mb-2">
+                <b>{it.productName}</b>
                 <span className="text-[var(--text-secondary)]">
-                  {" "}
-                  (req {it.uom === "PALLET" ? "whole" : `${it.units}u`}, {it.unitCount} in stock)
+                  {" "}· yêu cầu {it.uom === "PALLET" ? "cả pallet" : `${it.units}u`} · còn {it.unitCount}
+                </span>
+                <span className="block font-mono text-[11px] text-[var(--text-secondary)]">
+                  {it.palletCode}
                 </span>
               </div>
-              <input
-                className="filter-input w-24"
-                type="number"
-                min={0}
-                value={vals[it.id] ?? ""}
-                onChange={(e) => setVals((v) => ({ ...v, [it.id]: e.target.value }))}
-              />
+              <label className="flex items-center gap-2 text-xs">
+                <span className="text-[var(--text-secondary)] whitespace-nowrap">Số thực lấy:</span>
+                <input
+                  className="filter-input w-28"
+                  type="number"
+                  min={0}
+                  value={vals[it.id] ?? ""}
+                  onChange={(e) => setVals((v) => ({ ...v, [it.id]: e.target.value }))}
+                />
+              </label>
             </div>
           ))}
         </div>
