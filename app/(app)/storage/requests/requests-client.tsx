@@ -211,15 +211,17 @@ export default function RequestsClient() {
                           </Button>
                         </>
                       )}
-                      <Button
-                        variant="secondary"
-                        icon="delete"
-                        className="text-xs"
-                        title="Delete request"
-                        onClick={() => del(r.id)}
-                      >
-                        Delete
-                      </Button>
+                      {!(r.confirmedAt && r.customerConfirmedAt) && (
+                        <Button
+                          variant="secondary"
+                          icon="delete"
+                          className="text-xs"
+                          title="Delete request"
+                          onClick={() => del(r.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
