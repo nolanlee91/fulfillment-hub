@@ -161,21 +161,31 @@ export function Sidebar({ user }: { user: CurrentUser }) {
     return () => document.removeEventListener("click", onFirst);
   }, [isStaff]);
 
+  // Chuông báo rõ: 3 nốt tăng dần, lặp 2 lần (~1.1s) để không bị lọt tai.
   function beep() {
     try {
       const ctx = audioCtxRef.current;
       if (!ctx) return;
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.type = "sine";
-      o.frequency.value = 880;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-      o.start();
-      o.stop(ctx.currentTime + 0.36);
+      const notes = [880, 1175, 1568]; // A5 · D6 · G6
+      const noteDur = 0.16;
+      let t = ctx.currentTime + 0.02;
+      for (let rep = 0; rep < 2; rep++) {
+        for (const f of notes) {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.type = "triangle";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + noteDur);
+          o.start(t);
+          o.stop(t + noteDur + 0.02);
+          t += noteDur;
+        }
+        t += 0.12; // nghỉ giữa 2 lần lặp
+      }
     } catch {
       /* bỏ qua nếu trình duyệt chặn audio */
     }
