@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CurrentUser, Role } from "@/lib/auth/current-user";
 
 interface NavItem {
@@ -128,9 +128,60 @@ export function Sidebar({ user }: { user: CurrentUser }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingPickups, setPendingPickups] = useState(0);
+  const prevPendingRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const isStaff = user.role === "SUPER_ADMIN" || user.role === "STAFF";
-  // Badge noti: đếm pickup request PENDING (staff). Refetch khi đổi trang + mỗi 60s.
+
+  // Chuông LUÔN bật cho staff (không có nút tắt). Trình duyệt vẫn bắt buộc cấp
+  // quyền 1 lần → tự xin trên mount, và chắc chắn ở lần click đầu (user gesture),
+  // đồng thời mở AudioContext cho tiếng "ding".
+  useEffect(() => {
+    if (!isStaff || typeof window === "undefined") return;
+    const ask = () => {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+    };
+    ask();
+    const onFirst = () => {
+      ask();
+      try {
+        const AC =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        audioCtxRef.current = audioCtxRef.current ?? new AC();
+        audioCtxRef.current.resume().catch(() => {});
+      } catch {
+        /* ignore */
+      }
+      document.removeEventListener("click", onFirst);
+    };
+    document.addEventListener("click", onFirst);
+    return () => document.removeEventListener("click", onFirst);
+  }, [isStaff]);
+
+  function beep() {
+    try {
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.type = "sine";
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      o.start();
+      o.stop(ctx.currentTime + 0.36);
+    } catch {
+      /* bỏ qua nếu trình duyệt chặn audio */
+    }
+  }
+
+  // Badge + chuông: đếm pickup request PENDING (staff). Refetch khi đổi trang + mỗi 60s.
   useEffect(() => {
     if (!isStaff) return;
     let alive = true;
@@ -138,9 +189,30 @@ export function Sidebar({ user }: { user: CurrentUser }) {
       try {
         const res = await fetch("/api/storage/requests/pending-count");
         const data = await res.json();
-        if (alive && data.success) setPendingPickups(data.count);
+        if (!alive || !data.success) return;
+        const c = data.count as number;
+        const prev = prevPendingRef.current;
+        // Chỉ báo khi SỐ TĂNG (có request mới) và đã bật chuông; bỏ qua lần load đầu.
+        if (
+          prev != null &&
+          c > prev &&
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          try {
+            new Notification("Yêu cầu lấy hàng mới", {
+              body: `Có ${c} yêu cầu đang chờ xử lý`,
+              icon: "/logo.png",
+            });
+          } catch {
+            /* ignore */
+          }
+          beep();
+        }
+        prevPendingRef.current = c;
+        setPendingPickups(c);
       } catch {
-        /* im lặng — badge không quan trọng bằng app chạy */
+        /* im lặng — badge/chuông không quan trọng bằng app chạy */
       }
     };
     fetchCount();
