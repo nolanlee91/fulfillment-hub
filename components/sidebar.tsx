@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CurrentUser, Role } from "@/lib/auth/current-user";
 
 interface NavItem {
@@ -127,6 +127,29 @@ export function Sidebar({ user }: { user: CurrentUser }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingPickups, setPendingPickups] = useState(0);
+
+  const isStaff = user.role === "SUPER_ADMIN" || user.role === "STAFF";
+  // Badge noti: đếm pickup request PENDING (staff). Refetch khi đổi trang + mỗi 60s.
+  useEffect(() => {
+    if (!isStaff) return;
+    let alive = true;
+    const fetchCount = async () => {
+      try {
+        const res = await fetch("/api/storage/requests/pending-count");
+        const data = await res.json();
+        if (alive && data.success) setPendingPickups(data.count);
+      } catch {
+        /* im lặng — badge không quan trọng bằng app chạy */
+      }
+    };
+    fetchCount();
+    const t = setInterval(fetchCount, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [isStaff, pathname]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -262,6 +285,15 @@ export function Sidebar({ user }: { user: CurrentUser }) {
                       {item.icon}
                     </span>
                     {item.label}
+                    {item.href === "/storage/requests" && pendingPickups > 0 && (
+                      <span
+                        className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+                        style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                        title={`${pendingPickups} yêu cầu đang chờ`}
+                      >
+                        {pendingPickups}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

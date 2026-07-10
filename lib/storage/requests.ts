@@ -273,6 +273,15 @@ export async function confirmRequest(input: ConfirmInput) {
   return { id: r.id };
 }
 
+/** Đếm số request đang PENDING (cho badge noti trên sidebar staff). */
+export async function countPendingRequests(): Promise<number> {
+  const rows = await db
+    .select({ id: storagePickupRequests.id })
+    .from(storagePickupRequests)
+    .where(eq(storagePickupRequests.status, "PENDING"));
+  return rows.length;
+}
+
 export interface ListRequestsFilter {
   customerId?: string;
   status?: "PENDING" | "DONE" | "CANCELLED";
