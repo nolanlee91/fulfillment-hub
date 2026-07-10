@@ -167,24 +167,30 @@ export function Sidebar({ user }: { user: CurrentUser }) {
       const ctx = audioCtxRef.current;
       if (!ctx) return;
       const notes = [880, 1175, 1568]; // A5 · D6 · G6
-      const noteDur = 0.16;
+      const noteDur = 0.18;
+      // Master gain + compressor: to gần tối đa mà không vỡ tiếng.
+      const master = ctx.createGain();
+      master.gain.value = 0.9;
+      const comp = ctx.createDynamicsCompressor();
+      master.connect(comp);
+      comp.connect(ctx.destination);
       let t = ctx.currentTime + 0.02;
-      for (let rep = 0; rep < 2; rep++) {
+      for (let rep = 0; rep < 3; rep++) {
         for (const f of notes) {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.connect(g);
-          g.connect(ctx.destination);
-          o.type = "triangle";
+          g.connect(master);
+          o.type = "square";
           o.frequency.value = f;
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.9, t + 0.015);
           g.gain.exponentialRampToValueAtTime(0.0001, t + noteDur);
           o.start(t);
           o.stop(t + noteDur + 0.02);
           t += noteDur;
         }
-        t += 0.12; // nghỉ giữa 2 lần lặp
+        t += 0.12; // nghỉ giữa các lần lặp
       }
     } catch {
       /* bỏ qua nếu trình duyệt chặn audio */
