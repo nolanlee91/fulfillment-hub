@@ -161,30 +161,26 @@ export function Sidebar({ user }: { user: CurrentUser }) {
     return () => document.removeEventListener("click", onFirst);
   }, [isStaff]);
 
-  // Chuông báo rõ: 3 nốt tăng dần, lặp 2 lần (~1.1s) để không bị lọt tai.
+  // Chuông báo rõ: 3 nốt tăng dần, lặp 3 lần. Square wave gain 0.5 = to, không bị
+  // compressor bóp nhỏ. Resume context phòng khi bị treo sau khi đổi tab.
   function beep() {
     try {
       const ctx = audioCtxRef.current;
       if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
       const notes = [880, 1175, 1568]; // A5 · D6 · G6
       const noteDur = 0.18;
-      // Master gain + compressor: to gần tối đa mà không vỡ tiếng.
-      const master = ctx.createGain();
-      master.gain.value = 0.9;
-      const comp = ctx.createDynamicsCompressor();
-      master.connect(comp);
-      comp.connect(ctx.destination);
-      let t = ctx.currentTime + 0.02;
+      let t = ctx.currentTime + 0.03;
       for (let rep = 0; rep < 3; rep++) {
         for (const f of notes) {
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.connect(g);
-          g.connect(master);
+          g.connect(ctx.destination);
           o.type = "square";
           o.frequency.value = f;
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.9, t + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.5, t + 0.015);
           g.gain.exponentialRampToValueAtTime(0.0001, t + noteDur);
           o.start(t);
           o.stop(t + noteDur + 0.02);
