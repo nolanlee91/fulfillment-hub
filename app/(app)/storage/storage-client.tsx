@@ -503,31 +503,42 @@ function ReceiveModal({
         </div>
         <div className="space-y-2">
           {rows.map((r, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                className="filter-input flex-1"
-                placeholder="Tên SKU (vd Original)"
-                value={r.productName}
-                onChange={(e) => setRow(i, { productName: e.target.value })}
-              />
-              <input
-                className="filter-input w-20"
-                type="number"
-                min={1}
-                placeholder="units"
-                value={r.units}
-                onChange={(e) => setRow(i, { units: e.target.value })}
-              />
-              {rows.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeRow(i)}
-                  className="material-symbols-outlined text-[18px] text-[var(--text-secondary)]"
-                  title="Bỏ SKU này"
-                >
-                  close
-                </button>
-              )}
+            <div
+              key={i}
+              className="rounded-lg border p-2.5 space-y-2"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  className="filter-input flex-1"
+                  placeholder="Tên SKU (vd Original)"
+                  value={r.productName}
+                  onChange={(e) => setRow(i, { productName: e.target.value })}
+                />
+                {rows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeRow(i)}
+                    className="material-symbols-outlined text-[18px] text-[var(--text-secondary)] shrink-0"
+                    title="Bỏ SKU này"
+                  >
+                    close
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
+                  Số lượng:
+                </span>
+                <input
+                  className="filter-input flex-1"
+                  type="number"
+                  min={1}
+                  placeholder="vd 100"
+                  value={r.units}
+                  onChange={(e) => setRow(i, { units: e.target.value })}
+                />
+              </div>
             </div>
           ))}
         </div>
