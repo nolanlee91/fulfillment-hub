@@ -508,12 +508,14 @@ export const storagePallets = pgTable(
     warehouseCode: text("warehouse_code")
       .notNull()
       .references(() => warehouses.code),
-    productName: text("product_name").notNull(), // 1 SKU/pallet (vd "Original")
-    unitCount: integer("unit_count").default(0).notNull(), // tồn unit HIỆN TẠI
-    initialUnits: integer("initial_units").default(0).notNull(), // unit lúc nhập
+    // CACHE tóm tắt (nguồn thật = storage_pallet_items). Giữ để report/inventory cũ
+    // chạy tiếp: productName = "A + B", unitCount = TỔNG các SKU con.
+    productName: text("product_name").notNull(),
+    unitCount: integer("unit_count").default(0).notNull(),
+    initialUnits: integer("initial_units").default(0).notNull(),
     status: storagePalletStatusEnum("status").default("IN_STORAGE").notNull(),
     receivedAt: timestamp("received_at").defaultNow().notNull(),
-    pickedUpAt: timestamp("picked_up_at"), // khi unitCount về 0
+    pickedUpAt: timestamp("picked_up_at"), // khi TỔNG unit về 0 (mọi SKU hết)
     photoUrl: text("photo_url"),
     note: text("note"),
     createdBy: text("created_by"),
@@ -527,6 +529,25 @@ export const storagePallets = pgTable(
   }),
 );
 
+// Từng SKU trong 1 pallet (pallet trộn = nhiều dòng). Nguồn THẬT của sản phẩm/tồn.
+export const storagePalletItems = pgTable(
+  "storage_pallet_items",
+  {
+    id: text("id").primaryKey(),
+    palletId: text("pallet_id")
+      .notNull()
+      .references(() => storagePallets.id),
+    productName: text("product_name").notNull(),
+    unitCount: integer("unit_count").default(0).notNull(), // tồn hiện tại của SKU này
+    initialUnits: integer("initial_units").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    palletIdx: index("storage_pallet_items_pallet_idx").on(t.palletId),
+  }),
+);
+
 export const storageMovements = pgTable(
   "storage_movements",
   {
@@ -534,6 +555,8 @@ export const storageMovements = pgTable(
     palletId: text("pallet_id")
       .notNull()
       .references(() => storagePallets.id),
+    // SKU cụ thể bị tác động (pallet trộn). Null = dòng cũ / mức pallet.
+    palletItemId: text("pallet_item_id").references(() => storagePalletItems.id),
     customerId: text("customer_id")
       .notNull()
       .references(() => customers.id), // denormalize để query theo khách nhanh
@@ -611,6 +634,8 @@ export const storagePickupRequestItems = pgTable(
     palletId: text("pallet_id")
       .notNull()
       .references(() => storagePallets.id),
+    // SKU cụ thể khách chọn (pallet trộn). Null = request cũ (pallet 1 SKU).
+    palletItemId: text("pallet_item_id").references(() => storagePalletItems.id),
     units: integer("units").notNull(), // số unit khách YÊU CẦU lấy
     uom: storageUomEnum("uom").notNull(), // PALLET (nguyên) / UNIT (lẻ)
     confirmedUnits: integer("confirmed_units"), // số THỰC khi DONE (NULL tới lúc chốt)

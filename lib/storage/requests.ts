@@ -6,7 +6,7 @@ import {
   storagePickupRequestItems,
 } from "@/lib/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { pickupFromPallet } from "./index";
+import { pickupFromPallet, pickupFromItem } from "./index";
 import type { StorageUom } from "./rates";
 
 export interface RequestItemInput {
@@ -246,13 +246,21 @@ export async function confirmRequest(input: ConfirmInput) {
     const take = finalUnits.get(it.id) ?? 0;
     let confirmed = 0;
     if (take > 0) {
-      const res = await pickupFromPallet({
-        palletId: it.palletId,
-        uom: it.uom,
-        units: it.uom === "UNIT" ? take : undefined,
-        createdBy: input.confirmedBy,
-        note: `Pickup request ${r.id}`,
-      });
+      const res = it.palletItemId
+        ? await pickupFromItem({
+            palletItemId: it.palletItemId,
+            uom: it.uom,
+            units: it.uom === "UNIT" ? take : undefined,
+            createdBy: input.confirmedBy,
+            note: `Pickup request ${r.id}`,
+          })
+        : await pickupFromPallet({
+            palletId: it.palletId,
+            uom: it.uom,
+            units: it.uom === "UNIT" ? take : undefined,
+            createdBy: input.confirmedBy,
+            note: `Pickup request ${r.id}`,
+          });
       confirmed = res.taken;
     }
     await db

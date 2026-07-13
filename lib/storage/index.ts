@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import {
   storagePallets,
+  storagePalletItems,
   storageMovements,
   storagePickupRequestItems,
 } from "@/lib/db/schema";
@@ -10,6 +11,38 @@ import type { StorageUom } from "./rates";
 
 // Module Lưu kho chỉ chạy ở kho BC (WEST). ON (EAST) không dùng.
 export const STORAGE_WAREHOUSE_CODE = "WEST";
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Đồng bộ cache mức pallet từ các SKU con (nguồn thật = storage_pallet_items):
+ * unitCount = TỔNG, productName = "A + B", initialUnits = TỔNG, status/pickedUpAt
+ * theo tổng tồn. Gọi sau mỗi lần đổi item.
+ */
+async function recomputePalletCache(tx: Tx, palletId: string, now: Date) {
+  const items = await tx
+    .select()
+    .from(storagePalletItems)
+    .where(eq(storagePalletItems.palletId, palletId));
+  const totalUnits = items.reduce((s, it) => s + it.unitCount, 0);
+  const totalInit = items.reduce((s, it) => s + it.initialUnits, 0);
+  const name = items.map((it) => it.productName).join(" + ") || "";
+  const [pallet] = await tx
+    .select({ pickedUpAt: storagePallets.pickedUpAt })
+    .from(storagePallets)
+    .where(eq(storagePallets.id, palletId));
+  await tx
+    .update(storagePallets)
+    .set({
+      productName: name,
+      unitCount: totalUnits,
+      initialUnits: totalInit,
+      status: totalUnits === 0 ? "PICKED_UP" : "IN_STORAGE",
+      pickedUpAt: totalUnits === 0 ? (pallet?.pickedUpAt ?? now) : null,
+      updatedAt: now,
+    })
+    .where(eq(storagePallets.id, palletId));
+}
 
 /** Sinh mã pallet kế tiếp dạng KDE-PLT-00001 (lấy max số đuôi hiện có +1). */
 async function nextPalletNumber(): Promise<number> {
@@ -48,16 +81,18 @@ export async function receivePallets(input: ReceiveInput) {
   const start = await nextPalletNumber();
   const now = new Date();
   const palletRows: (typeof storagePallets.$inferInsert)[] = [];
+  const itemRows: (typeof storagePalletItems.$inferInsert)[] = [];
   const moveRows: (typeof storageMovements.$inferInsert)[] = [];
 
   for (let i = 0; i < palletCount; i++) {
     const id = randomUUID();
+    const itemId = randomUUID();
     palletRows.push({
       id,
       palletCode: palletCode(start + i),
       customerId,
       warehouseCode,
-      productName,
+      productName, // cache
       unitCount: unitsPerPallet,
       initialUnits: unitsPerPallet,
       status: "IN_STORAGE",
@@ -67,9 +102,19 @@ export async function receivePallets(input: ReceiveInput) {
       createdAt: now,
       updatedAt: now,
     });
+    itemRows.push({
+      id: itemId,
+      palletId: id,
+      productName,
+      unitCount: unitsPerPallet,
+      initialUnits: unitsPerPallet,
+      createdAt: now,
+      updatedAt: now,
+    });
     moveRows.push({
       id: randomUUID(),
       palletId: id,
+      palletItemId: itemId,
       customerId,
       type: "RECEIVE_IN",
       units: unitsPerPallet,
@@ -80,10 +125,94 @@ export async function receivePallets(input: ReceiveInput) {
     });
   }
 
-  await db.insert(storagePallets).values(palletRows);
-  await db.insert(storageMovements).values(moveRows);
+  await db.transaction(async (tx) => {
+    await tx.insert(storagePallets).values(palletRows);
+    await tx.insert(storagePalletItems).values(itemRows);
+    await tx.insert(storageMovements).values(moveRows);
+  });
 
   return { count: palletRows.length, pallets: palletRows };
+}
+
+export interface MixedReceiveInput {
+  customerId: string;
+  warehouseCode: string;
+  items: { productName: string; units: number }[]; // nhiều SKU trên 1 pallet
+  palletCount: number; // số pallet giống nhau (mỗi cái cùng bộ SKU)
+  createdBy: string;
+  note?: string;
+}
+
+/**
+ * Nhập kho pallet TRỘN: mỗi pallet gồm nhiều SKU (items). Tạo `palletCount` pallet
+ * giống nhau, mỗi pallet 1 dòng item + 1 RECEIVE_IN/SKU. Cache pallet = tổng.
+ */
+export async function receiveMixedPallet(input: MixedReceiveInput) {
+  const items = input.items
+    .map((it) => ({ productName: it.productName.trim(), units: Math.max(0, Math.floor(it.units)) }))
+    .filter((it) => it.productName && it.units > 0);
+  if (items.length === 0) throw new Error("Cần ít nhất 1 SKU với số lượng > 0");
+  const palletCount = Math.max(1, Math.floor(input.palletCount));
+
+  const start = await nextPalletNumber();
+  const now = new Date();
+  const total = items.reduce((s, it) => s + it.units, 0);
+  const summary = items.map((it) => it.productName).join(" + ");
+
+  const palletRows: (typeof storagePallets.$inferInsert)[] = [];
+  const itemRows: (typeof storagePalletItems.$inferInsert)[] = [];
+  const moveRows: (typeof storageMovements.$inferInsert)[] = [];
+
+  for (let i = 0; i < palletCount; i++) {
+    const id = randomUUID();
+    palletRows.push({
+      id,
+      palletCode: palletCode(start + i),
+      customerId: input.customerId,
+      warehouseCode: input.warehouseCode,
+      productName: summary,
+      unitCount: total,
+      initialUnits: total,
+      status: "IN_STORAGE",
+      receivedAt: now,
+      note: input.note ?? null,
+      createdBy: input.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    });
+    for (const it of items) {
+      const itemId = randomUUID();
+      itemRows.push({
+        id: itemId,
+        palletId: id,
+        productName: it.productName,
+        unitCount: it.units,
+        initialUnits: it.units,
+        createdAt: now,
+        updatedAt: now,
+      });
+      moveRows.push({
+        id: randomUUID(),
+        palletId: id,
+        palletItemId: itemId,
+        customerId: input.customerId,
+        type: "RECEIVE_IN",
+        units: it.units,
+        uom: "UNIT",
+        occurredAt: now,
+        createdBy: input.createdBy,
+        createdAt: now,
+      });
+    }
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(storagePallets).values(palletRows);
+    await tx.insert(storagePalletItems).values(itemRows);
+    await tx.insert(storageMovements).values(moveRows);
+  });
+
+  return { count: palletRows.length };
 }
 
 export interface PickupInput {
@@ -94,9 +223,67 @@ export interface PickupInput {
   note?: string;
 }
 
+export interface PickupItemInput {
+  palletItemId: string;
+  uom: StorageUom; // PALLET = lấy hết SKU đó; UNIT = lấy lẻ `units`
+  units?: number;
+  createdBy: string;
+  note?: string;
+}
+
 /**
- * Xuất/khách lấy hàng từ 1 pallet. PALLET = lấy hết unit còn lại; UNIT = lấy `units`.
- * Trừ unit; nếu về 0 → pallet PICKED_UP. Ghi movement PICKUP_OUT (units âm).
+ * Xuất/lấy hàng từ 1 SKU (item) trong pallet. PALLET = lấy hết SKU; UNIT = `units`.
+ * Trừ tồn item + ghi PICKUP_OUT (gắn palletItemId) + đồng bộ cache pallet.
+ */
+export async function pickupFromItem(input: PickupItemInput) {
+  return db.transaction(async (tx) => {
+    const [item] = await tx
+      .select()
+      .from(storagePalletItems)
+      .where(eq(storagePalletItems.id, input.palletItemId));
+    if (!item) throw new Error("Không tìm thấy SKU trong pallet");
+    const [pallet] = await tx
+      .select()
+      .from(storagePallets)
+      .where(eq(storagePallets.id, item.palletId));
+    if (!pallet) throw new Error("Pallet not found");
+
+    const taken =
+      input.uom === "PALLET"
+        ? item.unitCount
+        : Math.min(item.unitCount, Math.max(1, Math.floor(input.units ?? 0)));
+    if (taken <= 0) throw new Error("Số lượng lấy phải > 0");
+    if (taken > item.unitCount)
+      throw new Error(`SKU ${item.productName} chỉ còn ${item.unitCount} units`);
+
+    const now = new Date();
+    await tx
+      .update(storagePalletItems)
+      .set({ unitCount: item.unitCount - taken, updatedAt: now })
+      .where(eq(storagePalletItems.id, item.id));
+
+    await tx.insert(storageMovements).values({
+      id: randomUUID(),
+      palletId: pallet.id,
+      palletItemId: item.id,
+      customerId: pallet.customerId,
+      type: "PICKUP_OUT",
+      units: -taken,
+      uom: input.uom,
+      occurredAt: now,
+      note: input.note ?? null,
+      createdBy: input.createdBy,
+      createdAt: now,
+    });
+
+    await recomputePalletCache(tx, pallet.id, now);
+    return { taken, remaining: item.unitCount - taken, emptied: item.unitCount - taken === 0 };
+  });
+}
+
+/**
+ * Lấy hàng ở mức pallet (tương thích UI cũ / pallet 1 SKU). Pallet nhiều SKU thì
+ * bắt buộc chỉ định SKU qua pickupFromItem.
  */
 export async function pickupFromPallet(input: PickupInput) {
   const [pallet] = await db
@@ -106,41 +293,21 @@ export async function pickupFromPallet(input: PickupInput) {
   if (!pallet) throw new Error("Pallet not found");
   if (pallet.status !== "IN_STORAGE") throw new Error("Pallet is no longer in storage");
 
-  const taken =
-    input.uom === "PALLET"
-      ? pallet.unitCount
-      : Math.min(pallet.unitCount, Math.max(1, Math.floor(input.units ?? 0)));
-  if (taken <= 0) throw new Error("Units to pick must be greater than 0");
-  if (taken > pallet.unitCount)
-    throw new Error(`Only ${pallet.unitCount} units left on this pallet`);
+  const items = await db
+    .select()
+    .from(storagePalletItems)
+    .where(eq(storagePalletItems.palletId, input.palletId));
+  if (items.length > 1)
+    throw new Error("Pallet có nhiều SKU — hãy chọn SKU cụ thể để lấy.");
+  if (items.length === 0) throw new Error("Pallet chưa có SKU nào");
 
-  const now = new Date();
-  const remaining = pallet.unitCount - taken;
-
-  await db
-    .update(storagePallets)
-    .set({
-      unitCount: remaining,
-      status: remaining === 0 ? "PICKED_UP" : "IN_STORAGE",
-      pickedUpAt: remaining === 0 ? now : pallet.pickedUpAt,
-      updatedAt: now,
-    })
-    .where(eq(storagePallets.id, pallet.id));
-
-  await db.insert(storageMovements).values({
-    id: randomUUID(),
-    palletId: pallet.id,
-    customerId: pallet.customerId,
-    type: "PICKUP_OUT",
-    units: -taken,
+  return pickupFromItem({
+    palletItemId: items[0].id,
     uom: input.uom,
-    occurredAt: now,
-    note: input.note ?? null,
+    units: input.units,
     createdBy: input.createdBy,
-    createdAt: now,
+    note: input.note,
   });
-
-  return { taken, remaining, emptied: remaining === 0 };
 }
 
 export interface ListPalletsFilter {
@@ -182,9 +349,72 @@ export interface EditPalletInput {
   createdBy: string;
 }
 
+/** SKU con của 1 hoặc nhiều pallet (cho UI hiển thị/chọn). */
+export async function listPalletItems(palletIds: string[]) {
+  if (palletIds.length === 0) return [];
+  return db
+    .select()
+    .from(storagePalletItems)
+    .where(inArray(storagePalletItems.palletId, palletIds))
+    .orderBy(storagePalletItems.createdAt);
+}
+
 /**
- * Sửa pallet (staff): đổi tên SP / ghi chú / chỉnh tồn tay.
- * Nếu unitCount đổi → ghi 1 movement ADJUST (±delta) để giữ audit tồn kho.
+ * Sửa 1 SKU (item) trong pallet: đổi tên / chỉnh tồn (delta → ADJUST) + đồng bộ cache.
+ */
+export async function editPalletItem(input: {
+  palletItemId: string;
+  productName?: string;
+  unitCount?: number;
+  createdBy: string;
+}) {
+  return db.transaction(async (tx) => {
+    const [item] = await tx
+      .select()
+      .from(storagePalletItems)
+      .where(eq(storagePalletItems.id, input.palletItemId));
+    if (!item) throw new Error("Không tìm thấy SKU");
+
+    const now = new Date();
+    const set: Partial<typeof storagePalletItems.$inferInsert> = { updatedAt: now };
+    if (input.productName != null && input.productName.trim())
+      set.productName = input.productName.trim();
+
+    let delta = 0;
+    if (input.unitCount != null) {
+      const newCount = Math.max(0, Math.floor(input.unitCount));
+      delta = newCount - item.unitCount;
+      set.unitCount = newCount;
+    }
+    await tx.update(storagePalletItems).set(set).where(eq(storagePalletItems.id, item.id));
+    if (delta !== 0) {
+      await tx.insert(storageMovements).values({
+        id: randomUUID(),
+        palletId: item.palletId,
+        palletItemId: item.id,
+        customerId: (
+          await tx
+            .select({ c: storagePallets.customerId })
+            .from(storagePallets)
+            .where(eq(storagePallets.id, item.palletId))
+        )[0].c,
+        type: "ADJUST",
+        units: delta,
+        uom: "UNIT",
+        occurredAt: now,
+        note: "Sửa tồn tay",
+        createdBy: input.createdBy,
+        createdAt: now,
+      });
+    }
+    await recomputePalletCache(tx, item.palletId, now);
+    return { id: item.id, delta };
+  });
+}
+
+/**
+ * Sửa pallet (staff, tương thích UI cũ): ghi chú ở mức pallet; tên/tồn áp cho SKU
+ * DUY NHẤT nếu pallet 1 SKU. Pallet nhiều SKU → sửa từng SKU qua editPalletItem.
  */
 export async function editPallet(input: EditPalletInput) {
   const [p] = await db
@@ -194,38 +424,30 @@ export async function editPallet(input: EditPalletInput) {
   if (!p) throw new Error("Pallet not found");
 
   const now = new Date();
-  const set: Partial<typeof storagePallets.$inferInsert> = { updatedAt: now };
-  if (input.productName != null && input.productName.trim())
-    set.productName = input.productName.trim();
-  if (input.note !== undefined) set.note = input.note || null;
-
-  let delta = 0;
-  if (input.unitCount != null) {
-    const newCount = Math.max(0, Math.floor(input.unitCount));
-    delta = newCount - p.unitCount;
-    set.unitCount = newCount;
-    set.status = newCount === 0 ? "PICKED_UP" : "IN_STORAGE";
-    set.pickedUpAt = newCount === 0 ? (p.pickedUpAt ?? now) : null;
+  if (input.note !== undefined) {
+    await db
+      .update(storagePallets)
+      .set({ note: input.note || null, updatedAt: now })
+      .where(eq(storagePallets.id, p.id));
   }
 
-  await db.transaction(async (tx) => {
-    await tx.update(storagePallets).set(set).where(eq(storagePallets.id, p.id));
-    if (delta !== 0) {
-      await tx.insert(storageMovements).values({
-        id: randomUUID(),
-        palletId: p.id,
-        customerId: p.customerId,
-        type: "ADJUST",
-        units: delta,
-        uom: "UNIT",
-        occurredAt: now,
-        note: input.note ?? "Sửa tồn tay",
+  if (input.productName != null || input.unitCount != null) {
+    const items = await db
+      .select({ id: storagePalletItems.id })
+      .from(storagePalletItems)
+      .where(eq(storagePalletItems.palletId, p.id));
+    if (items.length > 1)
+      throw new Error("Pallet có nhiều SKU — sửa từng SKU riêng.");
+    if (items.length === 1) {
+      await editPalletItem({
+        palletItemId: items[0].id,
+        productName: input.productName,
+        unitCount: input.unitCount,
         createdBy: input.createdBy,
-        createdAt: now,
       });
     }
-  });
-  return { id: p.id, delta };
+  }
+  return { id: p.id };
 }
 
 /**
@@ -252,6 +474,7 @@ export async function deletePallet(id: string): Promise<void> {
 
   await db.transaction(async (tx) => {
     await tx.delete(storageMovements).where(eq(storageMovements.palletId, id));
+    await tx.delete(storagePalletItems).where(eq(storagePalletItems.palletId, id));
     await tx.delete(storagePallets).where(eq(storagePallets.id, id));
   });
 }
