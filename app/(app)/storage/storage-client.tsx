@@ -211,7 +211,7 @@ export default function StorageClient() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex gap-2 justify-end">
-                      {p.status === "IN_STORAGE" && !(p.items && p.items.length > 1) && (
+                      {p.status === "IN_STORAGE" && (
                         <Button
                           variant="secondary"
                           icon="outbox"
@@ -571,36 +571,42 @@ function PickupModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [mode, setMode] = useState<"PALLET" | "UNIT">("PALLET");
-  const [units, setUnits] = useState("");
-  const [note, setNote] = useState("");
+  const [vals, setVals] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const taking = mode === "PALLET" ? pallet.unitCount : Math.min(pallet.unitCount, Number(units) || 0);
+  const items = pallet.items ?? [];
 
   async function submit() {
     setError("");
-    if (mode === "UNIT" && (!Number(units) || Number(units) < 1)) {
-      setError("Enter the number of units to pick");
+    const picks = items
+      .map((it) => ({ it, take: Math.floor(Number(vals[it.id]) || 0) }))
+      .filter((x) => x.take > 0);
+    if (picks.length === 0) {
+      setError("Nhập số lượng lấy cho ít nhất 1 SKU");
       return;
+    }
+    for (const { it, take } of picks) {
+      if (take > it.unitCount) {
+        setError(`${it.productName} chỉ còn ${it.unitCount} units`);
+        return;
+      }
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/storage/pickup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          palletId: pallet.id,
-          uom: mode,
-          units: mode === "UNIT" ? Number(units) : undefined,
-          note: note.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setError(data.error || "Pickup failed");
-        return;
+      // Lấy theo từng SKU (mỗi SKU 1 call).
+      for (const { it, take } of picks) {
+        const res = await fetch("/api/storage/pickup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ palletItemId: it.id, uom: "UNIT", units: take }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setError(data.error || "Pickup failed");
+          setSaving(false);
+          return;
+        }
       }
       onDone();
     } finally {
@@ -610,46 +616,43 @@ function PickupModal({
 
   return (
     <ModalShell title={`Pickup — ${pallet.palletCode}`} onClose={onClose}>
-      <p className="text-sm mb-3">
-        {pallet.productName} · <span className="font-semibold">{pallet.unitCount}</span> units left
-      </p>
-      <div className="flex gap-2 mb-3">
-        <button
-          className={`btn ${mode === "PALLET" ? "btn-primary" : "btn-secondary"} text-xs`}
-          onClick={() => setMode("PALLET")}
-        >
-          Whole pallet
-        </button>
-        <button
-          className={`btn ${mode === "UNIT" ? "btn-primary" : "btn-secondary"} text-xs`}
-          onClick={() => setMode("UNIT")}
-        >
-          By unit
-        </button>
-      </div>
-      {mode === "UNIT" && (
-        <Field label={`Units to pick (max ${pallet.unitCount})`}>
-          <input
-            className="filter-input w-full"
-            type="number"
-            min={1}
-            max={pallet.unitCount}
-            value={units}
-            onChange={(e) => setUnits(e.target.value)}
-          />
-        </Field>
-      )}
-      <Field label="Note (optional)">
-        <input
-          className="filter-input w-full"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-      </Field>
       <p className="text-xs text-[var(--text-secondary)] mb-3">
-        Picking <span className="font-semibold">{taking}</span> units
-        {mode === "PALLET" && " · pallet leaves storage"}
+        Nhập số thực lấy cho từng SKU (để trống = không lấy).
       </p>
+      <div className="space-y-2 mb-3">
+        {items.map((it) => (
+          <div
+            key={it.id}
+            className="rounded-lg border p-2.5"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <div className="text-sm mb-2">
+              <b>{it.productName}</b>
+              <span className="text-[var(--text-secondary)]"> · còn {it.unitCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">Lấy:</span>
+              <input
+                className="filter-input w-24"
+                type="number"
+                min={0}
+                max={it.unitCount}
+                placeholder="0"
+                value={vals[it.id] ?? ""}
+                onChange={(e) => setVals((s) => ({ ...s, [it.id]: e.target.value }))}
+              />
+              <button
+                type="button"
+                className="text-xs font-semibold"
+                style={{ color: "var(--accent)" }}
+                onClick={() => setVals((s) => ({ ...s, [it.id]: String(it.unitCount) }))}
+              >
+                lấy hết ({it.unitCount})
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>

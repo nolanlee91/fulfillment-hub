@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Topbar } from "@/components/topbar";
 import { Button } from "@/components/ui";
 
+interface PalletItem {
+  id: string;
+  productName: string;
+  unitCount: number;
+  initialUnits: number;
+}
 interface Pallet {
   id: string;
   palletCode: string;
@@ -11,15 +17,25 @@ interface Pallet {
   unitCount: number;
   initialUnits: number;
   receivedAt: string;
+  items: PalletItem[];
 }
 interface ReqItem {
   id: string;
   palletId: string;
+  palletItemId: string | null;
   units: number;
   uom: "PALLET" | "UNIT";
   confirmedUnits: number | null;
   palletCode: string | null;
   productName: string | null;
+}
+// 1 dòng SKU để khách chọn (phẳng từ pallets → items).
+interface SkuRow {
+  palletId: string;
+  palletItemId: string;
+  palletCode: string;
+  productName: string;
+  unitCount: number;
 }
 interface PickupRequest {
   id: string;
@@ -126,16 +142,27 @@ export default function MyStorageClient() {
               style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-semibold text-sm">{p.productName}</div>
-                  <div className="font-mono text-[11px] text-[var(--text-secondary)]">
-                    {p.palletCode}
-                  </div>
+                <div className="font-mono text-[11px] text-[var(--text-secondary)]">
+                  {p.palletCode}
+                  {p.items && p.items.length > 1 && (
+                    <span className="ml-1 text-[var(--accent)]">· trộn</span>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold leading-none">{p.unitCount}</div>
                   <div className="text-[10px] text-[var(--text-secondary)]">còn / {p.initialUnits}</div>
                 </div>
+              </div>
+              {/* Danh sách SKU trong pallet */}
+              <div className="mt-2 space-y-0.5">
+                {(p.items && p.items.length ? p.items : [{ id: p.id, productName: p.productName, unitCount: p.unitCount }]).map(
+                  (it) => (
+                    <div key={it.id} className="text-sm flex justify-between">
+                      <span className="font-medium">{it.productName}</span>
+                      <span className="text-[var(--text-secondary)]">{it.unitCount}</span>
+                    </div>
+                  ),
+                )}
               </div>
               <div className="mt-2 text-[11px] text-[var(--text-secondary)]">
                 Nhận {fmtDate(p.receivedAt)} · {daysStored(p.receivedAt)} ngày
@@ -292,13 +319,28 @@ function RequestBuilder({
   onClose: () => void;
   onDone: () => void;
 }) {
+  // Phẳng pallets → danh sách SKU (mỗi dòng 1 SKU để chọn).
+  const skus: SkuRow[] = pallets.flatMap((p) =>
+    (p.items && p.items.length
+      ? p.items
+      : [{ id: p.id, productName: p.productName, unitCount: p.unitCount, initialUnits: p.initialUnits }]
+    ).map((it) => ({
+      palletId: p.id,
+      palletItemId: it.id,
+      palletCode: p.palletCode,
+      productName: it.productName,
+      unitCount: it.unitCount,
+    })),
+  );
+
   const [rows, setRows] = useState<Record<string, Row>>(() => {
     const m: Record<string, Row> = {};
-    for (const p of pallets) m[p.id] = { include: false, whole: false, units: "" };
+    for (const s of skus) m[s.palletItemId] = { include: false, whole: false, units: "" };
     if (existing) {
       for (const it of existing.items) {
-        if (m[it.palletId]) {
-          m[it.palletId] = {
+        const key = it.palletItemId ?? it.palletId; // legacy fallback
+        if (m[key]) {
+          m[key] = {
             include: true,
             whole: it.uom === "PALLET",
             units: it.uom === "PALLET" ? "" : String(it.units),
@@ -319,27 +361,32 @@ function RequestBuilder({
 
   async function submit() {
     setError("");
-    const items: { palletId: string; units: number; uom: "PALLET" | "UNIT" }[] = [];
-    for (const p of pallets) {
-      const row = rows[p.id];
+    const items: {
+      palletId: string;
+      palletItemId: string;
+      units: number;
+      uom: "PALLET" | "UNIT";
+    }[] = [];
+    for (const s of skus) {
+      const row = rows[s.palletItemId];
       if (!row?.include) continue;
       if (row.whole) {
-        items.push({ palletId: p.id, units: p.unitCount, uom: "PALLET" });
+        items.push({ palletId: s.palletId, palletItemId: s.palletItemId, units: s.unitCount, uom: "PALLET" });
       } else {
         const u = Number(row.units);
         if (!u || u < 1) {
-          setError(`Nhập số units cho ${p.palletCode} (hoặc chọn cả pallet)`);
+          setError(`Nhập số units cho ${s.productName} (hoặc chọn lấy hết)`);
           return;
         }
-        if (u > p.unitCount) {
-          setError(`${p.palletCode} chỉ còn ${p.unitCount} units`);
+        if (u > s.unitCount) {
+          setError(`${s.productName} chỉ còn ${s.unitCount} units`);
           return;
         }
-        items.push({ palletId: p.id, units: u, uom: "UNIT" });
+        items.push({ palletId: s.palletId, palletItemId: s.palletItemId, units: u, uom: "UNIT" });
       }
     }
     if (items.length === 0) {
-      setError("Chọn ít nhất 1 pallet");
+      setError("Chọn ít nhất 1 SKU");
       return;
     }
 
@@ -387,54 +434,54 @@ function RequestBuilder({
         </div>
 
         <div className="space-y-2 mb-4">
-          {pallets.map((p) => {
-            const row = rows[p.id];
+          {skus.map((s) => {
+            const row = rows[s.palletItemId];
             return (
               <div
-                key={p.id}
+                key={s.palletItemId}
                 className="rounded-lg border p-2.5"
                 style={{
                   borderColor: row.include ? "var(--accent)" : "var(--border)",
                   background: row.include ? "var(--accent-bg)" : "transparent",
                 }}
               >
-                {/* Dòng 1: tên sản phẩm nổi bật + mã pallet + tồn */}
+                {/* Dòng 1: tên SKU + mã pallet + tồn */}
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={row.include}
-                    onChange={(e) => setRow(p.id, { include: e.target.checked })}
+                    onChange={(e) => setRow(s.palletItemId, { include: e.target.checked })}
                     className="w-4 h-4 mt-0.5 shrink-0"
                   />
                   <span className="text-sm leading-tight">
-                    <b>{p.productName}</b>
-                    <span className="text-[var(--text-secondary)]"> · còn {p.unitCount}u</span>
+                    <b>{s.productName}</b>
+                    <span className="text-[var(--text-secondary)]"> · còn {s.unitCount}u</span>
                     <span className="block font-mono text-[11px] text-[var(--text-secondary)]">
-                      {p.palletCode}
+                      {s.palletCode}
                     </span>
                   </span>
                 </label>
 
-                {/* Dòng 2: chỉ hiện khi đã chọn — cả pallet / nhập units */}
+                {/* Dòng 2: chỉ hiện khi đã chọn — lấy hết / nhập units */}
                 {row.include && (
                   <div className="flex items-center gap-3 mt-2 pl-6">
                     <label className="flex items-center gap-1 text-xs whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={row.whole}
-                        onChange={(e) => setRow(p.id, { whole: e.target.checked })}
+                        onChange={(e) => setRow(s.palletItemId, { whole: e.target.checked })}
                       />
-                      cả pallet
+                      lấy hết
                     </label>
                     <input
                       className="filter-input flex-1"
                       type="number"
                       min={1}
-                      max={p.unitCount}
-                      placeholder={`số units (tối đa ${p.unitCount})`}
+                      max={s.unitCount}
+                      placeholder={`số units (tối đa ${s.unitCount})`}
                       disabled={row.whole}
                       value={row.units}
-                      onChange={(e) => setRow(p.id, { units: e.target.value })}
+                      onChange={(e) => setRow(s.palletItemId, { units: e.target.value })}
                     />
                   </div>
                 )}

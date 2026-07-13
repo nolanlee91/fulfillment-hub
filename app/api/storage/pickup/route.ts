@@ -1,19 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withAuth } from "@/lib/auth/api-guard";
 import type { CurrentUser } from "@/lib/auth/current-user";
-import { pickupFromPallet } from "@/lib/storage";
+import { pickupFromPallet, pickupFromItem } from "@/lib/storage";
 
 async function handler(req: NextRequest, user: CurrentUser) {
   try {
     const body = await req.json();
     const palletId = String(body.palletId || "").trim();
+    const palletItemId = String(body.palletItemId || "").trim();
     const uom = body.uom === "PALLET" ? "PALLET" : "UNIT";
     const units = body.units != null ? Number(body.units) : undefined;
     const note = body.note ? String(body.note) : undefined;
 
-    if (!palletId) {
+    if (!palletId && !palletItemId) {
       return NextResponse.json(
-        { success: false, error: "Missing palletId" },
+        { success: false, error: "Missing palletId/palletItemId" },
         { status: 400 },
       );
     }
@@ -24,13 +25,10 @@ async function handler(req: NextRequest, user: CurrentUser) {
       );
     }
 
-    const res = await pickupFromPallet({
-      palletId,
-      uom,
-      units,
-      createdBy: user.username,
-      note,
-    });
+    // Ưu tiên lấy theo SKU (pallet trộn); fallback mức pallet (1 SKU).
+    const res = palletItemId
+      ? await pickupFromItem({ palletItemId, uom, units, createdBy: user.username, note })
+      : await pickupFromPallet({ palletId, uom, units, createdBy: user.username, note });
     return NextResponse.json({ success: true, ...res });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

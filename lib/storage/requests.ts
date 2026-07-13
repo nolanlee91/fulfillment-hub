@@ -2,44 +2,70 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import {
   storagePallets,
+  storagePalletItems,
   storagePickupRequests,
   storagePickupRequestItems,
 } from "@/lib/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { pickupFromPallet, pickupFromItem } from "./index";
 import type { StorageUom } from "./rates";
 
 export interface RequestItemInput {
   palletId: string;
+  palletItemId?: string; // SKU cụ thể (pallet trộn). Không có → pallet 1 SKU.
   units: number;
   uom: StorageUom;
 }
 
-/** Kiểm tra pallet thuộc khách + còn trong kho + đủ unit. Trả về map pallet. */
-async function loadAndValidatePallets(
+interface NormItem {
+  palletId: string;
+  palletItemId: string;
+  units: number;
+  uom: StorageUom;
+}
+
+/**
+ * Chuẩn hoá + kiểm tra từng SKU: thuộc khách + pallet còn trong kho + đủ tồn SKU.
+ * Legacy (chỉ có palletId, pallet 1 SKU) → tự resolve sang SKU duy nhất.
+ */
+async function loadAndValidateItems(
   customerId: string,
   items: RequestItemInput[],
-) {
+): Promise<NormItem[]> {
   if (items.length === 0) throw new Error("Request must have at least one item");
-  const ids = [...new Set(items.map((i) => i.palletId))];
-  const rows = await db
-    .select()
-    .from(storagePallets)
-    .where(inArray(storagePallets.id, ids));
-  const byId = new Map(rows.map((p) => [p.id, p]));
-
+  const norm: NormItem[] = [];
   for (const it of items) {
-    const p = byId.get(it.palletId);
-    if (!p) throw new Error("Pallet not found");
-    if (p.customerId !== customerId) throw new Error("Pallet does not belong to this customer");
-    if (p.status !== "IN_STORAGE") throw new Error(`Pallet ${p.palletCode} is no longer in storage`);
-    if (it.uom === "UNIT") {
-      if (it.units < 1) throw new Error("Units must be at least 1");
-      if (it.units > p.unitCount)
-        throw new Error(`Pallet ${p.palletCode} only has ${p.unitCount} units`);
+    let itemId = it.palletItemId;
+    if (!itemId) {
+      const its = await db
+        .select({ id: storagePalletItems.id })
+        .from(storagePalletItems)
+        .where(eq(storagePalletItems.palletId, it.palletId));
+      if (its.length !== 1)
+        throw new Error("Pallet nhiều SKU — cần chọn SKU cụ thể");
+      itemId = its[0].id;
     }
+    const [item] = await db
+      .select()
+      .from(storagePalletItems)
+      .where(eq(storagePalletItems.id, itemId));
+    if (!item) throw new Error("Không tìm thấy SKU");
+    const [p] = await db
+      .select()
+      .from(storagePallets)
+      .where(eq(storagePallets.id, item.palletId));
+    if (!p) throw new Error("Pallet not found");
+    if (p.customerId !== customerId) throw new Error("SKU không thuộc khách này");
+    if (p.status !== "IN_STORAGE")
+      throw new Error(`Pallet ${p.palletCode} không còn trong kho`);
+    if (it.uom === "UNIT") {
+      if (it.units < 1) throw new Error("Units phải ≥ 1");
+      if (it.units > item.unitCount)
+        throw new Error(`${item.productName} chỉ còn ${item.unitCount} units`);
+    }
+    norm.push({ palletId: item.palletId, palletItemId: itemId, units: it.units, uom: it.uom });
   }
-  return byId;
+  return norm;
 }
 
 export interface CreateRequestInput {
@@ -52,7 +78,7 @@ export interface CreateRequestInput {
 
 /** Khách tạo yêu cầu lấy hàng (PENDING, còn sửa được). */
 export async function createRequest(input: CreateRequestInput) {
-  await loadAndValidatePallets(input.customerId, input.items);
+  const norm = await loadAndValidateItems(input.customerId, input.items);
 
   const id = randomUUID();
   const now = new Date();
@@ -67,10 +93,11 @@ export async function createRequest(input: CreateRequestInput) {
     updatedAt: now,
   });
   await db.insert(storagePickupRequestItems).values(
-    input.items.map((it) => ({
+    norm.map((it) => ({
       id: randomUUID(),
       requestId: id,
       palletId: it.palletId,
+      palletItemId: it.palletItemId,
       units: Math.max(1, Math.floor(it.units)),
       uom: it.uom,
       createdAt: now,
@@ -105,7 +132,7 @@ export async function editRequest(input: EditRequestInput) {
     throw new Error("Not allowed");
   if (r.status !== "PENDING") throw new Error("Only pending requests can be edited");
 
-  await loadAndValidatePallets(r.customerId, input.items);
+  const norm = await loadAndValidateItems(r.customerId, input.items);
 
   const now = new Date();
   // Thay toàn bộ items: xóa cũ, thêm mới.
@@ -113,10 +140,11 @@ export async function editRequest(input: EditRequestInput) {
     .delete(storagePickupRequestItems)
     .where(eq(storagePickupRequestItems.requestId, r.id));
   await db.insert(storagePickupRequestItems).values(
-    input.items.map((it) => ({
+    norm.map((it) => ({
       id: randomUUID(),
       requestId: r.id,
       palletId: it.palletId,
+      palletItemId: it.palletItemId,
       units: Math.max(1, Math.floor(it.units)),
       uom: it.uom,
       createdAt: now,
@@ -316,15 +344,18 @@ export async function listRequests(filter: ListRequestsFilter = {}) {
       id: storagePickupRequestItems.id,
       requestId: storagePickupRequestItems.requestId,
       palletId: storagePickupRequestItems.palletId,
+      palletItemId: storagePickupRequestItems.palletItemId,
       units: storagePickupRequestItems.units,
       uom: storagePickupRequestItems.uom,
       confirmedUnits: storagePickupRequestItems.confirmedUnits,
       palletCode: storagePallets.palletCode,
-      productName: storagePallets.productName,
-      unitCount: storagePallets.unitCount,
+      // Tên/tồn ưu tiên theo SKU (pallet trộn); fallback cache pallet.
+      productName: sql<string>`coalesce(${storagePalletItems.productName}, ${storagePallets.productName})`,
+      unitCount: sql<number>`coalesce(${storagePalletItems.unitCount}, ${storagePallets.unitCount})`,
     })
     .from(storagePickupRequestItems)
     .leftJoin(storagePallets, eq(storagePickupRequestItems.palletId, storagePallets.id))
+    .leftJoin(storagePalletItems, eq(storagePickupRequestItems.palletItemId, storagePalletItems.id))
     .where(inArray(storagePickupRequestItems.requestId, reqIds));
 
   const byReq = new Map<string, typeof items>();

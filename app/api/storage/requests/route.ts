@@ -4,7 +4,7 @@ import { customers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
 import type { CurrentUser } from "@/lib/auth/current-user";
-import { listPallets } from "@/lib/storage";
+import { listPallets, listPalletItems } from "@/lib/storage";
 import { createRequest, listRequests } from "@/lib/storage/requests";
 
 async function getHandler(req: NextRequest, user: CurrentUser) {
@@ -26,10 +26,18 @@ async function getHandler(req: NextRequest, user: CurrentUser) {
     }
 
     const requests = await listRequests({ customerId: scopeCustomer, status });
-    // Khách cần danh sách pallet còn trong kho để dựng request; staff không cần.
-    const pallets = isCustomer
+    // Khách cần danh sách pallet (kèm SKU con) còn trong kho để dựng request.
+    const rawPallets = isCustomer
       ? await listPallets({ customerId: scopeCustomer, status: "IN_STORAGE" })
       : [];
+    const palletItems = isCustomer ? await listPalletItems(rawPallets.map((p) => p.id)) : [];
+    const itemsByPallet = new Map<string, typeof palletItems>();
+    for (const it of palletItems) {
+      const arr = itemsByPallet.get(it.palletId) ?? [];
+      arr.push(it);
+      itemsByPallet.set(it.palletId, arr);
+    }
+    const pallets = rawPallets.map((p) => ({ ...p, items: itemsByPallet.get(p.id) ?? [] }));
     const custRows = await db
       .select({ id: customers.id, name: customers.name })
       .from(customers)
@@ -58,11 +66,14 @@ async function postHandler(req: NextRequest, user: CurrentUser) {
     }
 
     const items = Array.isArray(body.items)
-      ? body.items.map((it: { palletId: string; units: number; uom: string }) => ({
-          palletId: String(it.palletId),
-          units: Number(it.units),
-          uom: it.uom === "PALLET" ? "PALLET" : "UNIT",
-        }))
+      ? body.items.map(
+          (it: { palletId: string; palletItemId?: string; units: number; uom: string }) => ({
+            palletId: String(it.palletId),
+            palletItemId: it.palletItemId ? String(it.palletItemId) : undefined,
+            units: Number(it.units),
+            uom: it.uom === "PALLET" ? "PALLET" : "UNIT",
+          }),
+        )
       : [];
     if (items.length === 0) {
       return NextResponse.json(
