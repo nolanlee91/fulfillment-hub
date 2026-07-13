@@ -471,6 +471,24 @@ export function Sidebar({ user }: { user: CurrentUser }) {
               {ROLE_LABEL[user.role]}
             </p>
           </div>
+          {isStaff && (
+            <button
+              onClick={() => {
+                if (
+                  typeof Notification !== "undefined" &&
+                  Notification.permission === "default"
+                ) {
+                  Notification.requestPermission().catch(() => {});
+                }
+                playChime();
+              }}
+              title="Nghe thử chuông thông báo (bấm 1 lần để mở âm thanh)"
+              className="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--sidebar-surface)] shrink-0"
+              style={{ color: "var(--sidebar-text-muted)" }}
+            >
+              <span className="material-symbols-outlined text-[18px]">notifications_active</span>
+            </button>
+          )}
           <button
             onClick={handleLogout}
             disabled={loggingOut}
