@@ -122,6 +122,44 @@ const ROLE_LABEL: Record<Role, string> = {
   CUSTOMER: "Customer",
 };
 
+/**
+ * Tự sinh file WAV chuông 3 nốt (A5·D6·G6) lặp 2 lần → data-URI (không cần file
+ * ngoài, hợp CSP). Dùng cho thẻ <audio> vì AudioContext KHÔNG phát được ở tab nền.
+ */
+function makeChimeWavDataUri(): string {
+  const sr = 22050;
+  const seq: number[] = [];
+  for (let rep = 0; rep < 2; rep++) for (const f of [880, 1175, 1568]) seq.push(f);
+  const noteSamples = Math.floor(sr * 0.16);
+  const gapSamples = Math.floor(sr * 0.05);
+  const pcm = new Int16Array(seq.length * (noteSamples + gapSamples));
+  let idx = 0;
+  for (const freq of seq) {
+    for (let i = 0; i < noteSamples; i++) {
+      const t = i / sr;
+      const env = Math.min(1, t / 0.005) * Math.exp(-t * 5);
+      const s = Math.sin(2 * Math.PI * freq * t) * env * 0.9;
+      pcm[idx++] = Math.max(-1, Math.min(1, s)) * 32767;
+    }
+    idx += gapSamples;
+  }
+  const dataSize = pcm.length * 2;
+  const buf = new ArrayBuffer(44 + dataSize);
+  const dv = new DataView(buf);
+  const ws = (o: number, s: string) => {
+    for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i));
+  };
+  ws(0, "RIFF"); dv.setUint32(4, 36 + dataSize, true); ws(8, "WAVE");
+  ws(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+  ws(36, "data"); dv.setUint32(40, dataSize, true);
+  for (let i = 0; i < pcm.length; i++) dv.setInt16(44 + i * 2, pcm[i], true);
+  let bin = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return "data:audio/wav;base64," + btoa(bin);
+}
+
 export function Sidebar({ user }: { user: CurrentUser }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -129,13 +167,32 @@ export function Sidebar({ user }: { user: CurrentUser }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingPickups, setPendingPickups] = useState(0);
   const prevPendingRef = useRef<number | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const isStaff = user.role === "SUPER_ADMIN" || user.role === "STAFF";
 
-  // Chuông LUÔN bật cho staff (không có nút tắt). Trình duyệt vẫn bắt buộc cấp
-  // quyền 1 lần → tự xin trên mount, và chắc chắn ở lần click đầu (user gesture),
-  // đồng thời mở AudioContext cho tiếng "ding".
+  function getAudio(): HTMLAudioElement | null {
+    if (typeof Audio === "undefined") return null;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(makeChimeWavDataUri());
+      audioRef.current.preload = "auto";
+    }
+    return audioRef.current;
+  }
+  function playChime() {
+    const a = getAudio();
+    if (!a) return;
+    try {
+      a.currentTime = 0;
+      void a.play();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Chuông LUÔN bật cho staff. Xin quyền Notification + "mở khóa" thẻ <audio> ở
+  // click đầu (luật autoplay). Dùng <audio> vì nó phát được cả khi ở TAB NỀN
+  // (AudioContext bị trình duyệt treo khi tab không active).
   useEffect(() => {
     if (!isStaff || typeof window === "undefined") return;
     const ask = () => {
@@ -146,52 +203,22 @@ export function Sidebar({ user }: { user: CurrentUser }) {
     ask();
     const onFirst = () => {
       ask();
-      try {
-        const AC =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        audioCtxRef.current = audioCtxRef.current ?? new AC();
-        audioCtxRef.current.resume().catch(() => {});
-      } catch {
-        /* ignore */
+      const a = getAudio();
+      if (a) {
+        // phát rồi dừng ngay để mở khóa autoplay (cho lần kêu sau, kể cả tab nền)
+        a.play()
+          .then(() => {
+            a.pause();
+            a.currentTime = 0;
+          })
+          .catch(() => {});
       }
       document.removeEventListener("click", onFirst);
     };
     document.addEventListener("click", onFirst);
     return () => document.removeEventListener("click", onFirst);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStaff]);
-
-  // Chuông báo rõ: 3 nốt tăng dần, lặp 3 lần. Square wave gain 0.5 = to, không bị
-  // compressor bóp nhỏ. Resume context phòng khi bị treo sau khi đổi tab.
-  function beep() {
-    try {
-      const ctx = audioCtxRef.current;
-      if (!ctx) return;
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
-      const notes = [880, 1175, 1568]; // A5 · D6 · G6
-      const noteDur = 0.18;
-      let t = ctx.currentTime + 0.03;
-      for (let rep = 0; rep < 3; rep++) {
-        for (const f of notes) {
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.connect(g);
-          g.connect(ctx.destination);
-          o.type = "square";
-          o.frequency.value = f;
-          g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.5, t + 0.015);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + noteDur);
-          o.start(t);
-          o.stop(t + noteDur + 0.02);
-          t += noteDur;
-        }
-        t += 0.12; // nghỉ giữa các lần lặp
-      }
-    } catch {
-      /* bỏ qua nếu trình duyệt chặn audio */
-    }
-  }
 
   // Badge + chuông: đếm pickup request PENDING (staff). Refetch khi đổi trang + mỗi 60s.
   useEffect(() => {
@@ -204,22 +231,20 @@ export function Sidebar({ user }: { user: CurrentUser }) {
         if (!alive || !data.success) return;
         const c = data.count as number;
         const prev = prevPendingRef.current;
-        // Chỉ báo khi SỐ TĂNG (có request mới) và đã bật chuông; bỏ qua lần load đầu.
-        if (
-          prev != null &&
-          c > prev &&
-          typeof Notification !== "undefined" &&
-          Notification.permission === "granted"
-        ) {
-          try {
-            new Notification("Yêu cầu lấy hàng mới", {
-              body: `Có ${c} yêu cầu đang chờ xử lý`,
-              icon: "/logo.png",
-            });
-          } catch {
-            /* ignore */
+        // Có request MỚI (số tăng) → KÊU CHUÔNG (không phụ thuộc quyền Notification)
+        // + bật thông báo desktop NẾU đã cấp quyền. Bỏ qua lần load đầu (prev = null).
+        if (prev != null && c > prev) {
+          playChime();
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try {
+              new Notification("Yêu cầu lấy hàng mới", {
+                body: `Có ${c} yêu cầu đang chờ xử lý`,
+                icon: "/logo.png",
+              });
+            } catch {
+              /* ignore */
+            }
           }
-          beep();
         }
         prevPendingRef.current = c;
         setPendingPickups(c);
@@ -228,7 +253,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
       }
     };
     fetchCount();
-    const t = setInterval(fetchCount, 60_000);
+    const t = setInterval(fetchCount, 30_000);
     return () => {
       alive = false;
       clearInterval(t);
