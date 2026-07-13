@@ -5,6 +5,12 @@ import { Topbar } from "@/components/topbar";
 import { Card, Button } from "@/components/ui";
 import { Dropdown } from "@/components/ui/dropdown";
 
+interface PalletItem {
+  id: string;
+  productName: string;
+  unitCount: number;
+  initialUnits: number;
+}
 interface Pallet {
   id: string;
   palletCode: string;
@@ -17,6 +23,7 @@ interface Pallet {
   receivedAt: string;
   pickedUpAt: string | null;
   note: string | null;
+  items: PalletItem[];
 }
 interface Customer {
   id: string;
@@ -173,7 +180,21 @@ export default function StorageClient() {
                 <tr key={p.id} className="border-b text-sm hover:bg-[rgba(0,0,0,0.02)]">
                   <td className="px-3 py-2 font-mono text-xs">{p.palletCode}</td>
                   <td className="px-3 py-2">{custName[p.customerId] ?? p.customerId}</td>
-                  <td className="px-3 py-2">{p.productName}</td>
+                  <td className="px-3 py-2">
+                    {p.items && p.items.length > 1 ? (
+                      <div className="space-y-0.5">
+                        {p.items.map((it) => (
+                          <div key={it.id} className="text-xs">
+                            {it.productName}{" "}
+                            <span className="text-[var(--text-secondary)]">×{it.unitCount}</span>
+                          </div>
+                        ))}
+                        <div className="text-[10px] text-[var(--text-secondary)]">pallet trộn</div>
+                      </div>
+                    ) : (
+                      p.productName
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <span className="font-semibold">{p.unitCount}</span>
                     <span className="text-[var(--text-secondary)]"> / {p.initialUnits}</span>
@@ -190,7 +211,7 @@ export default function StorageClient() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex gap-2 justify-end">
-                      {p.status === "IN_STORAGE" && (
+                      {p.status === "IN_STORAGE" && !(p.items && p.items.length > 1) && (
                         <Button
                           variant="secondary"
                           icon="outbox"
@@ -403,19 +424,38 @@ function ReceiveModal({
   onDone: () => void;
 }) {
   const [customerId, setCustomerId] = useState("");
-  const [productName, setProductName] = useState("");
-  const [unitsPerPallet, setUnitsPerPallet] = useState("");
+  const [rows, setRows] = useState<{ productName: string; units: string }[]>([
+    { productName: "", units: "" },
+  ]);
   const [palletCount, setPalletCount] = useState("1");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const nPallet = Math.max(0, Math.floor(Number(palletCount) || 0));
+  const mixed = rows.filter((r) => r.productName.trim()).length > 1;
+
+  function setRow(i: number, patch: Partial<{ productName: string; units: string }>) {
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function addRow() {
+    setRows((rs) => [...rs, { productName: "", units: "" }]);
+  }
+  function removeRow(i: number) {
+    setRows((rs) => (rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs));
+  }
 
   async function submit() {
     setError("");
-    if (!customerId || !productName.trim()) {
-      setError("Select a customer and enter a product");
+    const items = rows
+      .map((r) => ({ productName: r.productName.trim(), units: Number(r.units) }))
+      .filter((r) => r.productName && Number.isFinite(r.units) && r.units >= 1);
+    if (!customerId) {
+      setError("Chọn khách hàng");
+      return;
+    }
+    if (items.length === 0) {
+      setError("Nhập ít nhất 1 SKU + số lượng (≥1)");
       return;
     }
     setSaving(true);
@@ -423,13 +463,7 @@ function ReceiveModal({
       const res = await fetch("/api/storage/receive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId,
-          productName: productName.trim(),
-          unitsPerPallet: Number(unitsPerPallet) || 0,
-          palletCount: nPallet,
-          note: note.trim() || undefined,
-        }),
+        body: JSON.stringify({ customerId, items, palletCount: nPallet, note: note.trim() || undefined }),
       });
       const data = await res.json();
       if (!data.success) {
@@ -452,35 +486,62 @@ function ReceiveModal({
           options={customers.map((c) => ({ value: c.id, label: c.name }))}
         />
       </Field>
-      <Field label="Product (1 SKU / pallet)">
+
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-[var(--text-secondary)]">
+            SKU trên pallet {mixed && <b className="text-[var(--accent)]">· pallet trộn</b>}
+          </span>
+          <button
+            type="button"
+            onClick={addRow}
+            className="text-xs font-semibold"
+            style={{ color: "var(--accent)" }}
+          >
+            + Thêm SKU
+          </button>
+        </div>
+        <div className="space-y-2">
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                className="filter-input flex-1"
+                placeholder="Tên SKU (vd Original)"
+                value={r.productName}
+                onChange={(e) => setRow(i, { productName: e.target.value })}
+              />
+              <input
+                className="filter-input w-20"
+                type="number"
+                min={1}
+                placeholder="units"
+                value={r.units}
+                onChange={(e) => setRow(i, { units: e.target.value })}
+              />
+              {rows.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeRow(i)}
+                  className="material-symbols-outlined text-[18px] text-[var(--text-secondary)]"
+                  title="Bỏ SKU này"
+                >
+                  close
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Field label="Số pallet giống nhau">
         <input
           className="filter-input w-full"
-          value={productName}
-          onChange={(e) => setProductName(e.target.value)}
-          placeholder="e.g. Original"
+          type="number"
+          min={1}
+          value={palletCount}
+          onChange={(e) => setPalletCount(e.target.value)}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Units / pallet">
-          <input
-            className="filter-input w-full"
-            type="number"
-            min={0}
-            value={unitsPerPallet}
-            onChange={(e) => setUnitsPerPallet(e.target.value)}
-            placeholder="100"
-          />
-        </Field>
-        <Field label="Pallets">
-          <input
-            className="filter-input w-full"
-            type="number"
-            min={1}
-            value={palletCount}
-            onChange={(e) => setPalletCount(e.target.value)}
-          />
-        </Field>
-      </div>
       <Field label="Note (optional)">
         <input
           className="filter-input w-full"
@@ -494,7 +555,7 @@ function ReceiveModal({
           Cancel
         </Button>
         <Button onClick={submit} disabled={saving} icon={saving ? "hourglass_empty" : "add"}>
-          {saving ? "Saving…" : `Create ${nPallet} pallet${nPallet === 1 ? "" : "s"}`}
+          {saving ? "Saving…" : `Tạo ${nPallet} pallet${mixed ? " trộn" : ""}`}
         </Button>
       </div>
     </ModalShell>

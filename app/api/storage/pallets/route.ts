@@ -4,7 +4,7 @@ import { customers, warehouses } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
 import type { CurrentUser } from "@/lib/auth/current-user";
-import { listPallets } from "@/lib/storage";
+import { listPallets, listPalletItems } from "@/lib/storage";
 
 async function handler(req: NextRequest, user: CurrentUser) {
   try {
@@ -29,6 +29,19 @@ async function handler(req: NextRequest, user: CurrentUser) {
       warehouseCode: warehouseParam || undefined,
     });
 
+    // Gắn SKU con vào từng pallet (pallet trộn).
+    const items = await listPalletItems(pallets.map((p) => p.id));
+    const itemsByPallet = new Map<string, typeof items>();
+    for (const it of items) {
+      const arr = itemsByPallet.get(it.palletId) ?? [];
+      arr.push(it);
+      itemsByPallet.set(it.palletId, arr);
+    }
+    const palletsWithItems = pallets.map((p) => ({
+      ...p,
+      items: itemsByPallet.get(p.id) ?? [],
+    }));
+
     const [custRows, whRows] = await Promise.all([
       db
         .select({ id: customers.id, name: customers.name })
@@ -42,7 +55,7 @@ async function handler(req: NextRequest, user: CurrentUser) {
 
     return NextResponse.json({
       success: true,
-      data: { pallets, customers: custRows, warehouses: whRows },
+      data: { pallets: palletsWithItems, customers: custRows, warehouses: whRows },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
