@@ -67,8 +67,13 @@ export const POST = withAuth<RouteContext>(
 
       if (action === "delete") {
         // khách: scope theo customerId (chỉ xóa của mình, không xóa DONE);
-        // staff: scopeCustomer undefined → xóa được mọi request.
-        const res = await deleteRequest(id, scopeCustomer);
+        // staff thường: xóa PENDING/CANCELLED, không xóa DONE;
+        // SUPER_ADMIN: xóa được cả DONE (hoàn kho trước khi xóa).
+        const res = await deleteRequest(id, {
+          customerId: scopeCustomer,
+          allowDone: user.role === "SUPER_ADMIN",
+          restoredBy: user.username,
+        });
         return NextResponse.json({ success: true, ...res });
       }
 

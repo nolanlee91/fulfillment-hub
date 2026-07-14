@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import {
   storagePallets,
   storagePalletItems,
+  storageMovements,
   storagePickupRequests,
   storagePickupRequestItems,
 } from "@/lib/db/schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { pickupFromPallet, pickupFromItem } from "./index";
+import { pickupFromPallet, pickupFromItem, recomputePalletCache } from "./index";
 import type { StorageUom } from "./rates";
 
 export interface RequestItemInput {
@@ -174,20 +175,100 @@ export async function cancelRequest(requestId: string, customerId?: string) {
   return { id: requestId };
 }
 
+export interface DeleteRequestOptions {
+  /** Khách: ép customerId của họ để chỉ xóa request của mình. */
+  customerId?: string;
+  /** SUPER_ADMIN: cho phép xóa cả request DONE (đã thống nhất) — sẽ HOÀN KHO trước. */
+  allowDone?: boolean;
+  /** Ghi tên người hoàn kho vào movement ADJUST (audit). */
+  restoredBy?: string;
+}
+
 /**
  * Xóa hẳn request + items (dọn test / nhầm).
- * - Khách (truyền customerId): chỉ xóa request CỦA MÌNH và chỉ khi PENDING/CANCELLED
- *   (không xóa DONE vì đã trừ kho thật).
- * - Staff (không truyền customerId): xóa được mọi request.
+ * - Khách (truyền customerId): chỉ xóa request CỦA MÌNH và chỉ khi PENDING/CANCELLED.
+ * - Staff thường: xóa PENDING/CANCELLED, KHÔNG xóa DONE.
+ * - SUPER_ADMIN (allowDone): xóa được cả DONE — nhưng phải HOÀN KHO: cộng lại
+ *   `confirmedUnits` đã trừ vào từng SKU + ghi movement ADJUST (giữ dấu vết),
+ *   rồi mới xóa. Tồn luôn khớp, không mồ côi như bug PLT-00010 cũ.
  */
-export async function deleteRequest(requestId: string, customerId?: string) {
+export async function deleteRequest(
+  requestId: string,
+  optsOrCustomerId?: string | DeleteRequestOptions,
+) {
+  const opts: DeleteRequestOptions =
+    typeof optsOrCustomerId === "string"
+      ? { customerId: optsOrCustomerId }
+      : (optsOrCustomerId ?? {});
+  const { customerId, allowDone, restoredBy } = opts;
+
   const r = await getRequest(requestId);
   if (!r) throw new Error("Request not found");
-  // DONE = staff đã confirm + trừ kho THẬT → khóa, xóa sẽ mất dấu + lệch tồn.
-  // Chỉ PENDING/CANCELLED mới xóa được (dọn nháp). Áp cho CẢ staff lẫn khách.
-  if (r.status === "DONE")
-    throw new Error("Đơn đã xác nhận (pickup), không thể xóa.");
   if (customerId && r.customerId !== customerId) throw new Error("Not allowed");
+
+  if (r.status === "DONE") {
+    // DONE = đã trừ kho THẬT. Chỉ SUPER_ADMIN (allowDone) xóa được, và phải hoàn kho.
+    if (!allowDone) throw new Error("Đơn đã xác nhận (pickup), không thể xóa.");
+
+    const items = await db
+      .select()
+      .from(storagePickupRequestItems)
+      .where(eq(storagePickupRequestItems.requestId, requestId));
+
+    await db.transaction(async (tx) => {
+      const now = new Date();
+      const touchedPallets = new Set<string>();
+      for (const it of items) {
+        const restore = it.confirmedUnits ?? 0;
+        if (restore <= 0) continue;
+        // Resolve SKU: mới có palletItemId; legacy 1-SKU thì lấy SKU duy nhất của pallet.
+        let palletItemId = it.palletItemId;
+        if (!palletItemId) {
+          const its = await tx
+            .select({ id: storagePalletItems.id })
+            .from(storagePalletItems)
+            .where(eq(storagePalletItems.palletId, it.palletId));
+          if (its.length === 1) palletItemId = its[0].id;
+        }
+        if (!palletItemId) continue; // không resolve được → bỏ qua (không đoán mò)
+        const [item] = await tx
+          .select()
+          .from(storagePalletItems)
+          .where(eq(storagePalletItems.id, palletItemId));
+        if (!item) continue;
+        const [p] = await tx
+          .select({ c: storagePallets.customerId })
+          .from(storagePallets)
+          .where(eq(storagePallets.id, item.palletId));
+        await tx
+          .update(storagePalletItems)
+          .set({ unitCount: item.unitCount + restore, updatedAt: now })
+          .where(eq(storagePalletItems.id, item.id));
+        await tx.insert(storageMovements).values({
+          id: randomUUID(),
+          palletId: item.palletId,
+          palletItemId: item.id,
+          customerId: p?.c ?? r.customerId,
+          type: "ADJUST",
+          units: restore,
+          uom: "UNIT",
+          occurredAt: now,
+          note: `Hoàn kho: admin xóa yêu cầu ${requestId}`,
+          createdBy: restoredBy ?? "system",
+          createdAt: now,
+        });
+        touchedPallets.add(item.palletId);
+      }
+      for (const pid of touchedPallets) await recomputePalletCache(tx, pid, now);
+      await tx
+        .delete(storagePickupRequestItems)
+        .where(eq(storagePickupRequestItems.requestId, requestId));
+      await tx.delete(storagePickupRequests).where(eq(storagePickupRequests.id, requestId));
+    });
+    return { id: requestId, restored: true };
+  }
+
+  // PENDING/CANCELLED: chưa trừ kho → xóa thẳng.
   await db.transaction(async (tx) => {
     await tx
       .delete(storagePickupRequestItems)

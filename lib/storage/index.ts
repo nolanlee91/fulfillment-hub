@@ -19,7 +19,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * unitCount = TỔNG, productName = "A + B", initialUnits = TỔNG, status/pickedUpAt
  * theo tổng tồn. Gọi sau mỗi lần đổi item.
  */
-async function recomputePalletCache(tx: Tx, palletId: string, now: Date) {
+export async function recomputePalletCache(tx: Tx, palletId: string, now: Date) {
   const items = await tx
     .select()
     .from(storagePalletItems)

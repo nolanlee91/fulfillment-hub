@@ -52,7 +52,7 @@ function itemLabel(it: ReqItem): string {
   return it.uom === "PALLET" ? `${head} (whole pallet)` : `${head} × ${it.units} units`;
 }
 
-export default function RequestsClient() {
+export default function RequestsClient({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,9 +96,13 @@ export default function RequestsClient() {
     if (!confirm("Cancel this request?")) return;
     await post(id, "cancel");
   }
-  async function del(id: string) {
-    if (!confirm("Xóa hẳn yêu cầu này? Không hoàn tác.")) return;
-    await post(id, "delete");
+  async function del(r: PickupRequest) {
+    const msg =
+      r.status === "DONE"
+        ? "Đơn này đã thống nhất & đã trừ kho. Xóa sẽ HOÀN LẠI số đã lấy vào tồn kho rồi xóa yêu cầu. Tiếp tục?"
+        : "Xóa hẳn yêu cầu này? Không hoàn tác.";
+    if (!confirm(msg)) return;
+    await post(r.id, "delete");
   }
 
   return (
@@ -211,13 +215,17 @@ export default function RequestsClient() {
                           </Button>
                         </>
                       )}
-                      {r.status !== "DONE" && (
+                      {(r.status !== "DONE" || isSuperAdmin) && (
                         <Button
                           variant="secondary"
                           icon="delete"
                           className="text-xs"
-                          title="Delete request"
-                          onClick={() => del(r.id)}
+                          title={
+                            r.status === "DONE"
+                              ? "Xóa (hoàn kho) — chỉ admin"
+                              : "Delete request"
+                          }
+                          onClick={() => del(r)}
                         >
                           Delete
                         </Button>
