@@ -16,8 +16,9 @@ interface RouteContext {
 /**
  * POST /api/batches/[id]/sort-labels
  * Nhận file PDF label (download từ ClickShip, theo từng batch) → sắp lại các
- * trang theo Kho → Mặt hàng → Mã đơn → trả về PDF mới để in, đóng gói tuần tự.
- * (Kho đứng trước phòng khi 1 batch lẫn 2 kho; batch 1 kho thì coi như không ảnh hưởng.)
+ * trang theo Kho → Mặt hàng → Số lượng → Mã đơn → trả về PDF mới để in, đóng
+ * gói tuần tự. (Cùng mặt hàng gom theo số lượng: hết đơn 6 rồi tới 7, 10… cho
+ * dễ đóng; Kho đứng trước phòng khi 1 batch lẫn 2 kho; batch 1 kho thì không ảnh hưởng.)
  *
  * Khớp trang ↔ Mã đơn bằng cách dò Mã đơn của batch trong text từng trang
  * (không đoán prefix). Trang không nhận ra Mã đơn → đẩy xuống cuối, không mất.
@@ -43,6 +44,7 @@ export const POST = withAuth<RouteContext>(
           productId: orders.productId,
           productName: products.name,
           warehouseCode: orders.warehouseCode,
+          quantity: orders.quantity,
         })
         .from(orders)
         .leftJoin(products, eq(orders.productId, products.id))
@@ -61,12 +63,13 @@ export const POST = withAuth<RouteContext>(
 
       const orderInfo = new Map<
         string,
-        { whRank: number; productKey: string; orderId: string }
+        { whRank: number; productKey: string; quantity: number; orderId: string }
       >();
       for (const r of rows) {
         orderInfo.set(r.orderId, {
           whRank: whRank(r.warehouseCode),
           productKey: (r.productName || r.productId || "").toLowerCase(),
+          quantity: r.quantity ?? 0,
           orderId: r.orderId,
         });
       }
@@ -87,6 +90,7 @@ export const POST = withAuth<RouteContext>(
         index: number;
         whRank: number;
         productKey: string;
+        quantity: number;
         orderId: string;
         matched: boolean;
       };
@@ -99,19 +103,30 @@ export const POST = withAuth<RouteContext>(
               index,
               whRank: info.whRank,
               productKey: info.productKey,
+              quantity: info.quantity,
               orderId: info.orderId,
               matched: true,
             };
           }
         }
-        return { index, whRank: 9, productKey: "￿", orderId: "", matched: false };
+        return {
+          index,
+          whRank: 9,
+          productKey: "￿",
+          quantity: Number.MAX_SAFE_INTEGER,
+          orderId: "",
+          matched: false,
+        };
       });
 
-      // 4. Sắp xếp: Kho → Mặt hàng → Mã đơn. Trang không nhận ra → cuối (giữ thứ tự gốc).
+      // 4. Sắp xếp: Kho → Mặt hàng → Số lượng → Mã đơn. Cùng mặt hàng gom theo số
+      //    lượng tăng dần (hết đơn 6 rồi tới 7, 10…) cho dễ đóng gói. Trang không
+      //    nhận ra → đẩy cuối (giữ thứ tự gốc).
       const sorted = [...pageRefs].sort((a, b) => {
         if (a.whRank !== b.whRank) return a.whRank - b.whRank;
         if (a.productKey !== b.productKey)
           return a.productKey < b.productKey ? -1 : 1;
+        if (a.quantity !== b.quantity) return a.quantity - b.quantity;
         if (a.orderId !== b.orderId) return a.orderId < b.orderId ? -1 : 1;
         return a.index - b.index;
       });

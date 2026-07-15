@@ -337,7 +337,7 @@ export default function BatchesPage() {
                                 }}
                                 disabled={sortingId === b.id}
                                 className="btn btn-secondary"
-                                title="Tải file PDF label (từ ClickShip) lên → sắp lại trang theo mặt hàng để in đóng gói tuần tự"
+                                title="Tải file PDF label lên → sắp lại trang theo mặt hàng rồi số lượng để in đóng gói tuần tự"
                               >
                                 <span className="material-symbols-outlined text-[16px]">sort</span>
                                 {sortingId === b.id ? "Đang sắp..." : "Sắp label"}
