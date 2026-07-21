@@ -18,6 +18,7 @@ interface Match {
   reconciledAt: string | null;
   accountedAt: string | null;
   status: string;
+  matchBy: "REF" | "ORDER";
 }
 
 interface LookupResult {
@@ -27,14 +28,16 @@ interface LookupResult {
 }
 
 /**
- * Parse paste content: chấp nhận newline / comma / tab / semicolon delimiter.
- * Trim whitespace, dedup.
+ * Parse paste content: tách theo DÒNG / phẩy / chấm phẩy / tab (KHÔNG theo dấu cách).
+ * Mỗi đoạn lấy TOKEN ĐẦU làm mã (bỏ ghi chú/tên thừa phía sau trên cùng dòng, vd
+ * "CAV3F2nK Emi" → "CAV3F2nK"). Trim, dedup.
  */
 function parseRefs(raw: string): string[] {
   return Array.from(
     new Set(
       raw
-        .split(/[\s,;]+/)
+        .split(/[\n\r,;\t]+/)
+        .map((seg) => seg.trim().split(/\s+/)[0] ?? "")
         .map((r) => r.trim())
         .filter((r) => r.length > 0),
     ),
@@ -80,7 +83,7 @@ export default function ReconciliationLookupClient() {
       <Card padding="lg" className="mb-4">
         <h3 className="font-bold text-lg mb-1">Find orders by Ref Number</h3>
         <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-          Paste Ref Numbers from your bank email notifications (one per line, or separated by comma / space). The app returns matching reconciled orders + a list of refs that don't match anything yet.
+          Paste Ref Numbers (from bank email) or Order IDs — one per line (or separated by comma / semicolon). Extra text after the code on a line is ignored. The app returns matching reconciled orders (by bank ref, or by order ID for non-ETF proofs) + a list of codes that don't match anything yet.
         </p>
 
         <label className="text-[11px] font-bold tracking-widest uppercase block mb-2" style={{ color: "var(--text-muted)" }}>
@@ -146,6 +149,7 @@ export default function ReconciliationLookupClient() {
                     >
                       <th className="py-2 pr-3">Ref Number</th>
                       <th className="py-2 pr-3">Order ID</th>
+                      <th className="py-2 pr-3">Matched by</th>
                       <th className="py-2 pr-3">Customer</th>
                       <th className="py-2 pr-3">Recipient</th>
                       <th className="py-2 pr-3 text-right">Qty</th>
@@ -158,8 +162,21 @@ export default function ReconciliationLookupClient() {
                   <tbody>
                     {result.matched.map((m) => (
                       <tr key={m.uniqueKey} className="border-t" style={{ borderColor: "var(--border)" }}>
-                        <td className="py-2 pr-3 font-mono text-[12px]">{m.refNumber}</td>
+                        <td className="py-2 pr-3 font-mono text-[12px]">{m.refNumber ?? "—"}</td>
                         <td className="py-2 pr-3 font-mono text-[12px]">{m.orderId}</td>
+                        <td className="py-2 pr-3 text-[11px]">
+                          {m.matchBy === "REF" ? (
+                            <span style={{ color: "var(--text-secondary)" }}>Bank ref</span>
+                          ) : (
+                            <span
+                              className="px-1.5 py-0.5 rounded font-semibold"
+                              style={{ backgroundColor: "rgba(100,116,139,0.12)", color: "#475569" }}
+                              title="Khớp theo Mã đơn — đơn đã đối soát nhưng không có ref (non-ETF)"
+                            >
+                              Order ID · non-ref
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2 pr-3 text-[12px]" style={{ color: "var(--text-secondary)" }}>
                           {m.customerName ?? m.customerId}
                         </td>

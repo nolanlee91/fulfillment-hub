@@ -10,9 +10,11 @@ export const maxDuration = 30;
  * POST /api/reconciliation/lookup-refs
  * Body: { refNumbers: string[] }
  *
- * Kế toán paste list ref number từ email noti → app trả về:
- *  - matched: list đơn đã có ref khớp (kèm customer info, ngày reconciled)
- *  - unmatched: list ref không tìm thấy đơn nào (customer chưa upload, hoặc ref sai)
+ * Kế toán paste list ref number (HOẶC Mã đơn) từ email noti → app trả về:
+ *  - matched: khớp theo REF (ETF) HOẶC theo MÃ ĐƠN (đơn đã đối soát, kể cả non-ETF
+ *    không có ref). Mỗi dòng có `matchBy` = "REF" | "ORDER" để phân biệt.
+ *  - unmatched: token không phải ref, cũng không phải mã đơn đã đối soát
+ *    (khách chưa upload, hoặc gõ sai).
  *
  * STAFF/SUPER_ADMIN only.
  */
@@ -46,36 +48,61 @@ export const POST = withAuth(
         });
       }
 
-      // Query order_payments (per-khoản) join orders + customer name.
-      // Mỗi khoản ETF là 1 dòng → 1 ref có thể khớp đúng 1 khoản của 1 đơn.
-      const rows = await db
-        .select({
-          refNumber: orderPayments.refNumber,
-          orderId: orders.orderId,
-          uniqueKey: orders.uniqueKey,
-          customerId: orders.customerId,
-          customerName: customers.name,
-          name: orders.name,
-          quantity: orders.quantity,
-          paymentMethod: orders.paymentMethod,
-          paymentType: orderPayments.paymentType,
-          codAmount: orders.codAmount,
-          reconciledAt: orderPayments.reconciledAt,
-          accountedAt: orderPayments.accountedAt,
-          status: orders.status,
-        })
+      // Cột chung cho cả 2 kiểu khớp (theo ref / theo mã đơn).
+      const selectCols = {
+        refNumber: orderPayments.refNumber,
+        orderId: orders.orderId,
+        uniqueKey: orders.uniqueKey,
+        customerId: orders.customerId,
+        customerName: customers.name,
+        name: orders.name,
+        quantity: orders.quantity,
+        paymentMethod: orders.paymentMethod,
+        paymentType: orderPayments.paymentType,
+        codAmount: orders.codAmount,
+        reconciledAt: orderPayments.reconciledAt,
+        accountedAt: orderPayments.accountedAt,
+        status: orders.status,
+      };
+
+      // 1. Khớp theo REF NUMBER (ETF). Mỗi khoản ETF 1 dòng.
+      const refRows = await db
+        .select(selectCols)
         .from(orderPayments)
         .innerJoin(orders, eq(orderPayments.orderUniqueKey, orders.uniqueKey))
         .leftJoin(customers, eq(orders.customerId, customers.id))
         .where(inArray(orderPayments.refNumber, refs));
 
-      const matchedRefs = new Set(rows.map((r) => r.refNumber).filter((r): r is string => !!r));
-      const unmatched = refs.filter((r) => !matchedRefs.has(r));
+      const matchedRefs = new Set(
+        refRows.map((r) => r.refNumber).filter((r): r is string => !!r),
+      );
+      const remaining = refs.filter((r) => !matchedRefs.has(r));
+
+      // 2. Token còn lại: thử coi như MÃ ĐƠN đã đối soát (kể cả non-ETF, refNumber=null).
+      //    innerJoin orderPayments → chỉ đơn ĐÃ có khoản đối soát mới ra.
+      let orderRows: typeof refRows = [];
+      if (remaining.length > 0) {
+        orderRows = await db
+          .select(selectCols)
+          .from(orders)
+          .innerJoin(orderPayments, eq(orderPayments.orderUniqueKey, orders.uniqueKey))
+          .leftJoin(customers, eq(orders.customerId, customers.id))
+          .where(inArray(orders.orderId, remaining));
+      }
+      const matchedOrderIds = new Set(orderRows.map((r) => r.orderId));
+
+      // 3. Không phải ref, cũng không phải mã đơn đã đối soát → thật sự không tìm thấy.
+      const unmatched = remaining.filter((r) => !matchedOrderIds.has(r));
+
+      const matched = [
+        ...refRows.map((r) => ({ ...r, matchBy: "REF" as const })),
+        ...orderRows.map((r) => ({ ...r, matchBy: "ORDER" as const })),
+      ];
 
       return NextResponse.json({
         success: true,
         totalInput: refs.length,
-        matched: rows,
+        matched,
         unmatched,
       });
     } catch (error: unknown) {
