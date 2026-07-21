@@ -83,6 +83,12 @@ async function postHandler(req: NextRequest, user: CurrentUser) {
     }
 
     const requestedDate = body.requestedDate ? new Date(body.requestedDate) : null;
+    if (!requestedDate || Number.isNaN(requestedDate.getTime())) {
+      return NextResponse.json(
+        { success: false, error: "Vui lòng chọn ngày giờ muốn lấy hàng" },
+        { status: 400 },
+      );
+    }
     const res = await createRequest({
       customerId,
       items,

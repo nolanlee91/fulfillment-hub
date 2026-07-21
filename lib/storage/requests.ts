@@ -79,6 +79,7 @@ export interface CreateRequestInput {
 
 /** Khách tạo yêu cầu lấy hàng (PENDING, còn sửa được). */
 export async function createRequest(input: CreateRequestInput) {
+  if (!input.requestedDate) throw new Error("Thiếu ngày giờ muốn lấy hàng");
   const norm = await loadAndValidateItems(input.customerId, input.items);
 
   const id = randomUUID();

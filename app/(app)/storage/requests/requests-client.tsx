@@ -47,6 +47,13 @@ function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-CA");
 }
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-CA", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
 function itemLabel(it: ReqItem): string {
   const head = it.productName ? `${it.productName} · ${it.palletCode}` : it.palletCode;
   return it.uom === "PALLET" ? `${head} (whole pallet)` : `${head} × ${it.units} units`;
@@ -154,7 +161,7 @@ export default function RequestsClient({ isSuperAdmin = false }: { isSuperAdmin?
                 <tr key={r.id} className="border-b text-sm align-top">
                   <td className="px-3 py-2">{custName[r.customerId] ?? r.customerId}</td>
                   <td className="px-3 py-2">{fmtDate(r.createdAt)}</td>
-                  <td className="px-3 py-2">{fmtDate(r.requestedDate)}</td>
+                  <td className="px-3 py-2">{fmtDateTime(r.requestedDate)}</td>
                   <td className="px-3 py-2">
                     <ul className="space-y-0.5">
                       {r.items.map((it) => (

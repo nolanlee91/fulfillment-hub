@@ -64,6 +64,19 @@ function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-CA");
 }
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-CA", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+/** ISO (UTC) → chuỗi "YYYY-MM-DDTHH:mm" giờ địa phương cho input datetime-local. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
 function daysStored(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
 }
@@ -194,7 +207,7 @@ export default function MyStorageClient() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-[11px] text-[var(--text-secondary)]">
                     Tạo {fmtDate(r.createdAt)}
-                    {r.requestedDate && ` · muốn lấy ${fmtDate(r.requestedDate)}`}
+                    {r.requestedDate && ` · muốn lấy ${fmtDateTime(r.requestedDate)}`}
                   </div>
                   <span
                     className="text-xs font-semibold"
@@ -350,7 +363,9 @@ function RequestBuilder({
     }
     return m;
   });
-  const [reqDate, setReqDate] = useState(existing?.requestedDate?.slice(0, 10) ?? "");
+  const [reqDate, setReqDate] = useState(
+    existing?.requestedDate ? toLocalInput(existing.requestedDate) : "",
+  );
   const [note, setNote] = useState(existing?.note ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -389,6 +404,12 @@ function RequestBuilder({
       setError("Chọn ít nhất 1 SKU");
       return;
     }
+    if (!reqDate) {
+      setError("Chọn ngày giờ muốn lấy hàng");
+      return;
+    }
+    // datetime-local là giờ địa phương → đổi sang ISO (UTC) để lưu đúng mốc.
+    const requestedDate = new Date(reqDate).toISOString();
 
     setSaving(true);
     try {
@@ -396,8 +417,8 @@ function RequestBuilder({
         ? `/api/storage/requests/${existing.id}`
         : "/api/storage/requests";
       const body = existing
-        ? { action: "edit", items, requestedDate: reqDate || null, note }
-        : { items, requestedDate: reqDate || null, note };
+        ? { action: "edit", items, requestedDate, note }
+        : { items, requestedDate, note };
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -492,11 +513,12 @@ function RequestBuilder({
 
         <label className="flex flex-col gap-1 mb-3">
           <span className="text-xs font-medium text-[var(--text-secondary)]">
-            Ngày muốn lấy (không bắt buộc)
+            Ngày giờ muốn lấy <span className="text-red-600">*</span>
           </span>
           <input
             className="filter-input w-full"
-            type="date"
+            type="datetime-local"
+            required
             value={reqDate}
             onChange={(e) => setReqDate(e.target.value)}
           />
