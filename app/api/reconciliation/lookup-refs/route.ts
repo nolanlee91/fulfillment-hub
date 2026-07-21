@@ -50,6 +50,7 @@ export const POST = withAuth(
 
       // Cột chung cho cả 2 kiểu khớp (theo ref / theo mã đơn).
       const selectCols = {
+        paymentId: orderPayments.id,
         refNumber: orderPayments.refNumber,
         orderId: orders.orderId,
         uniqueKey: orders.uniqueKey,

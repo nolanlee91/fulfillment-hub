@@ -5,6 +5,7 @@ import { Topbar } from "@/components/topbar";
 import { Button, Card } from "@/components/ui";
 
 interface Match {
+  paymentId: string;
   refNumber: string;
   orderId: string;
   uniqueKey: string;
@@ -49,6 +50,8 @@ export default function ReconciliationLookupClient() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LookupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [booking, setBooking] = useState(false);
+  const [bookMsg, setBookMsg] = useState<string | null>(null);
 
   const refs = parseRefs(input);
 
@@ -57,6 +60,7 @@ export default function ReconciliationLookupClient() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setBookMsg(null);
     try {
       const res = await fetch("/api/reconciliation/lookup-refs", {
         method: "POST",
@@ -73,6 +77,46 @@ export default function ReconciliationLookupClient() {
       setError((e as Error).message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function bookAll() {
+    if (!result || result.matched.length === 0) return;
+    const unbooked = result.matched.filter((m) => !m.accountedAt);
+    const already = result.matched.length - unbooked.length;
+    if (unbooked.length === 0) {
+      setBookMsg("Tất cả giao dịch tìm thấy đều đã được book trước đó.");
+      return;
+    }
+    const msg =
+      already > 0
+        ? `Đã có ${already} giao dịch được book trước đó (sẽ bỏ qua).\nBook ${unbooked.length} giao dịch còn lại?`
+        : `Book ${unbooked.length} giao dịch đã tìm thấy?`;
+    if (!confirm(msg)) return;
+
+    setBooking(true);
+    setError(null);
+    setBookMsg(null);
+    try {
+      const res = await fetch("/api/reconciliation/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIds: unbooked.map((m) => m.paymentId) }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || "Book failed");
+        return;
+      }
+      const doneMsg =
+        `Đã book ${data.booked} giao dịch` +
+        (data.alreadyBooked ? ` (bỏ qua ${data.alreadyBooked} đã book)` : "");
+      await runLookup(); // refresh để cập nhật cột Booked (runLookup tự xoá bookMsg)
+      setBookMsg(doneMsg);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBooking(false);
     }
   }
 
@@ -139,7 +183,40 @@ export default function ReconciliationLookupClient() {
 
           {result.matched.length > 0 && (
             <Card padding="lg" className="mb-4">
-              <h3 className="font-bold text-lg mb-3">Matched orders ({result.matched.length})</h3>
+              {(() => {
+                const bookedCount = result.matched.filter((m) => m.accountedAt).length;
+                const unbookedCount = result.matched.length - bookedCount;
+                return (
+                  <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+                    <div>
+                      <h3 className="font-bold text-lg">Matched orders ({result.matched.length})</h3>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        {bookedCount} đã book · {unbookedCount} chưa book
+                      </p>
+                    </div>
+                    <Button
+                      variant="primary"
+                      icon="check_circle"
+                      onClick={bookAll}
+                      disabled={booking || unbookedCount === 0}
+                    >
+                      {booking
+                        ? "Đang book…"
+                        : unbookedCount === 0
+                          ? "Đã book hết"
+                          : `Book ${unbookedCount} giao dịch`}
+                    </Button>
+                  </div>
+                );
+              })()}
+              {bookMsg && (
+                <div
+                  className="mb-3 px-4 py-2.5 rounded text-sm font-semibold"
+                  style={{ backgroundColor: "rgba(74, 222, 128, 0.10)", color: "#15803d" }}
+                >
+                  {bookMsg}
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
