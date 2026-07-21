@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -67,12 +67,32 @@ async function handler(req: NextRequest) {
     )
     .returning({ uniqueKey: orders.uniqueKey });
 
+  // Tự HEAL: đơn đang gắn STUCK nhưng đã có cập nhật trở lại (lastTrackingAt ≥ ngưỡng)
+  // → gỡ cờ. Lưới an toàn nếu processor bỏ sót (chỉ đụng cờ STUCK, không đụng cờ khác).
+  const cleared = await db
+    .update(orders)
+    .set({
+      attentionReason: null,
+      attentionAt: null,
+      attentionNote: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(orders.attentionReason, "STUCK"),
+        sql`${orders.lastTrackingAt} IS NOT NULL`,
+        gte(orders.lastTrackingAt, threshold),
+      ),
+    )
+    .returning({ uniqueKey: orders.uniqueKey });
+
   return NextResponse.json({
     success: true,
     flagged: flagged.length,
+    cleared: cleared.length,
     thresholdBusinessDays: STUCK_THRESHOLD_BUSINESS_DAYS,
     thresholdAt: threshold.toISOString(),
-    message: `Đã đánh dấu ${flagged.length} đơn STUCK (không cập nhật ${STUCK_THRESHOLD_BUSINESS_DAYS} ngày làm việc).`,
+    message: `Đã đánh dấu ${flagged.length} đơn STUCK, gỡ ${cleared.length} đơn đã có cập nhật lại (ngưỡng ${STUCK_THRESHOLD_BUSINESS_DAYS} ngày làm việc).`,
   });
 }
 

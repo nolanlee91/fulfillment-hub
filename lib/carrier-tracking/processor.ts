@@ -285,6 +285,21 @@ export async function processAptEvents(
       update.lastTrackingAt = newLastAt;
     }
 
+    // STUCK = cờ "quá 3 ngày làm việc không cập nhật" (do cron gán). Khi có event
+    // MỚI HƠN (shouldUpdateLast) tức đơn đã chạy tiếp → tự gỡ STUCK. Chỉ gỡ STUCK
+    // và chỉ khi vòng này CHƯA set cờ khác (RETURN_SUSPECTED / newAttention) — các
+    // cờ NOTICE_CARD/ADDRESS_ERROR/DELAYED/RETURN_SUSPECTED mang ý nghĩa riêng, không
+    // gỡ theo chuyển động.
+    if (
+      shouldUpdateLast &&
+      ord.attentionReason === "STUCK" &&
+      update.attentionReason === undefined
+    ) {
+      update.attentionReason = null;
+      update.attentionAt = null;
+      update.attentionNote = null;
+    }
+
     // Skip nếu chỉ có updatedAt (không có thay đổi gì khác)
     if (Object.keys(update).length === 1) continue;
 
