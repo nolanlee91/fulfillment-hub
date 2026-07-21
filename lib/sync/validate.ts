@@ -96,6 +96,7 @@ export async function validateAndAssignAll(customerId?: string): Promise<Validat
     if (!String(order.companyName || "").trim()) missingFields.push("#COMPANYNAME");
     if (!String(order.addressLine1 || "").trim()) missingFields.push("#ADDRESSLINE1");
     if (!String(order.city || "").trim()) missingFields.push("City");
+    if (!String(order.province || "").trim()) missingFields.push("#PROVINCE/STATE");
     if (!String(order.zipcode || "").trim()) missingFields.push("Zipcode");
     const phoneDigits = String(order.phone || "").replace(/\D/g, "");
     if (!phoneDigits) {
