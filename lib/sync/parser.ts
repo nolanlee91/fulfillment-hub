@@ -70,6 +70,18 @@ function normalizePhone(raw: string): { phone: string; valid: boolean } {
 }
 
 /**
+ * Số điện thoại DỰ PHÒNG khi SĐT khách nhập SAI/THIẾU → đơn không bị chặn vì phone
+ * (nhà vận chuyển vẫn cần 1 số hợp lệ để in nhãn). Áp cho MỌI khách.
+ */
+export const FALLBACK_PHONE = "6048373662";
+
+/** Trả về SĐT 10 số hợp lệ; sai/thiếu → dùng FALLBACK_PHONE. */
+export function resolvePhone(raw: string): string {
+  const { phone, valid } = normalizePhone(raw);
+  return valid ? phone : FALLBACK_PHONE;
+}
+
+/**
  * Parse số tiền từ Sheet (có thể có ký tự "$", ",", khoảng trắng).
  * Trả về NaN nếu không hợp lệ hoặc rỗng.
  */
@@ -178,7 +190,8 @@ export async function parseSheet(
     const city = String(row[cols.city] || "").trim();
     const zipcode = String(row[cols.zip] || "").trim();
     const phoneRaw = String(row[cols.phone] || "").trim();
-    const phoneNorm = normalizePhone(phoneRaw);
+    // SĐT sai/thiếu → tự điền số dự phòng (không báo lỗi phone nữa).
+    const phone = resolvePhone(phoneRaw);
 
     // Payment + note
     const note = ghiChuIdx >= 0 ? String(row[ghiChuIdx] || "").trim() : "";
@@ -198,11 +211,7 @@ export async function parseSheet(
     if (!address1) missingFields.push("#ADDRESSLINE1");
     if (!city) missingFields.push("City");
     if (!zipcode) missingFields.push("Zipcode");
-    if (!phoneRaw) {
-      missingFields.push("Phone");
-    } else if (!phoneNorm.valid) {
-      missingFields.push("Phone (sai định dạng)");
-    }
+    // Phone KHÔNG còn là điều kiện ERROR: sai/thiếu đã tự thay bằng FALLBACK_PHONE.
 
     const status = missingFields.length > 0 ? "ERROR" : "READY";
     const errorNote =
@@ -223,7 +232,7 @@ export async function parseSheet(
       province: String(row[cols.province] || "").trim(),
       zipcode,
       country: "Canada",
-      phone: phoneNorm.valid ? phoneNorm.phone : phoneRaw,
+      phone,
       quantity: totalQty,
       paymentMethod,
       codAmount,

@@ -2,6 +2,7 @@ import { db } from "../db";
 import { orders, boxes, boxRules } from "../db/schema";
 import { and, eq, or } from "drizzle-orm";
 import { checkCanadianPostal } from "./postal";
+import { resolvePhone } from "./parser";
 
 export interface ValidateResult {
   total: number;
@@ -65,6 +66,19 @@ export async function validateAndAssignAll(customerId?: string): Promise<Validat
     .from(orders)
     .where(customerId ? and(statusFilter, eq(orders.customerId, customerId)) : statusFilter);
 
+  // Rule: SĐT sai/thiếu → tự điền số DỰ PHÒNG (đơn không bị chặn vì phone). Áp MỌI khách.
+  // Ghi thẳng DB + cập nhật in-memory để vòng validate dưới thấy số mới hợp lệ.
+  for (const order of ordersToProcess) {
+    const resolved = resolvePhone(order.phone || "");
+    if (resolved !== (order.phone || "")) {
+      await db
+        .update(orders)
+        .set({ phone: resolved, updatedAt: new Date() })
+        .where(eq(orders.uniqueKey, order.uniqueKey));
+      order.phone = resolved;
+    }
+  }
+
   const result: ValidateResult = {
     total: ordersToProcess.length,
     validated: 0,
@@ -98,12 +112,8 @@ export async function validateAndAssignAll(customerId?: string): Promise<Validat
     if (!String(order.city || "").trim()) missingFields.push("City");
     if (!String(order.province || "").trim()) missingFields.push("#PROVINCE/STATE");
     if (!String(order.zipcode || "").trim()) missingFields.push("Zipcode");
-    const phoneDigits = String(order.phone || "").replace(/\D/g, "");
-    if (!phoneDigits) {
-      missingFields.push("Phone");
-    } else if (phoneDigits.length !== 10) {
-      missingFields.push("Phone (sai định dạng)");
-    }
+    // Phone KHÔNG còn là điều kiện ERROR: pre-pass ở trên đã thay sai/thiếu bằng
+    // FALLBACK_PHONE nên tới đây SĐT luôn hợp lệ.
 
     if (missingFields.length > 0) {
       updates.push({
