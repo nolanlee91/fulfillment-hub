@@ -82,6 +82,15 @@ export function resolvePhone(raw: string): string {
 }
 
 /**
+ * Chuẩn hoá text từ sheet cho nhãn/CSV: NFKC đưa ký tự Unicode "điệu" (chữ toán học
+ * 𝑹𝒐𝒔𝒂, full-width, ligature…) về ASCII/dạng chuẩn để không bị "??" khi in nhãn.
+ * Tiếng Việt có dấu KHÔNG bị ảnh hưởng (giữ nguyên: "Nguyễn" → "Nguyễn").
+ */
+export function cleanText(v: unknown): string {
+  return String(v ?? "").normalize("NFKC").trim();
+}
+
+/**
  * Parse số tiền từ Sheet (có thể có ký tự "$", ",", khoảng trắng).
  * Trả về NaN nếu không hợp lệ hoặc rỗng.
  */
@@ -184,10 +193,10 @@ export async function parseSheet(
       if (!isNaN(v) && v > 0) totalQty += v;
     }
 
-    const name = String(row[cols.name] || "").trim();
-    const companyName = String(row[cols.company] || "").trim();
-    const address1 = String(row[cols.address1] || "").trim();
-    const city = String(row[cols.city] || "").trim();
+    const name = cleanText(row[cols.name]);
+    const companyName = cleanText(row[cols.company]);
+    const address1 = cleanText(row[cols.address1]);
+    const city = cleanText(row[cols.city]);
     const zipcode = String(row[cols.zip] || "").trim();
     const phoneRaw = String(row[cols.phone] || "").trim();
     // SĐT sai/thiếu → tự điền số dự phòng (không báo lỗi phone nữa).
@@ -220,16 +229,16 @@ export async function parseSheet(
     orders.push({
       orderId,
       orderDate: parseDate(String(row[cols.orderDate] || "")),
-      titleName: String(row[cols.titleName] || "").trim(),
+      titleName: cleanText(row[cols.titleName]),
       name,
-      lastName: String(row[cols.lastName] || "").trim(),
-      titleDept: String(row[cols.titleDept] || "").trim(),
+      lastName: cleanText(row[cols.lastName]),
+      titleDept: cleanText(row[cols.titleDept]),
       companyName,
-      additionalAddressInfo: String(row[cols.addInfo] || "").trim(),
+      additionalAddressInfo: cleanText(row[cols.addInfo]),
       addressLine1: address1,
-      addressLine2: String(row[cols.address2] || "").trim(),
+      addressLine2: cleanText(row[cols.address2]),
       city,
-      province: String(row[cols.province] || "").trim(),
+      province: cleanText(row[cols.province]),
       zipcode,
       country: "Canada",
       phone,
