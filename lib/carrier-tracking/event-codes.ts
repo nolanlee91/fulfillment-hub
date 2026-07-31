@@ -71,6 +71,13 @@ const NOTICE_CARD_CODES = new Set<string>([
 const INFO_ONLY_CODES = new Set<string>([
   "1200", "1203",
   "3000", "3002",
+  // COD / tài chính — KHÔNG phải chuyển động vận chuyển. Đơn COD sau khi GIAO vẫn phát
+  // các event chi trả/hoàn tiền; nếu coi là "chuyển động" sẽ nổi cờ RETURN_SUSPECTED oan.
+  "0152", // COD Payment is being issued
+  "0157", // COD payment arrived, being sent to sender
+  "0158", // OFD - COD Remittance
+  "1214", "1215", "1216", // Refund duty/taxes
+  "2101", // Waiting for COD Remittance return
 ]);
 
 export type TrackingStatus = "DELIVERED" | "FAILED" | "IN_TRANSIT";
