@@ -65,6 +65,7 @@ export default function RequestsClient({ isSuperAdmin = false }: { isSuperAdmin?
   const [loading, setLoading] = useState(true);
   const [fStatus, setFStatus] = useState("");
   const [confirming, setConfirming] = useState<PickupRequest | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   const custName = useMemo(() => {
     const m: Record<string, string> = {};
@@ -127,6 +128,11 @@ export default function RequestsClient({ isSuperAdmin = false }: { isSuperAdmin?
             { value: "", label: "All" },
           ]}
         />
+        <div className="ml-auto">
+          <Button variant="secondary" icon="download" onClick={() => setShowReport(true)}>
+            Xuất báo cáo tháng
+          </Button>
+        </div>
       </div>
 
       <Card padding="none" className="overflow-x-auto">
@@ -257,7 +263,122 @@ export default function RequestsClient({ isSuperAdmin = false }: { isSuperAdmin?
           }}
         />
       )}
+
+      {showReport && (
+        <ReportModal customers={customers} onClose={() => setShowReport(false)} />
+      )}
     </>
+  );
+}
+
+function ReportModal({
+  customers,
+  onClose,
+}: {
+  customers: Customer[];
+  onClose: () => void;
+}) {
+  const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [month, setMonth] = useState(defaultMonth);
+  const [customerId, setCustomerId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function download() {
+    setError("");
+    if (!month) {
+      setError("Chọn tháng");
+      return;
+    }
+    // Tháng "YYYY-MM" → khoảng [ngày 1, ngày cuối tháng].
+    const [y, m] = month.split("-").map(Number);
+    const from = `${month}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const to = `${month}-${String(lastDay).padStart(2, "0")}`;
+
+    setBusy(true);
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (customerId) params.set("customer", customerId);
+      const res = await fetch(`/api/storage/report?${params.toString()}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || "Xuất báo cáo thất bại");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const custName =
+        customerId && customers.find((c) => c.id === customerId)?.name;
+      const custPart = custName ? `_${custName.replace(/[^\w]+/g, "-")}` : "";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `storage-report_${month}${custPart}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-base font-semibold">Báo cáo lưu kho theo tháng</h2>
+          <button onClick={onClose} className="material-symbols-outlined text-[20px]">
+            close
+          </button>
+        </div>
+        <p className="text-xs text-[var(--text-secondary)] mb-4">
+          Xuất Excel tính tiền lưu kho (số ngày × rate) + phí nhập/xuất, theo từng khách.
+        </p>
+        <label className="flex flex-col gap-1 mb-3">
+          <span className="text-xs font-medium text-[var(--text-secondary)]">Tháng</span>
+          <input
+            type="month"
+            className="filter-input w-full"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 mb-4">
+          <span className="text-xs font-medium text-[var(--text-secondary)]">Khách hàng</span>
+          <select
+            className="filter-input w-full"
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+          >
+            <option value="">Tất cả khách</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            Đóng
+          </Button>
+          <Button onClick={download} disabled={busy} icon={busy ? "hourglass_empty" : "download"}>
+            {busy ? "Đang xuất…" : "Tải Excel"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
