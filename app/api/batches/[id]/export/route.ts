@@ -55,7 +55,10 @@ function csvEscape(value: string | number): string {
 
 function normalizePostalCode(z: string | null): string {
   if (!z) return "";
-  return z.replace(/\s+/g, "").toUpperCase();
+  // Bỏ MỌI ký tự không phải chữ/số (gạch, chấm, khoảng trắng, unicode "điệu"…) —
+  // ClickShip/Canada Post chỉ nhận 6 ký tự ANANAN, dính ký tự lạ là không ra label.
+  // NFKC trước để chữ/số full-width về ASCII rồi mới lọc (không mất chữ số).
+  return z.normalize("NFKC").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function buildClickshipXlsx(
