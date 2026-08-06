@@ -102,7 +102,9 @@ export default function InventoryClient() {
           warehouseCode: activeWh,
           productId: addProductId,
           tracked: true,
-          trackedSince: addSince || null,
+          trackedSince: addSince
+            ? new Date(`${addSince}T00:00:00`).toISOString()
+            : null,
         }),
       });
       const data = await res.json();
