@@ -126,6 +126,7 @@ export async function deductOrdersInventory(
           uniqueKey: orders.uniqueKey,
           productId: orders.productId,
           quantity: orders.quantity,
+          itemBreakdown: orders.itemBreakdown,
           province: orders.province,
           country: orders.country,
           orderDate: orders.orderDate,
@@ -141,37 +142,54 @@ export async function deductOrdersInventory(
           ? o.warehouseCode
           : orderWarehouse(o.province, o.country);
 
-      // Chỉ trừ nếu product đang được theo dõi ở kho này.
-      const [cfg] = await db
-        .select({
-          tracked: inventoryTracking.tracked,
-          trackedSince: inventoryTracking.trackedSince,
-        })
-        .from(inventoryTracking)
-        .where(
-          and(
-            eq(inventoryTracking.warehouseCode, warehouseCode),
-            eq(inventoryTracking.productId, o.productId),
-          ),
-        );
-      if (!cfg || !cfg.tracked) continue;
+      // Tab nhiều mặt hàng (vd Baku Serum + Cream): trừ theo TỪNG loại từ breakdown,
+      // KHÔNG trừ product gốc (gốc chỉ là đơn vị đóng gói). Mỗi loại 1 refOrderKey
+      // riêng (`key::variantId`) để giữ idempotent độc lập.
+      const breakdown = o.itemBreakdown;
+      const targets: { productId: string; qty: number; refKey: string }[] =
+        breakdown && Object.keys(breakdown).length > 0
+          ? Object.entries(breakdown)
+              .filter(([, q]) => q > 0)
+              .map(([variantId, q]) => ({
+                productId: variantId,
+                qty: q,
+                refKey: `${o.uniqueKey}::${variantId}`,
+              }))
+          : [{ productId: o.productId, qty: o.quantity, refKey: o.uniqueKey }];
 
-      // Chỉ trừ đơn có ngày ≥ mốc bắt đầu theo dõi (nếu có đặt mốc).
-      if (cfg.trackedSince && o.orderDate && o.orderDate < cfg.trackedSince) {
-        continue;
+      for (const t of targets) {
+        // Chỉ trừ nếu product đang được theo dõi ở kho này.
+        const [cfg] = await db
+          .select({
+            tracked: inventoryTracking.tracked,
+            trackedSince: inventoryTracking.trackedSince,
+          })
+          .from(inventoryTracking)
+          .where(
+            and(
+              eq(inventoryTracking.warehouseCode, warehouseCode),
+              eq(inventoryTracking.productId, t.productId),
+            ),
+          );
+        if (!cfg || !cfg.tracked) continue;
+
+        // Chỉ trừ đơn có ngày ≥ mốc bắt đầu theo dõi (nếu có đặt mốc).
+        if (cfg.trackedSince && o.orderDate && o.orderDate < cfg.trackedSince) {
+          continue;
+        }
+
+        const ok = await recordMovement({
+          warehouseCode,
+          productId: t.productId,
+          delta: -t.qty,
+          type: "ORDER_OUT",
+          refOrderKey: t.refKey,
+          note: "Import label",
+          createdBy,
+          defaultTracked: true,
+        });
+        if (ok) deducted++;
       }
-
-      const ok = await recordMovement({
-        warehouseCode,
-        productId: o.productId,
-        delta: -o.quantity,
-        type: "ORDER_OUT",
-        refOrderKey: o.uniqueKey,
-        note: "Import label",
-        createdBy,
-        defaultTracked: true,
-      });
-      if (ok) deducted++;
     } catch (err) {
       console.error(`[inventory] deduct failed for ${key}:`, err);
     }

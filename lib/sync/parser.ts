@@ -1,4 +1,5 @@
 import { readSheet } from "../sheets/client";
+import { ITEM_SPLIT, normSplitHeader } from "./item-split";
 
 /**
  * Cấu trúc output sau khi parse 1 sheet.
@@ -20,6 +21,9 @@ export interface ParsedOrder {
   country: string;
   phone: string;
   quantity: number;
+  // Tab nhiều mặt hàng: chia số lượng từng loại {variantProductId: qty}. NULL nếu tab
+  // 1 mặt hàng bình thường. quantity vẫn là TỔNG.
+  itemBreakdown: Record<string, number> | null;
   paymentMethod: "PREPAID" | "COD";
   codAmount: number | null;
   note: string;
@@ -111,6 +115,7 @@ function parseMoney(raw: string): number {
 export async function parseSheet(
   spreadsheetId: string,
   sheetName: string,
+  productId?: string,
 ): Promise<ParseResult> {
   const data = await readSheet(spreadsheetId, sheetName);
   const warnings: string[] = [];
@@ -176,6 +181,21 @@ export async function parseSheet(
     warnings.push(`Sheet ${sheetName}: cannot detect quantity columns`);
   }
 
+  // Tab nhiều mặt hàng (vd Baku Serum + Cream): map cột theo header → variantId
+  // để tính breakdown riêng từng loại. Chỉ áp khi productId có trong ITEM_SPLIT.
+  const splitCfg = productId ? ITEM_SPLIT[productId] : undefined;
+  const splitCols: { idx: number; variantId: string }[] = [];
+  if (splitCfg) {
+    for (const c of splitCfg) {
+      const idx = header.findIndex((h) => h === normSplitHeader(c.header));
+      if (idx === -1) {
+        warnings.push(`Sheet ${sheetName}: khong thay cot "${c.header}" cho ${c.variantId}`);
+      } else {
+        splitCols.push({ idx, variantId: c.variantId });
+      }
+    }
+  }
+
   // Parse rows
   const orders: ParsedOrder[] = [];
   for (let i = 1; i < data.length; i++) {
@@ -191,6 +211,17 @@ export async function parseSheet(
     for (const idx of qtyIndexes) {
       const v = Number(row[idx]);
       if (!isNaN(v) && v > 0) totalQty += v;
+    }
+
+    // Chia số lượng từng loại (tab nhiều mặt hàng)
+    let itemBreakdown: Record<string, number> | null = null;
+    if (splitCols.length > 0) {
+      const bd: Record<string, number> = {};
+      for (const { idx, variantId } of splitCols) {
+        const v = Number(row[idx]);
+        if (!isNaN(v) && v > 0) bd[variantId] = (bd[variantId] || 0) + v;
+      }
+      if (Object.keys(bd).length > 0) itemBreakdown = bd;
     }
 
     const name = cleanText(row[cols.name]);
@@ -243,6 +274,7 @@ export async function parseSheet(
       country: "Canada",
       phone,
       quantity: totalQty,
+      itemBreakdown,
       paymentMethod,
       codAmount,
       note,

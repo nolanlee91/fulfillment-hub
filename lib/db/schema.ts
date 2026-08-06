@@ -8,6 +8,7 @@ import {
   uniqueIndex,
   index,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 // ============================================================================
@@ -223,6 +224,10 @@ export const orders = pgTable(
     phone: text("phone"),
 
     quantity: integer("quantity").default(0).notNull(),
+    // Tab chứa NHIỀU mặt hàng trong 1 kiện (vd Baku = Serum + Cream): quantity vẫn
+    // là TỔNG (để tính hộp/cân), còn đây lưu chia từng loại {variantProductId: qty}
+    // để trừ tồn kho riêng. NULL với tab 1 mặt hàng bình thường.
+    itemBreakdown: jsonb("item_breakdown").$type<Record<string, number>>(),
 
     paymentMethod: paymentMethodEnum("payment_method").default("PREPAID").notNull(),
     codAmount: numeric("cod_amount", { precision: 10, scale: 2 }),

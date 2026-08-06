@@ -44,6 +44,11 @@ function hasChanges(
     if (String(a).trim() !== String(b).trim()) return true;
   }
   if (parsed.quantity !== existing.quantity) return true;
+  if (
+    JSON.stringify(parsed.itemBreakdown ?? null) !==
+    JSON.stringify(existing.itemBreakdown ?? null)
+  )
+    return true;
   if (parsed.paymentMethod !== existing.paymentMethod) return true;
   const parsedAmt = parsed.codAmount !== null ? Number(parsed.codAmount) : null;
   const existingAmt = existing.codAmount !== null ? Number(existing.codAmount) : null;
@@ -88,7 +93,11 @@ export async function syncAllSheets(
   // 2. Parallel parse 13 sheet
   const parseResults = await Promise.allSettled(
     sources.map(async (source) => {
-      const result = await parseSheet(source.spreadsheetId, source.sheetName);
+      const result = await parseSheet(
+        source.spreadsheetId,
+        source.sheetName,
+        source.productId,
+      );
       return { source, ...result };
     }),
   );
@@ -155,6 +164,7 @@ export async function syncAllSheets(
           country: order.country,
           phone: order.phone,
           quantity: order.quantity,
+          itemBreakdown: order.itemBreakdown ?? null,
           paymentMethod: order.paymentMethod,
           codAmount: order.codAmount !== null ? String(order.codAmount) : null,
           note: order.note,
@@ -211,6 +221,7 @@ export async function syncAllSheets(
         country: u.parsed.country,
         phone: u.parsed.phone,
         quantity: u.parsed.quantity,
+        itemBreakdown: u.parsed.itemBreakdown ?? null,
         // Cập nhật thông tin phụ
         titleName: u.parsed.titleName,
         lastName: u.parsed.lastName,
