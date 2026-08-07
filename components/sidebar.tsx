@@ -53,6 +53,13 @@ const sections: NavSection[] = [
         roles: ["SUPER_ADMIN", "STAFF"],
       },
       {
+        href: "/my-inventory",
+        icon: "warehouse",
+        label: "Inventory",
+        roles: ["CUSTOMER"],
+        service: "fulfillment",
+      },
+      {
         href: "/import-tracking",
         icon: "upload_file",
         label: "Carrier Tracking",
