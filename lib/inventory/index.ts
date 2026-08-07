@@ -129,7 +129,7 @@ export async function deductOrdersInventory(
           itemBreakdown: orders.itemBreakdown,
           province: orders.province,
           country: orders.country,
-          orderDate: orders.orderDate,
+          shipDate: orders.shipDate,
           warehouseCode: orders.warehouseCode,
         })
         .from(orders)
@@ -173,8 +173,10 @@ export async function deductOrdersInventory(
           );
         if (!cfg || !cfg.tracked) continue;
 
-        // Chỉ trừ đơn có ngày ≥ mốc bắt đầu theo dõi (nếu có đặt mốc).
-        if (cfg.trackedSince && o.orderDate && o.orderDate < cfg.trackedSince) {
+        // Chỉ trừ đơn RỜI KỆ (ship) sau mốc bắt đầu theo dõi (nếu có đặt mốc).
+        // Dùng shipDate (lúc hàng thực sự xuất kho), KHÔNG dùng orderDate — khách
+        // đặt trước cả tuần mới đóng nên orderDate luôn cũ hơn, dễ bị chặn oan.
+        if (cfg.trackedSince && o.shipDate && o.shipDate < cfg.trackedSince) {
           continue;
         }
 
