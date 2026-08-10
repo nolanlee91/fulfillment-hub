@@ -10,18 +10,28 @@ import { deleteObject, keyFromPublicUrl } from "@/lib/storage/r2";
 
 export const maxDuration = 60;
 
-interface ParsedRow {
-  orderId: string;
-  refNumber: string;
+interface ParsedFile {
+  rows: { key: string; refNumber: string }[];
+  keyType: "ORDER" | "TRACKING"; // khóa tra: Order ID hay Tracking Number
+  badTracking: string[]; // tracking sai định dạng (bị Excel ép số) → cảnh báo
+}
+
+/** Tracking bị Excel ép scientific ("1.03136E+15") hoặc mất chữ số → coi là hỏng. */
+function looksCorruptTracking(v: string): boolean {
+  if (/[eE]/.test(v) || v.includes(".") || v.includes(",")) return true;
+  const digits = v.replace(/\D/g, "");
+  return digits.length > 0 && digits.length < 8; // quá ngắn = nghi mất số
 }
 
 /**
- * Parse Excel/CSV file → list (orderId, refNumber).
- * Chấp nhận header (case-insensitive, trim):
- *   - Order ID column: "mã đơn hàng", "order id", "orderid", "order number"
- *   - Ref column:      "mã ref", "ref number", "refnumber", "reference", "ref"
+ * Parse Excel/CSV file → list (key, refNumber) + loại khóa.
+ * Khóa tra chấp nhận MỘT trong hai (auto-detect theo header có mặt):
+ *   - Order ID:  "mã đơn hàng", "order id", "orderid", "order number", "mã đơn"
+ *   - Tracking:  "tracking number", "tracking", "mã tracking", "mã vận đơn", "vận đơn"
+ * Ref (bắt buộc): "mã ref", "ref number", "refnumber", "reference", "ref"
+ * Có cả 2 cột khóa → ưu tiên Order ID.
  */
-async function parseRefFile(buffer: ArrayBuffer): Promise<ParsedRow[]> {
+async function parseRefFile(buffer: ArrayBuffer): Promise<ParsedFile> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
 
@@ -29,32 +39,51 @@ async function parseRefFile(buffer: ArrayBuffer): Promise<ParsedRow[]> {
   if (!sheet) throw new Error("File không có sheet nào");
 
   const ORDER_ALIASES = ["mã đơn hàng", "order id", "orderid", "order number", "mã đơn"];
+  const TRACKING_ALIASES = [
+    "tracking number", "tracking", "tracking no", "tracking#",
+    "mã tracking", "ma tracking", "mã vận đơn", "vận đơn", "mã vandon", "vandon",
+  ];
   const REF_ALIASES = ["mã ref", "ref number", "refnumber", "reference", "ref", "ref no", "mã refnumber"];
 
   const headerRow = sheet.getRow(1);
   let orderCol = 0;
+  let trackingCol = 0;
   let refCol = 0;
   headerRow.eachCell((cell, colNumber) => {
     const v = String(cell.value || "").trim().toLowerCase();
     if (!orderCol && ORDER_ALIASES.includes(v)) orderCol = colNumber;
+    if (!trackingCol && TRACKING_ALIASES.includes(v)) trackingCol = colNumber;
     if (!refCol && REF_ALIASES.includes(v)) refCol = colNumber;
   });
 
-  if (!orderCol || !refCol) {
+  if (!refCol) {
+    throw new Error("File thiếu cột 'Mã Ref' (hoặc tương đương).");
+  }
+  if (!orderCol && !trackingCol) {
     throw new Error(
-      "File thiếu cột bắt buộc. Cần 2 cột: 'Mã đơn hàng' và 'Mã Ref' (hoặc tương đương).",
+      "File thiếu cột khóa tra. Cần 'Mã đơn hàng' HOẶC 'Tracking Number' (kèm 'Mã Ref').",
     );
   }
 
-  const rows: ParsedRow[] = [];
+  const keyType: "ORDER" | "TRACKING" = orderCol ? "ORDER" : "TRACKING";
+  const keyCol = orderCol || trackingCol;
+
+  const rows: { key: string; refNumber: string }[] = [];
+  const badTracking: string[] = [];
   for (let i = 2; i <= sheet.rowCount; i++) {
     const row = sheet.getRow(i);
-    const orderId = String(row.getCell(orderCol).value || "").trim();
-    const refNumber = String(row.getCell(refCol).value || "").trim();
-    if (!orderId || !refNumber) continue;
-    rows.push({ orderId, refNumber });
+    // Ưu tiên .text (hiển thị) để tránh mất chính xác số dài; fallback .value.
+    const rawKey = row.getCell(keyCol).text ?? String(row.getCell(keyCol).value ?? "");
+    const key = String(rawKey).trim();
+    const refNumber = String(row.getCell(refCol).value ?? "").trim();
+    if (!key || !refNumber) continue;
+    if (keyType === "TRACKING" && looksCorruptTracking(key)) {
+      badTracking.push(key);
+      continue;
+    }
+    rows.push({ key, refNumber });
   }
-  return rows;
+  return { rows, keyType, badTracking };
 }
 
 /**
@@ -105,44 +134,56 @@ export const POST = withAuth(
 
       // Parse file
       const buffer = await file.arrayBuffer();
-      let rows: ParsedRow[];
+      let parsed: ParsedFile;
       try {
-        rows = await parseRefFile(buffer);
+        parsed = await parseRefFile(buffer);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         return NextResponse.json({ success: false, error: msg }, { status: 400 });
       }
+      const { rows, keyType, badTracking } = parsed;
 
       if (rows.length === 0) {
+        const extra = badTracking.length
+          ? ` (${badTracking.length} dòng tracking sai định dạng — xuất lại file dạng CSV/text, đừng để Excel tự đổi thành số)`
+          : "";
         return NextResponse.json(
-          { success: false, error: "File không có dòng nào hợp lệ" },
+          { success: false, error: `File không có dòng nào hợp lệ${extra}` },
           { status: 400 },
         );
       }
 
-      // Map orderId → refNumber (dedup, lấy entry cuối nếu duplicate trong file)
-      const refByOrderId: Record<string, string> = {};
-      for (const r of rows) refByOrderId[r.orderId] = r.refNumber;
-      const orderIds = Object.keys(refByOrderId);
+      // Map fileKey (orderId HOẶC tracking) → refNumber (dedup, entry cuối thắng)
+      const refByKey: Record<string, string> = {};
+      for (const r of rows) refByKey[r.key] = r.refNumber;
+      const fileKeys = Object.keys(refByKey);
 
-      // Load orders matching — CUSTOMER chỉ thấy đơn của customer mình
+      // Load orders matching — theo orderId hoặc trackingNumber tùy cột trong file.
+      // CUSTOMER chỉ thấy đơn của customer mình.
+      const keyField = keyType === "ORDER" ? orders.orderId : orders.trackingNumber;
       const dbOrders = await db
         .select({
           uniqueKey: orders.uniqueKey,
           orderId: orders.orderId,
+          trackingNumber: orders.trackingNumber,
           paymentMethod: orders.paymentMethod,
         })
         .from(orders)
-        .where(
-          and(
-            inArray(orders.orderId, orderIds),
-            eq(orders.customerId, customerId),
-          ),
-        );
+        .where(and(inArray(keyField, fileKeys), eq(orders.customerId, customerId)));
 
-      const orderByOrderId = new Map(dbOrders.map((o) => [o.orderId, o]));
-      const matchedOrderIds = new Set(dbOrders.map((d) => d.orderId));
-      const unmatched = orderIds.filter((oid) => !matchedOrderIds.has(oid));
+      // Quy MỌI thứ về khóa orderId để luồng conflict/book phía sau giữ nguyên.
+      const refByOrderId: Record<string, string> = {};
+      const orderByOrderId = new Map<string, (typeof dbOrders)[number]>();
+      const matchedFileKeys = new Set<string>();
+      for (const o of dbOrders) {
+        const fk = keyType === "ORDER" ? o.orderId : (o.trackingNumber ?? "");
+        if (!fk || !(fk in refByKey)) continue;
+        matchedFileKeys.add(fk);
+        refByOrderId[o.orderId] = refByKey[fk];
+        orderByOrderId.set(o.orderId, o);
+      }
+      const orderIds = [...orderByOrderId.keys()];
+      const unmatched = fileKeys.filter((k) => !matchedFileKeys.has(k));
 
       // Load MỌI khoản hiện có (ETF lẫn non-ETF) của những đơn khớp — để phát hiện
       // conflict kể cả khi đơn trước đó chỉ có ảnh non-ETF.
@@ -217,6 +258,7 @@ export const POST = withAuth(
           unmatched: unmatched.length,
           unmatchedOrderIds: unmatched.slice(0, 50),
           skippedCOD: skippedCOD.length,
+          badTracking: badTracking.length,
         });
       }
 
@@ -298,6 +340,8 @@ export const POST = withAuth(
       if (blockedBooked.length > 0)
         messageParts.push(`${blockedBooked.length} đã hạch toán nên không ghi đè`);
       if (skippedCOD.length > 0) messageParts.push(`bỏ qua ${skippedCOD.length} đơn COD`);
+      if (badTracking.length > 0)
+        messageParts.push(`${badTracking.length} tracking sai định dạng (bỏ qua)`);
 
       return NextResponse.json({
         success: true,
@@ -310,6 +354,7 @@ export const POST = withAuth(
         skippedCOD: skippedCOD.length,
         blockedBooked: blockedBooked.length,
         blockedBookedOrderIds: blockedBooked.slice(0, 50),
+        badTracking: badTracking.length,
         message: `Đối soát: ${messageParts.join(", ")}.`,
       });
     } catch (error: unknown) {

@@ -35,6 +35,26 @@ export const GET = withAuth(
       row.font = { italic: true, color: { argb: "FF6B7280" }, size: 10 };
     }
 
+    // Sheet hướng dẫn: khóa tra có thể là Order ID HOẶC Tracking Number.
+    const guide = workbook.addWorksheet("Hướng dẫn");
+    guide.columns = [{ header: "", key: "t", width: 90 }];
+    const lines = [
+      "Cách điền file đối soát:",
+      "",
+      "• Cột khóa: dùng MỘT trong hai — 'Order ID' HOẶC 'Tracking Number'.",
+      "   - Quen theo mã đơn: giữ cột 'Order ID'.",
+      "   - Theo dõi bằng tracking: đổi tên cột đầu thành 'Tracking Number'.",
+      "• Cột 'Ref Number': bắt buộc (mã e-transfer).",
+      "",
+      "LƯU Ý tracking: số tracking dài dễ bị Excel đổi thành 1.03136E+15 (mất số).",
+      "→ Giữ cột tracking ở dạng TEXT, hoặc xuất/lưu file CSV, đừng để Excel tự convert.",
+      "→ App sẽ báo lỗi và bỏ qua các dòng tracking sai định dạng.",
+    ];
+    lines.forEach((t, i) => {
+      const r = guide.addRow({ t });
+      if (i === 0) r.font = { bold: true, size: 12 };
+    });
+
     const buffer = await workbook.xlsx.writeBuffer();
 
     return new NextResponse(buffer, {
