@@ -19,7 +19,7 @@ interface Match {
   reconciledAt: string | null;
   accountedAt: string | null;
   status: string;
-  matchBy: "REF" | "ORDER";
+  matchBy: "REF" | "ORDER" | "TRACKING";
 }
 
 interface LookupResult {
@@ -244,6 +244,14 @@ export default function ReconciliationLookupClient() {
                         <td className="py-2 pr-3 text-[11px]">
                           {m.matchBy === "REF" ? (
                             <span style={{ color: "var(--text-secondary)" }}>Bank ref</span>
+                          ) : m.matchBy === "TRACKING" ? (
+                            <span
+                              className="px-1.5 py-0.5 rounded font-semibold"
+                              style={{ backgroundColor: "rgba(100,116,139,0.12)", color: "#475569" }}
+                              title="Khớp theo Tracking Number — đơn đã đối soát"
+                            >
+                              Tracking
+                            </span>
                           ) : (
                             <span
                               className="px-1.5 py-0.5 rounded font-semibold"

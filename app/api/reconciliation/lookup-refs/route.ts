@@ -11,9 +11,9 @@ export const maxDuration = 30;
  * Body: { refNumbers: string[] }
  *
  * Kế toán paste list ref number (HOẶC Mã đơn) từ email noti → app trả về:
- *  - matched: khớp theo REF (ETF) HOẶC theo MÃ ĐƠN (đơn đã đối soát, kể cả non-ETF
- *    không có ref). Mỗi dòng có `matchBy` = "REF" | "ORDER" để phân biệt.
- *  - unmatched: token không phải ref, cũng không phải mã đơn đã đối soát
+ *  - matched: khớp theo REF (ETF), theo MÃ ĐƠN, hoặc theo TRACKING NUMBER (đơn đã
+ *    đối soát, kể cả non-ETF không có ref). `matchBy` = "REF" | "ORDER" | "TRACKING".
+ *  - unmatched: token không phải ref, không phải mã đơn/tracking đã đối soát
  *    (khách chưa upload, hoặc gõ sai).
  *
  * STAFF/SUPER_ADMIN only.
@@ -53,6 +53,7 @@ export const POST = withAuth(
         paymentId: orderPayments.id,
         refNumber: orderPayments.refNumber,
         orderId: orders.orderId,
+        trackingNumber: orders.trackingNumber,
         uniqueKey: orders.uniqueKey,
         customerId: orders.customerId,
         customerName: customers.name,
@@ -92,12 +93,28 @@ export const POST = withAuth(
       }
       const matchedOrderIds = new Set(orderRows.map((r) => r.orderId));
 
-      // 3. Không phải ref, cũng không phải mã đơn đã đối soát → thật sự không tìm thấy.
-      const unmatched = remaining.filter((r) => !matchedOrderIds.has(r));
+      // 3. Token còn lại: thử coi như TRACKING NUMBER của đơn đã đối soát.
+      const remainingAfterOrder = remaining.filter((r) => !matchedOrderIds.has(r));
+      let trackingRows: typeof refRows = [];
+      if (remainingAfterOrder.length > 0) {
+        trackingRows = await db
+          .select(selectCols)
+          .from(orders)
+          .innerJoin(orderPayments, eq(orderPayments.orderUniqueKey, orders.uniqueKey))
+          .leftJoin(customers, eq(orders.customerId, customers.id))
+          .where(inArray(orders.trackingNumber, remainingAfterOrder));
+      }
+      const matchedTrackings = new Set(
+        trackingRows.map((r) => r.trackingNumber).filter((t): t is string => !!t),
+      );
+
+      // 4. Không phải ref, mã đơn, hay tracking đã đối soát → thật sự không tìm thấy.
+      const unmatched = remainingAfterOrder.filter((r) => !matchedTrackings.has(r));
 
       const matched = [
         ...refRows.map((r) => ({ ...r, matchBy: "REF" as const })),
         ...orderRows.map((r) => ({ ...r, matchBy: "ORDER" as const })),
+        ...trackingRows.map((r) => ({ ...r, matchBy: "TRACKING" as const })),
       ];
 
       return NextResponse.json({

@@ -130,7 +130,7 @@ function UploadSection() {
           </a>
         </div>
         <p className="text-xs mb-5" style={{ color: "var(--text-muted)" }}>
-          Excel file (.xlsx) with 2 columns: <b>Order ID</b> + <b>Ref Number</b> (from your bank email notification). The app matches each Order ID and assigns the Ref to your orders.
+          Excel file (.xlsx) with 2 columns: <b>Order ID</b> + <b>Ref Number</b> (from your bank email notification). The Order ID column accepts either the Order ID or the tracking number — the app matches each row and assigns the Ref to your orders.
         </p>
 
         <label
@@ -184,7 +184,7 @@ function UploadSection() {
           <div className="grid grid-cols-4 gap-3 mb-4">
             <ResultCard label="Added" value={result.added} accent="emerald" hint="New payments assigned" />
             <ResultCard label="Updated" value={result.updated} accent="sky" hint="Replaced wrong ref" />
-            <ResultCard label="Unmatched" value={result.unmatched} accent="red" hint="Order ID not found" />
+            <ResultCard label="Unmatched" value={result.unmatched} accent="red" hint="Order ID / tracking not found" />
             <ResultCard label="COD skipped" value={result.skippedCOD} accent="slate" hint="COD orders don't need reconciliation" />
           </div>
 
@@ -202,7 +202,7 @@ function UploadSection() {
               }}
             >
               <p className="font-semibold mb-2">
-                Order IDs not found ({result.unmatchedOrderIds.length}
+                Order IDs / trackings not found ({result.unmatchedOrderIds.length}
                 {result.unmatched > result.unmatchedOrderIds.length ? `+, showing first 50` : ""}):
               </p>
               <p className="font-mono text-[11px] leading-relaxed">

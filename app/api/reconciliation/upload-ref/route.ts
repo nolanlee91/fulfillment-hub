@@ -95,6 +95,7 @@ async function parseRefFile(buffer: ArrayBuffer): Promise<ParsedFile> {
  *   Nếu KHÔNG có conflict nào → pha 1 apply luôn (không cần popup).
  *
  * CUSTOMER role: chỉ match đơn của customer mình (security).
+ * Cột "Mã đơn hàng" nhận cả Mã đơn LẪN Tracking Number (fallback khi không khớp mã đơn).
  * COD: bỏ qua (đối soát chỉ áp prepaid).
  * Đơn đã có khoản ETF BOOKED: không cho Update, chỉ cho Bổ sung.
  */
@@ -182,12 +183,39 @@ export const POST = withAuth(
         refByOrderId[o.orderId] = refByKey[fk];
         orderByOrderId.set(o.orderId, o);
       }
+
+      // Fallback: key không khớp theo cột đã nhận diện → thử field còn lại
+      // (vd header "Mã đơn hàng" nhưng khách dán mã tracking, hoặc ngược lại).
+      const missingKeys = fileKeys.filter((k) => !matchedFileKeys.has(k));
+      if (missingKeys.length > 0) {
+        const altField = keyType === "ORDER" ? orders.trackingNumber : orders.orderId;
+        const altOrders = await db
+          .select({
+            uniqueKey: orders.uniqueKey,
+            orderId: orders.orderId,
+            trackingNumber: orders.trackingNumber,
+            paymentMethod: orders.paymentMethod,
+          })
+          .from(orders)
+          .where(and(inArray(altField, missingKeys), eq(orders.customerId, customerId)));
+        for (const o of altOrders) {
+          const fk = keyType === "ORDER" ? (o.trackingNumber ?? "") : o.orderId;
+          if (!fk || !(fk in refByKey) || matchedFileKeys.has(fk)) continue;
+          if (orderByOrderId.has(o.orderId)) continue; // đơn đã khớp qua key chính
+          matchedFileKeys.add(fk);
+          refByOrderId[o.orderId] = refByKey[fk];
+          orderByOrderId.set(o.orderId, o);
+        }
+      }
+
       const orderIds = [...orderByOrderId.keys()];
       const unmatched = fileKeys.filter((k) => !matchedFileKeys.has(k));
 
       // Load MỌI khoản hiện có (ETF lẫn non-ETF) của những đơn khớp — để phát hiện
       // conflict kể cả khi đơn trước đó chỉ có ảnh non-ETF.
-      const matchedKeys = dbOrders.map((o) => o.uniqueKey);
+      const matchedKeys = Array.from(
+        new Set(Array.from(orderByOrderId.values()).map((o) => o.uniqueKey)),
+      );
       const existingPayments = matchedKeys.length
         ? await db
             .select({
