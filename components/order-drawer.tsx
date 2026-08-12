@@ -106,14 +106,6 @@ const PAYMENT_TYPE_LABEL: Record<string, string> = {
   MONEY_ORDER: "Money order",
 };
 
-/**
- * Proof là ảnh render trực tiếp được (R2 luôn có đuôi ảnh) hay link ngoài
- * (Drive, ngân hàng...) → link ngoài mở tab mới thay vì <img>.
- */
-function isDirectImageUrl(url: string): boolean {
-  return /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
-}
-
 function ReconciliationSection({
   order,
   role,
@@ -130,7 +122,6 @@ function ReconciliationSection({
   const [payments, setPayments] = useState<DrawerPayment[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [proofLink, setProofLink] = useState("");
   const [uploading, setUploading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -209,16 +200,13 @@ function ReconciliationSection({
   }
 
   async function runUpload() {
-    const link = proofLink.trim();
-    if (!file && !link) return;
+    if (!file) return;
     setUploading(true);
     setError(null);
     try {
       const fd = new FormData();
       fd.append("paymentType", paymentType);
-      // Link được ưu tiên nếu khách vừa chọn file vừa dán link (API cũng vậy)
-      if (link) fd.append("proofLink", link);
-      else if (file) fd.append("file", file);
+      fd.append("file", file);
       const res = await fetch(
         `/api/orders/${encodeURIComponent(order.uniqueKey)}/payment-proof`,
         { method: "POST", body: fd },
@@ -226,7 +214,6 @@ function ReconciliationSection({
       const data = await res.json();
       if (data.success) {
         setFile(null);
-        setProofLink("");
         await load();
         onUpdate?.();
       } else {
@@ -287,7 +274,7 @@ function ReconciliationSection({
                 <span className="font-mono text-[12px] truncate" title={p.refNumber}>
                   {p.refNumber}
                 </span>
-              ) : p.proofUrl && isDirectImageUrl(p.proofUrl) ? (
+              ) : p.proofUrl ? (
                 <button
                   type="button"
                   onClick={() => setZoomUrl(p.proofUrl)}
@@ -301,18 +288,6 @@ function ReconciliationSection({
                     style={{ borderColor: "var(--border)" }}
                   />
                 </button>
-              ) : p.proofUrl ? (
-                <a
-                  href={p.proofUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold truncate"
-                  style={{ backgroundColor: "rgba(100,116,139,0.12)", color: "#475569" }}
-                  title={p.proofUrl}
-                >
-                  <span className="material-symbols-outlined text-[14px]">link</span>
-                  Open proof link
-                </a>
               ) : (
                 <span style={{ color: "var(--text-muted)" }}>—</span>
               )}
@@ -376,50 +351,35 @@ function ReconciliationSection({
           </div>
         ))}
 
-      {/* Customer: thêm chứng từ non-ETF (append) — file ảnh HOẶC dán link. ETF up qua trang Reconciliation. */}
+      {/* Customer: thêm ảnh chứng từ non-ETF (append). ETF up qua trang Reconciliation. */}
       {role === "CUSTOMER" && (
-        <div className="w-full py-2.5 space-y-2">
-          <div className="flex items-center gap-2 w-full">
-            <label
-              className="flex-1 cursor-pointer px-3 py-1.5 rounded text-[11px] truncate transition-colors"
-              style={{
-                backgroundColor: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                color: file ? "var(--text-primary)" : "var(--text-muted)",
-              }}
-              title={file?.name ?? "Add payment proof (non-ETF)"}
-            >
-              {file ? file.name : "Add proof image (non-ETF)"}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-            <button
-              onClick={runUpload}
-              disabled={(!file && !proofLink.trim()) || uploading}
-              className="px-3 py-1.5 rounded text-[11px] font-semibold transition-colors disabled:opacity-40 shrink-0"
-              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
-            >
-              {uploading ? "..." : "Upload"}
-            </button>
-          </div>
-          <input
-            type="url"
-            value={proofLink}
-            onChange={(e) => setProofLink(e.target.value)}
-            disabled={uploading}
-            placeholder="…or paste proof link (https://)"
-            className="w-full px-3 py-1.5 rounded text-[11px]"
+        <div className="flex items-center gap-2 w-full py-2.5">
+          <label
+            className="flex-1 cursor-pointer px-3 py-1.5 rounded text-[11px] truncate transition-colors"
             style={{
               backgroundColor: "var(--bg-tertiary)",
               border: "1px solid var(--border)",
-              color: "var(--text-primary)",
+              color: file ? "var(--text-primary)" : "var(--text-muted)",
             }}
-          />
+            title={file?.name ?? "Add payment proof (non-ETF)"}
+          >
+            {file ? file.name : "Add proof image (non-ETF)"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+          <button
+            onClick={runUpload}
+            disabled={!file || uploading}
+            className="px-3 py-1.5 rounded text-[11px] font-semibold transition-colors disabled:opacity-40 shrink-0"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+          >
+            {uploading ? "..." : "Upload"}
+          </button>
         </div>
       )}
 
