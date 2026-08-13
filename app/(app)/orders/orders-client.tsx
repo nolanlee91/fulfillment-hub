@@ -139,6 +139,7 @@ export default function OrdersClient({ role }: { role: Role }) {
 
 function OrdersPageContent({ role }: { role: Role }) {
   const isCustomer = role === "CUSTOMER";
+  const isAdmin = role === "SUPER_ADMIN";
   const searchParams = useSearchParams();
   const { map: flagMap } = useFlagMap();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -505,7 +506,7 @@ function OrdersPageContent({ role }: { role: Role }) {
               {message}
             </span>
           )}
-          {!isCustomer && eligibleToBook.length > 0 && (
+          {isAdmin && eligibleToBook.length > 0 && (
             <Button
               icon="task_alt"
               onClick={bookAllFiltered}

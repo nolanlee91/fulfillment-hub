@@ -13,7 +13,7 @@ export const maxDuration = 60;
  * của các đơn này (tiện book cả list đã lọc thay vì tick từng đơn).
  *
  * Idempotent: chỉ đụng khoản accountedAt null; khoản đã book giữ nguyên người/ngày.
- * Recompute summary mức đơn cho từng đơn bị ảnh hưởng. STAFF/SUPER_ADMIN.
+ * Recompute summary mức đơn cho từng đơn bị ảnh hưởng. Chỉ SUPER_ADMIN.
  */
 export const POST = withAuth(
   async (req, user) => {
@@ -72,5 +72,5 @@ export const POST = withAuth(
       return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
   },
-  { roles: ["STAFF", "SUPER_ADMIN"] },
+  { roles: ["SUPER_ADMIN"] },
 );
