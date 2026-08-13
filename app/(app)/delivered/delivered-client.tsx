@@ -193,6 +193,29 @@ export default function DeliveredClient({ role }: { role: Role }) {
     }
   }
 
+  // Book hàng loạt: đơn ĐÃ đối soát (reconciledAt) nhưng CHƯA book (accountedAt null).
+  const [bookingAll, setBookingAll] = useState(false);
+  const eligibleToBook = orders.filter((o) => o.reconciledAt && !o.accountedAt);
+  async function bookAllFiltered() {
+    const keys = eligibleToBook.map((o) => o.uniqueKey);
+    if (keys.length === 0) return;
+    if (!window.confirm(`Hạch toán (book) ${keys.length} đơn đã đối soát nhưng chưa book?`)) return;
+    setBookingAll(true);
+    try {
+      const res = await fetch("/api/orders/accounted-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uniqueKeys: keys }),
+      });
+      const data = await res.json();
+      if (!data.success) { alert("Book lỗi: " + (data.error || "unknown")); return; }
+      await loadOrders({ silent: true });
+      alert(`Đã book ${data.booked} khoản (${data.orders} đơn).`);
+    } finally {
+      setBookingAll(false);
+    }
+  }
+
   const filteredProducts = filterCustomer
     ? productOpts.filter((p) => (p as FilterOption & { customerId: string }).customerId === filterCustomer)
     : productOpts;
@@ -270,6 +293,15 @@ export default function DeliveredClient({ role }: { role: Role }) {
             </span>
             <span>Delivery rate on track</span>
           </div>
+          {!isCustomer && eligibleToBook.length > 0 && (
+            <Button
+              icon="task_alt"
+              onClick={bookAllFiltered}
+              disabled={bookingAll}
+            >
+              {bookingAll ? "Booking..." : `Book all (${eligibleToBook.length})`}
+            </Button>
+          )}
           <Button
             variant="secondary"
             icon="download"

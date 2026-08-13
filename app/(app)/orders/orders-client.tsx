@@ -226,6 +226,29 @@ function OrdersPageContent({ role }: { role: Role }) {
     }
   }
 
+  // Book hàng loạt: đơn ĐÃ đối soát (reconciledAt) nhưng CHƯA book (accountedAt null).
+  const [bookingAll, setBookingAll] = useState(false);
+  const eligibleToBook = orders.filter((o) => o.reconciledAt && !o.accountedAt);
+  async function bookAllFiltered() {
+    const keys = eligibleToBook.map((o) => o.uniqueKey);
+    if (keys.length === 0) return;
+    if (!window.confirm(`Hạch toán (book) ${keys.length} đơn đã đối soát nhưng chưa book?`)) return;
+    setBookingAll(true);
+    try {
+      const res = await fetch("/api/orders/accounted-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uniqueKeys: keys }),
+      });
+      const data = await res.json();
+      if (!data.success) { alert("Book lỗi: " + (data.error || "unknown")); return; }
+      await loadOrders({ silent: true });
+      alert(`Đã book ${data.booked} khoản (${data.orders} đơn).`);
+    } finally {
+      setBookingAll(false);
+    }
+  }
+
   function toggleSelect(uniqueKey: string) {
     const next = new Set(selectedKeys);
     if (next.has(uniqueKey)) next.delete(uniqueKey);
@@ -481,6 +504,15 @@ function OrdersPageContent({ role }: { role: Role }) {
             >
               {message}
             </span>
+          )}
+          {!isCustomer && eligibleToBook.length > 0 && (
+            <Button
+              icon="task_alt"
+              onClick={bookAllFiltered}
+              disabled={bookingAll || creating || deleting}
+            >
+              {bookingAll ? "Booking..." : `Book all (${eligibleToBook.length})`}
+            </Button>
           )}
           {/* Nút "Export" (xuất danh sách Excel header tiếng Việt) tạm ẩn — không ai
               dùng và dễ nhầm với template upload ở trang Batches. Logic exportFile

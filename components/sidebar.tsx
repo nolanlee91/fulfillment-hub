@@ -37,9 +37,7 @@ const sections: NavSection[] = [
     label: "Operations",
     items: [
       { href: "/orders", icon: "inventory_2", label: "Active Orders", service: "fulfillment" },
-      { href: "/flags", icon: "flag", label: "Flagged", service: "fulfillment" },
       { href: "/delivered", icon: "task_alt", label: "Delivered", service: "fulfillment" },
-      { href: "/failed", icon: "assignment_return", label: "Failed", service: "fulfillment" },
       {
         href: "/batches",
         icon: "package_2",
@@ -78,6 +76,9 @@ const sections: NavSection[] = [
         label: "Payment Lookup",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
+      // Ít dùng → để cuối
+      { href: "/flags", icon: "flag", label: "Flagged", service: "fulfillment" },
+      { href: "/failed", icon: "assignment_return", label: "Failed", service: "fulfillment" },
     ],
   },
   {
