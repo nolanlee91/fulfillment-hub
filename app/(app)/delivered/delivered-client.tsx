@@ -90,7 +90,6 @@ export default function DeliveredClient({ role }: { role: Role }) {
   const [customers, setCustomers] = useState<FilterOption[]>([]);
   const [productOpts, setProductOpts] = useState<FilterOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
   const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
   const [listKey, setListKey] = useState(0);
   const [page, setPage] = useState(1);
@@ -134,39 +133,6 @@ export default function DeliveredClient({ role }: { role: Role }) {
         }
       });
   }, []);
-
-  async function exportFile() {
-    setExporting(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("page", "delivered");
-      if (!isCustomer && filterCustomer) params.set("customer", filterCustomer);
-      if (filterProduct) params.set("product", filterProduct);
-      if (filterPayment) params.set("payment", filterPayment);
-      applyReconFilter(params, filterRecon);
-      if (search) params.set("search", search);
-
-      const res = await fetch(`/api/orders/export?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Unknown error" }));
-        alert("Export failed: " + (data.error || res.statusText));
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const cd = res.headers.get("Content-Disposition") || "";
-      const m = cd.match(/filename="([^"]+)"/);
-      a.download = m ? m[1] : `orders-delivered-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } finally {
-      setExporting(false);
-    }
-  }
 
   // Toggle "đã hạch toán" — optimistic, không refetch để giữ DOM.
   async function toggleAccounted(o: Order) {
@@ -302,14 +268,6 @@ export default function DeliveredClient({ role }: { role: Role }) {
               {bookingAll ? "Booking..." : `Book all (${eligibleToBook.length})`}
             </Button>
           )}
-          <Button
-            variant="secondary"
-            icon="download"
-            onClick={exportFile}
-            disabled={exporting || orders.length === 0}
-          >
-            {exporting ? "Exporting..." : "Export"}
-          </Button>
         </div>
       </div>
 

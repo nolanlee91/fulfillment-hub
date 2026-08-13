@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Topbar } from "@/components/topbar";
 import { Button, Card } from "@/components/ui";
+import { Dropdown } from "@/components/ui/dropdown";
 
 interface Match {
   paymentId: string;
@@ -52,6 +53,44 @@ export default function ReconciliationLookupClient() {
   const [error, setError] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
   const [bookMsg, setBookMsg] = useState<string | null>(null);
+
+  // Báo cáo "đơn chờ book" theo khách
+  const [custList, setCustList] = useState<{ id: string; name: string }[]>([]);
+  const [reportCust, setReportCust] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/orders", { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setCustList(d.data.customers); })
+      .catch(() => {});
+  }, []);
+
+  async function exportReport() {
+    if (!reportCust) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/reconciliation/report?customer=${encodeURIComponent(reportCust)}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({ error: "Unknown error" }));
+        alert("Xuất báo cáo lỗi: " + (d.error || res.statusText));
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = cd.match(/filename="([^"]+)"/);
+      a.download = m ? m[1] : "cho-book.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const refs = parseRefs(input);
 
@@ -123,6 +162,31 @@ export default function ReconciliationLookupClient() {
   return (
     <>
       <Topbar title="Payment Lookup" subtitle="Verify customer reconciliation against bank refs" />
+
+      <Card padding="lg" className="mb-4">
+        <h3 className="font-bold text-lg mb-1">Xuất báo cáo đơn chờ book</h3>
+        <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+          Chọn khách → xuất Excel các khoản đã có bằng chứng (khách up ref/ảnh) nhưng CHƯA book. Cột "Bằng chứng": ETF ghi mã ref; non-ETF là link "Xem ảnh" bấm mở được.
+        </p>
+        <div className="flex items-end gap-3">
+          <div style={{ minWidth: 260 }}>
+            <label className="text-[11px] font-bold tracking-widest uppercase block mb-2" style={{ color: "var(--text-muted)" }}>
+              Khách hàng
+            </label>
+            <Dropdown
+              value={reportCust}
+              onChange={setReportCust}
+              options={[
+                { value: "", label: "— Chọn khách —" },
+                ...custList.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
+          </div>
+          <Button icon="download" onClick={exportReport} disabled={!reportCust || exporting}>
+            {exporting ? "Đang xuất..." : "Xuất báo cáo"}
+          </Button>
+        </div>
+      </Card>
 
       <Card padding="lg" className="mb-4">
         <h3 className="font-bold text-lg mb-1">Find orders by Ref Number</h3>
