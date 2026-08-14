@@ -461,10 +461,11 @@ export const inventoryMovements = pgTable(
       .references(() => products.id),
     delta: integer("delta").notNull(), // + nhập, − xuất
     type: inventoryMovementTypeEnum("type").notNull(),
-    // ORDER_OUT: đơn nguồn. SET NULL khi xóa đơn → không chặn xóa, giữ ledger audit.
-    refOrderKey: text("ref_order_key").references(() => orders.uniqueKey, {
-      onDelete: "set null",
-    }),
+    // ORDER_OUT: đơn nguồn. KHÔNG đặt FK về orders.uniqueKey vì tab nhiều mặt hàng
+    // (Baku Serum/Cream) trừ theo từng loại với ref tổng hợp `uniqueKey::variantId`
+    // — key này KHÔNG phải mã đơn thật nên FK sẽ chặn. Idempotent vẫn đảm bảo bằng
+    // unique index bên dưới. Xóa đơn không tự null ref (chỉ ảnh hưởng audit).
+    refOrderKey: text("ref_order_key"),
     note: text("note"),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
