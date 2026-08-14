@@ -5,9 +5,12 @@ import { eq, inArray, and, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
 import { loadEastAvailable, pickWarehouse } from "@/lib/inventory/routing";
+import { computeShortfalls } from "@/lib/inventory/stock-check";
 
 const CreateBatchSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
+  // force=true: bỏ qua cảnh báo thiếu tồn kho, tạo batch luôn (staff đã xác nhận).
+  force: z.boolean().optional(),
 });
 
 /**
@@ -88,7 +91,7 @@ export const POST = withAuth(
   async (req) => {
   try {
     const body = await req.json();
-    const { uniqueKeys } = CreateBatchSchema.parse(body);
+    const { uniqueKeys, force } = CreateBatchSchema.parse(body);
 
     // Filter chỉ READY + lấy paymentMethod để split + geo để gán kho.
     // Sort theo syncedAt (FIFO) cho khớp định tuyến ở danh sách đơn.
@@ -98,6 +101,7 @@ export const POST = withAuth(
         paymentMethod: orders.paymentMethod,
         productId: orders.productId,
         quantity: orders.quantity,
+        itemBreakdown: orders.itemBreakdown,
         province: orders.province,
         country: orders.country,
       })
@@ -134,9 +138,35 @@ export const POST = withAuth(
     const eastAvail = await loadEastAvailable();
     const eastKeys: string[] = [];
     const westKeys: string[] = [];
+    const assigned: {
+      warehouseCode: "EAST" | "WEST";
+      productId: string;
+      quantity: number;
+      itemBreakdown: Record<string, number> | null;
+    }[] = [];
     for (const o of validOrders) {
       const wh = pickWarehouse(o, eastAvail);
       (wh === "EAST" ? eastKeys : westKeys).push(o.uniqueKey);
+      assigned.push({
+        warehouseCode: wh,
+        productId: o.productId,
+        quantity: o.quantity,
+        itemBreakdown: o.itemBreakdown,
+      });
+    }
+
+    // Chặn "hết hàng vẫn cho đóng": nếu lô đơn vượt tồn khả dụng ở kho được gán,
+    // trả cảnh báo (chưa tạo batch). Staff xác nhận (force) mới tạo tiếp.
+    if (!force) {
+      const shortfalls = await computeShortfalls(assigned);
+      if (shortfalls.length > 0) {
+        return NextResponse.json({
+          success: true,
+          needsConfirm: true,
+          shortfalls,
+          message: `Thiếu tồn kho ${shortfalls.length} mặt hàng — kiểm tra trước khi đóng.`,
+        });
+      }
     }
 
     const now = new Date();

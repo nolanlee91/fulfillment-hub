@@ -272,7 +272,11 @@ function OrdersPageContent({ role }: { role: Role }) {
   async function createBatch() {
     if (selectedKeys.size === 0) return;
     if (!confirm(`Create batch for ${selectedKeys.size} orders? (Non-READY orders will be skipped)`)) return;
+    await postCreateBatch(false);
+  }
 
+  // force=true khi staff đã xác nhận bỏ qua cảnh báo thiếu tồn kho.
+  async function postCreateBatch(force: boolean) {
     setCreating(true);
     setMessage(null);
     try {
@@ -281,9 +285,31 @@ function OrdersPageContent({ role }: { role: Role }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uniqueKeys: Array.from(selectedKeys),
+          force,
         }),
       });
       const data = await res.json();
+
+      // Thiếu tồn kho → hỏi lại trước khi đóng (không tạo batch cho tới khi đồng ý).
+      if (data.needsConfirm && Array.isArray(data.shortfalls)) {
+        const lines = data.shortfalls
+          .map(
+            (s: { warehouseCode: string; productName: string; demand: number; available: number; shortBy: number }) =>
+              `• ${s.productName} (kho ${s.warehouseCode === "EAST" ? "ON" : "BC"}): cần ${s.demand}, còn ${s.available} → THIẾU ${s.shortBy}`,
+          )
+          .join("\n");
+        const ok = confirm(
+          `⚠️ Không đủ tồn kho cho lô này:\n\n${lines}\n\nVẫn tạo batch? (nên bổ sung hàng hoặc bỏ bớt đơn thiếu trước)`,
+        );
+        if (ok) {
+          await postCreateBatch(true);
+        } else {
+          setMessage("Đã huỷ tạo batch do thiếu tồn kho.");
+          setTimeout(() => setMessage(null), 6000);
+        }
+        return;
+      }
+
       if (data.success) {
         setMessage(data.message);
         setSelectedKeys(new Set());
