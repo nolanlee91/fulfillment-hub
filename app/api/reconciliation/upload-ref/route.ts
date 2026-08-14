@@ -154,10 +154,15 @@ export const POST = withAuth(
         );
       }
 
-      // Map fileKey (orderId HOẶC tracking) → refNumber (dedup, entry cuối thắng)
-      const refByKey: Record<string, string> = {};
-      for (const r of rows) refByKey[r.key] = r.refNumber;
-      const fileKeys = Object.keys(refByKey);
+      // Map fileKey (orderId HOẶC tracking) → DANH SÁCH mã ref.
+      // Giữ MỌI mã ref KHÁC nhau của cùng 1 khóa (cho phép 1 đơn nhiều khoản ngay
+      // trong 1 file); chỉ bỏ khi cùng khóa + cùng mã (trùng y hệt).
+      const refsByKey: Record<string, string[]> = {};
+      for (const r of rows) {
+        const list = (refsByKey[r.key] ??= []);
+        if (!list.includes(r.refNumber)) list.push(r.refNumber);
+      }
+      const fileKeys = Object.keys(refsByKey);
 
       // Load orders matching — theo orderId hoặc trackingNumber tùy cột trong file.
       // CUSTOMER chỉ thấy đơn của customer mình.
@@ -173,14 +178,14 @@ export const POST = withAuth(
         .where(and(inArray(keyField, fileKeys), eq(orders.customerId, customerId)));
 
       // Quy MỌI thứ về khóa orderId để luồng conflict/book phía sau giữ nguyên.
-      const refByOrderId: Record<string, string> = {};
+      const refsByOrderId: Record<string, string[]> = {};
       const orderByOrderId = new Map<string, (typeof dbOrders)[number]>();
       const matchedFileKeys = new Set<string>();
       for (const o of dbOrders) {
         const fk = keyType === "ORDER" ? o.orderId : (o.trackingNumber ?? "");
-        if (!fk || !(fk in refByKey)) continue;
+        if (!fk || !(fk in refsByKey)) continue;
         matchedFileKeys.add(fk);
-        refByOrderId[o.orderId] = refByKey[fk];
+        refsByOrderId[o.orderId] = refsByKey[fk];
         orderByOrderId.set(o.orderId, o);
       }
 
@@ -200,10 +205,10 @@ export const POST = withAuth(
           .where(and(inArray(altField, missingKeys), eq(orders.customerId, customerId)));
         for (const o of altOrders) {
           const fk = keyType === "ORDER" ? (o.trackingNumber ?? "") : o.orderId;
-          if (!fk || !(fk in refByKey) || matchedFileKeys.has(fk)) continue;
+          if (!fk || !(fk in refsByKey) || matchedFileKeys.has(fk)) continue;
           if (orderByOrderId.has(o.orderId)) continue; // đơn đã khớp qua key chính
           matchedFileKeys.add(fk);
-          refByOrderId[o.orderId] = refByKey[fk];
+          refsByOrderId[o.orderId] = refsByKey[fk];
           orderByOrderId.set(o.orderId, o);
         }
       }
@@ -311,23 +316,26 @@ export const POST = withAuth(
         touchedKeys.add(uniqueKey);
       };
 
-      // 1) Auto-add các đơn chưa có khoản ETF
+      // 1) Auto-add các đơn chưa có khoản ETF — chèn MỌI mã ref của đơn đó.
       for (const oid of autoAddOrderIds) {
         const o = orderByOrderId.get(oid)!;
-        await insertEtf(o.uniqueKey, refByOrderId[oid]);
-        added++;
+        for (const ref of refsByOrderId[oid] ?? []) {
+          await insertEtf(o.uniqueKey, ref);
+          added++;
+        }
       }
 
       // 2) Conflict → theo resolution (mặc định "add" nếu thiếu để không mất dữ liệu)
       for (const c of conflicts) {
         const o = orderByOrderId.get(c.orderId)!;
         const choice = resolutions?.[c.orderId] ?? "add";
+        const fileRefs = refsByOrderId[c.orderId] ?? [];
         if (choice === "update") {
           if (!c.canUpdate) {
             blockedBooked.push(c.orderId);
             continue; // đơn đã booked — không cho ghi đè
           }
-          // Xóa MỌI khoản CHƯA booked cũ (kể cả ảnh non-ETF) + dọn object R2, rồi thêm mã ETF mới.
+          // Xóa MỌI khoản CHƯA booked cũ (kể cả ảnh non-ETF) + dọn object R2, rồi thêm MỌI mã ETF mới.
           const unbooked = payByKey.get(o.uniqueKey)?.unbooked ?? [];
           for (const u of unbooked) {
             if (u.proofUrl) {
@@ -349,11 +357,20 @@ export const POST = withAuth(
                 isNull(orderPayments.accountedAt),
               ),
             );
-          await insertEtf(o.uniqueKey, refByOrderId[c.orderId]);
+          for (const ref of fileRefs) await insertEtf(o.uniqueKey, ref);
           updated++;
         } else {
-          await insertEtf(o.uniqueKey, refByOrderId[c.orderId]);
-          added++;
+          // Bổ sung: chèn các mã file CHƯA có trên đơn (bỏ mã trùng y hệt đã tồn tại).
+          const existingEtfRefs = new Set(
+            (payByKey.get(o.uniqueKey)?.items ?? [])
+              .filter((it) => it.type === "ETF" && it.ref)
+              .map((it) => it.ref as string),
+          );
+          for (const ref of fileRefs) {
+            if (existingEtfRefs.has(ref)) continue;
+            await insertEtf(o.uniqueKey, ref);
+            added++;
+          }
         }
       }
 
