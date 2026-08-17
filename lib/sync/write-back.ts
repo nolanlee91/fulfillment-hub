@@ -333,13 +333,15 @@ export async function syncTrackingBatch(
 }
 
 /**
- * Ghi 1 ghi chú (vd "Hủy trước khi pick up") vào cột Tracking URL của 1 đơn trên
- * sheet nguồn — dùng khi huỷ đơn trước lúc carrier pickup. Chỉ đụng ô Tracking URL,
- * giữ nguyên các cột khác. Trả về {ok, reason}.
+ * Ghi giá trị vào cột Tracking Number và/hoặc Tracking URL của 1 đơn trên sheet
+ * nguồn (chỉ đụng ô được truyền, giữ nguyên các cột khác). Dùng cho:
+ *   - Huỷ trước pickup: { trackingUrl: "Hủy trước khi pick up" }
+ *   - Hết hàng:         { trackingNumber: "hết hàng", trackingUrl: "hết hàng" }
+ * Trả về {ok, reason}.
  */
-export async function writeSheetTrackingUrlNote(
+export async function writeSheetFields(
   uniqueKey: string,
-  noteText: string,
+  fields: { trackingNumber?: string; trackingUrl?: string },
 ): Promise<{ ok: boolean; reason?: string }> {
   const [o] = await db
     .select({
@@ -391,13 +393,22 @@ export async function writeSheetTrackingUrlNote(
     if (rowIndex === -1) continue;
 
     const rowNum = rowIndex + 1;
+    const updates: { range: string; value: string }[] = [];
+    if (fields.trackingNumber !== undefined) {
+      updates.push({
+        range: `'${cfg.sheetName}'!${colLetter(hdr.colTracking)}${rowNum}`,
+        value: fields.trackingNumber,
+      });
+    }
+    if (fields.trackingUrl !== undefined) {
+      updates.push({
+        range: `'${cfg.sheetName}'!${colLetter(hdr.colTrackingUrl)}${rowNum}`,
+        value: fields.trackingUrl,
+      });
+    }
+    if (updates.length === 0) return { ok: true };
     try {
-      await writeBatch(cfg.spreadsheetId, [
-        {
-          range: `'${cfg.sheetName}'!${colLetter(hdr.colTrackingUrl)}${rowNum}`,
-          value: noteText,
-        },
-      ]);
+      await writeBatch(cfg.spreadsheetId, updates);
       return { ok: true };
     } catch (e) {
       lastReason = e instanceof Error ? e.message : String(e);

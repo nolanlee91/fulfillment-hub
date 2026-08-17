@@ -45,6 +45,12 @@ const sections: NavSection[] = [
         roles: ["SUPER_ADMIN", "STAFF"],
       },
       {
+        href: "/out-of-stock",
+        icon: "production_quantity_limits",
+        label: "Hết hàng",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+      {
         href: "/inventory",
         icon: "warehouse",
         label: "Inventory",

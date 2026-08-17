@@ -4,8 +4,7 @@ import { orders, batches } from "@/lib/db/schema";
 import { eq, inArray, and, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/api-guard";
-import { loadEastAvailable, pickWarehouse } from "@/lib/inventory/routing";
-import { computeShortfalls } from "@/lib/inventory/stock-check";
+import { allocateBatch } from "@/lib/inventory/stock-check";
 
 const CreateBatchSchema = z.object({
   uniqueKeys: z.array(z.string()).min(1),
@@ -126,50 +125,31 @@ export const POST = withAuth(
       );
     }
 
-    const prepaidKeys = validOrders
-      .filter((o) => o.paymentMethod === "PREPAID")
-      .map((o) => o.uniqueKey);
-    const codKeys = validOrders
-      .filter((o) => o.paymentMethod === "COD")
-      .map((o) => o.uniqueKey);
+    // Phân bổ kho + tách đơn thiếu tồn (greedy FIFO, breakdown-aware, WEST hữu hạn).
+    const alloc = await allocateBatch(validOrders);
 
-    // Gán kho đóng cho từng đơn (region + tồn kho E, greedy FIFO). Lưu để trừ tồn
-    // đúng kho lúc import label (đơn East fallback về BC không trừ nhầm kho E).
-    const eastAvail = await loadEastAvailable();
-    const eastKeys: string[] = [];
-    const westKeys: string[] = [];
-    const assigned: {
-      warehouseCode: "EAST" | "WEST";
-      productId: string;
-      quantity: number;
-      itemBreakdown: Record<string, number> | null;
-    }[] = [];
-    for (const o of validOrders) {
-      const wh = pickWarehouse(o, eastAvail);
-      (wh === "EAST" ? eastKeys : westKeys).push(o.uniqueKey);
-      assigned.push({
-        warehouseCode: wh,
-        productId: o.productId,
-        quantity: o.quantity,
-        itemBreakdown: o.itemBreakdown,
+    // Có đơn thiếu hàng & chưa xác nhận → hỏi trước (chưa tạo/tách gì).
+    if (!force && alloc.shortKeys.length > 0) {
+      return NextResponse.json({
+        success: true,
+        needsConfirm: true,
+        okCount: alloc.okKeys.length,
+        shortCount: alloc.shortKeys.length,
+        shortSummary: alloc.shortSummary,
+        message: `${alloc.shortKeys.length} đơn thiếu tồn kho sẽ chuyển sang "Hết hàng".`,
       });
     }
 
-    // Chặn "hết hàng vẫn cho đóng": nếu lô đơn vượt tồn khả dụng ở kho được gán,
-    // trả cảnh báo (chưa tạo batch). Staff xác nhận (force) mới tạo tiếp.
-    if (!force) {
-      const shortfalls = await computeShortfalls(assigned);
-      if (shortfalls.length > 0) {
-        return NextResponse.json({
-          success: true,
-          needsConfirm: true,
-          shortfalls,
-          message: `Thiếu tồn kho ${shortfalls.length} mặt hàng — kiểm tra trước khi đóng.`,
-        });
-      }
-    }
-
     const now = new Date();
+    const okSet = new Set(alloc.okKeys);
+    const okOrders = validOrders.filter((o) => okSet.has(o.uniqueKey));
+    const prepaidKeys = okOrders
+      .filter((o) => o.paymentMethod === "PREPAID")
+      .map((o) => o.uniqueKey);
+    const codKeys = okOrders
+      .filter((o) => o.paymentMethod === "COD")
+      .map((o) => o.uniqueKey);
+
     const created: Array<{ batchNo: string; platform: "CLICKSHIP" | "EST"; count: number }> = [];
 
     if (prepaidKeys.length > 0) {
@@ -183,11 +163,7 @@ export const POST = withAuth(
       });
       await db
         .update(orders)
-        .set({
-          status: "EXPORTED",
-          batchId: batchNo,
-          updatedAt: now,
-        })
+        .set({ status: "EXPORTED", batchId: batchNo, updatedAt: now })
         .where(inArray(orders.uniqueKey, prepaidKeys));
       created.push({ batchNo, platform: "CLICKSHIP", count: prepaidKeys.length });
     }
@@ -203,39 +179,49 @@ export const POST = withAuth(
       });
       await db
         .update(orders)
-        .set({
-          status: "EXPORTED",
-          batchId: batchNo,
-          updatedAt: now,
-        })
+        .set({ status: "EXPORTED", batchId: batchNo, updatedAt: now })
         .where(inArray(orders.uniqueKey, codKeys));
       created.push({ batchNo, platform: "EST", count: codKeys.length });
     }
 
-    // Lưu kho đóng cho các đơn vừa EXPORTED.
+    // Lưu kho đóng cho các đơn vừa EXPORTED (theo phân bổ).
+    const eastKeys = alloc.okKeys.filter((k) => alloc.warehouseByKey.get(k) === "EAST");
+    const westKeys = alloc.okKeys.filter((k) => alloc.warehouseByKey.get(k) === "WEST");
     if (eastKeys.length > 0) {
-      await db
-        .update(orders)
-        .set({ warehouseCode: "EAST" })
-        .where(inArray(orders.uniqueKey, eastKeys));
+      await db.update(orders).set({ warehouseCode: "EAST" }).where(inArray(orders.uniqueKey, eastKeys));
     }
     if (westKeys.length > 0) {
+      await db.update(orders).set({ warehouseCode: "WEST" }).where(inArray(orders.uniqueKey, westKeys));
+    }
+
+    // Đơn thiếu tồn → OUT_OF_STOCK (tách khỏi luồng, chờ xử lý ở tab Hết hàng).
+    if (alloc.shortKeys.length > 0) {
       await db
         .update(orders)
-        .set({ warehouseCode: "WEST" })
-        .where(inArray(orders.uniqueKey, westKeys));
+        .set({
+          status: "OUT_OF_STOCK",
+          errorNote: "Thiếu tồn kho khi tạo batch",
+          updatedAt: now,
+        })
+        .where(inArray(orders.uniqueKey, alloc.shortKeys));
     }
 
     const summary = created
       .map((c) => `${c.batchNo} (${c.platform === "CLICKSHIP" ? "Thường" : "COD"}: ${c.count} đơn)`)
       .join(", ");
+    const parts: string[] = [];
+    if (created.length > 0) parts.push(`Đã tạo ${created.length} batch: ${summary}`);
+    else parts.push("Không tạo batch (không đơn nào đủ hàng)");
+    if (alloc.shortKeys.length > 0) parts.push(`${alloc.shortKeys.length} đơn thiếu hàng → Hết hàng`);
+    if (skipped > 0) parts.push(`bỏ qua ${skipped} đơn không READY`);
 
     return NextResponse.json({
       success: true,
       batches: created,
-      updated: validOrders.length,
+      updated: okOrders.length,
+      outOfStock: alloc.shortKeys.length,
       skipped,
-      message: `Đã tạo ${created.length} batch: ${summary}${skipped > 0 ? ` (bỏ qua ${skipped} đơn không READY)` : ""}`,
+      message: parts.join(". ") + ".",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

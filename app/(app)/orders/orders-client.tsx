@@ -290,21 +290,26 @@ function OrdersPageContent({ role }: { role: Role }) {
       });
       const data = await res.json();
 
-      // Thiếu tồn kho → hỏi lại trước khi đóng (không tạo batch cho tới khi đồng ý).
-      if (data.needsConfirm && Array.isArray(data.shortfalls)) {
-        const lines = data.shortfalls
-          .map(
-            (s: { warehouseCode: string; productName: string; demand: number; available: number; shortBy: number }) =>
-              `• ${s.productName} (kho ${s.warehouseCode === "EAST" ? "ON" : "BC"}): cần ${s.demand}, còn ${s.available} → THIẾU ${s.shortBy}`,
-          )
-          .join("\n");
+      // Có đơn thiếu tồn → hỏi trước khi tách sang "Hết hàng".
+      if (data.needsConfirm) {
+        const lines = Array.isArray(data.shortSummary)
+          ? data.shortSummary
+              .map(
+                (s: { productName: string; shortOrders: number }) =>
+                  `• ${s.productName}: ${s.shortOrders} đơn thiếu`,
+              )
+              .join("\n")
+          : "";
         const ok = confirm(
-          `⚠️ Không đủ tồn kho cho lô này:\n\n${lines}\n\nVẫn tạo batch? (nên bổ sung hàng hoặc bỏ bớt đơn thiếu trước)`,
+          `⚠️ Thiếu tồn kho.\n\n` +
+            `${data.okCount ?? 0} đơn đủ hàng → tạo batch\n` +
+            `${data.shortCount ?? 0} đơn thiếu hàng → chuyển sang "Hết hàng"\n\n` +
+            `${lines}\n\nTiếp tục?`,
         );
         if (ok) {
           await postCreateBatch(true);
         } else {
-          setMessage("Đã huỷ tạo batch do thiếu tồn kho.");
+          setMessage("Đã huỷ.");
           setTimeout(() => setMessage(null), 6000);
         }
         return;

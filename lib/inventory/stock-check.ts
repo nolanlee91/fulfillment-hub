@@ -13,23 +13,8 @@ import { db } from "@/lib/db";
 import { orders, inventoryTracking, products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { effectiveWarehouse } from "./routing";
+import { provinceToRegion } from "@/lib/geo/province";
 import type { WarehouseCode } from "./index";
-
-export interface Shortfall {
-  warehouseCode: WarehouseCode;
-  productId: string;
-  productName: string;
-  demand: number;
-  available: number;
-  shortBy: number;
-}
-
-interface DemandOrder {
-  warehouseCode: WarehouseCode;
-  productId: string;
-  quantity: number;
-  itemBreakdown: Record<string, number> | null;
-}
 
 /** 1 đơn → các dòng nhu cầu tồn kho (tách theo variant nếu có breakdown). */
 function demandLines(o: {
@@ -46,15 +31,42 @@ function demandLines(o: {
   return [{ productId: o.productId, qty: o.quantity }];
 }
 
+interface AllocOrder {
+  uniqueKey: string;
+  productId: string;
+  quantity: number;
+  itemBreakdown: Record<string, number> | null;
+  province: string | null;
+  country: string | null;
+}
+
+export interface BatchAllocation {
+  /** Đơn đủ hàng → tạo batch. */
+  okKeys: string[];
+  /** Đơn thiếu hàng → chuyển OUT_OF_STOCK. */
+  shortKeys: string[];
+  /** Kho đã gán cho từng đơn đủ hàng. */
+  warehouseByKey: Map<string, WarehouseCode>;
+  /** Tóm tắt thiếu theo sản phẩm (cho hộp xác nhận). */
+  shortSummary: {
+    productId: string;
+    productName: string;
+    shortOrders: number;
+  }[];
+}
+
 /**
- * Tính các dòng thiếu tồn cho lô đơn sắp đóng (đã gán kho).
- * `assigned`: đơn kèm kho đã chọn (EAST/WEST). Đơn này đang READY (chưa EXPORTED)
- * nên KHÔNG bị tính vào "đã cam kết".
+ * Phân bổ kho + phát hiện đơn thiếu tồn cho lô sắp tạo batch (greedy FIFO,
+ * breakdown-aware, WEST hữu hạn cho product đang track).
+ *
+ * Quy tắc kho: đơn region EAST thử kho EAST trước (mọi loại phải được track + đủ ở
+ * EAST); không được thì thử WEST; WEST không track loại đó = vô hạn (kho gốc đủ
+ * hàng). Không kho nào đủ → đơn THIẾU (OUT_OF_STOCK).
  */
-export async function computeShortfalls(
-  assigned: DemandOrder[],
-): Promise<Shortfall[]> {
-  // 1) Tồn on_hand của product ĐANG track (theo kho).
+export async function allocateBatch(
+  ordersIn: AllocOrder[],
+): Promise<BatchAllocation> {
+  // Tồn khả dụng theo (kho::product) = on_hand(tracked) − đã cam kết EXPORTED.
   const track = await db
     .select({
       wh: inventoryTracking.warehouseCode,
@@ -63,16 +75,9 @@ export async function computeShortfalls(
       onHand: inventoryTracking.onHand,
     })
     .from(inventoryTracking);
-  const onHand = new Map<string, number>(); // `wh::pid` → onHand
-  const trackedSet = new Set<string>();
-  for (const t of track) {
-    if (!t.tracked) continue;
-    onHand.set(`${t.wh}::${t.pid}`, t.onHand);
-    trackedSet.add(`${t.wh}::${t.pid}`);
-  }
-  if (trackedSet.size === 0) return []; // không đếm tồn gì → không chặn
+  const avail = new Map<string, number>();
+  for (const t of track) if (t.tracked) avail.set(`${t.wh}::${t.pid}`, t.onHand);
 
-  // 2) Đã cam kết = đơn EXPORTED (chưa import label nên on_hand chưa trừ).
   const committed = await db
     .select({
       productId: orders.productId,
@@ -84,47 +89,70 @@ export async function computeShortfalls(
     })
     .from(orders)
     .where(eq(orders.status, "EXPORTED"));
-  const used = new Map<string, number>();
   for (const c of committed) {
     const wh = effectiveWarehouse(c);
     for (const d of demandLines(c)) {
       const k = `${wh}::${d.productId}`;
-      if (!trackedSet.has(k)) continue;
-      used.set(k, (used.get(k) ?? 0) + d.qty);
+      if (avail.has(k)) avail.set(k, (avail.get(k) ?? 0) - d.qty);
     }
   }
 
-  // 3) Nhu cầu của lô đơn sắp đóng.
-  const demand = new Map<string, number>();
-  for (const o of assigned) {
-    for (const d of demandLines(o)) {
-      const k = `${o.warehouseCode}::${d.productId}`;
-      if (!trackedSet.has(k)) continue; // product không track ở kho này → bỏ qua
-      demand.set(k, (demand.get(k) ?? 0) + d.qty);
+  // Đủ hàng ở 1 kho? EAST: MỌI loại phải track + đủ. WEST: loại không track = vô hạn.
+  const fitsEast = (lines: { productId: string; qty: number }[]) =>
+    lines.every((l) => {
+      const k = `EAST::${l.productId}`;
+      return avail.has(k) && (avail.get(k) ?? 0) >= l.qty;
+    });
+  const fitsWest = (lines: { productId: string; qty: number }[]) =>
+    lines.every((l) => {
+      const k = `WEST::${l.productId}`;
+      return !avail.has(k) || (avail.get(k) ?? 0) >= l.qty;
+    });
+  const consume = (wh: WarehouseCode, lines: { productId: string; qty: number }[]) => {
+    for (const l of lines) {
+      const k = `${wh}::${l.productId}`;
+      if (avail.has(k)) avail.set(k, (avail.get(k) ?? 0) - l.qty);
+    }
+  };
+
+  const okKeys: string[] = [];
+  const shortKeys: string[] = [];
+  const warehouseByKey = new Map<string, WarehouseCode>();
+  const shortByProduct = new Map<string, number>();
+
+  for (const o of ordersIn) {
+    const lines = demandLines(o);
+    const region = provinceToRegion(o.province, o.country);
+
+    let placed: WarehouseCode | null = null;
+    if (region === "EAST" && fitsEast(lines)) placed = "EAST";
+    else if (fitsWest(lines)) placed = "WEST";
+
+    if (placed) {
+      consume(placed, lines);
+      warehouseByKey.set(o.uniqueKey, placed);
+      okKeys.push(o.uniqueKey);
+    } else {
+      shortKeys.push(o.uniqueKey);
+      // Ghi nhận loại nào gây thiếu (ở WEST — kho gốc).
+      for (const l of lines) {
+        const k = `WEST::${l.productId}`;
+        if (avail.has(k) && (avail.get(k) ?? 0) < l.qty) {
+          shortByProduct.set(l.productId, (shortByProduct.get(l.productId) ?? 0) + 1);
+        }
+      }
     }
   }
-  if (demand.size === 0) return [];
 
-  // 4) Đối chiếu: khả dụng = on_hand − đã cam kết.
   const nameRows = await db.select({ id: products.id, name: products.name }).from(products);
   const nameMap = new Map(nameRows.map((r) => [r.id, r.name]));
+  const shortSummary = [...shortByProduct.entries()]
+    .map(([productId, shortOrders]) => ({
+      productId,
+      productName: nameMap.get(productId) ?? productId,
+      shortOrders,
+    }))
+    .sort((a, b) => b.shortOrders - a.shortOrders);
 
-  const out: Shortfall[] = [];
-  for (const [k, dem] of demand) {
-    const avail = (onHand.get(k) ?? 0) - (used.get(k) ?? 0);
-    if (dem > avail) {
-      const [wh, pid] = k.split("::");
-      out.push({
-        warehouseCode: wh as WarehouseCode,
-        productId: pid,
-        productName: nameMap.get(pid) ?? pid,
-        demand: dem,
-        available: avail,
-        shortBy: dem - avail,
-      });
-    }
-  }
-  // Nặng nhất trước.
-  out.sort((a, b) => b.shortBy - a.shortBy);
-  return out;
+  return { okKeys, shortKeys, warehouseByKey, shortSummary };
 }

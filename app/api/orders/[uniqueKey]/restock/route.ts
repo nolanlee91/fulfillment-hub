@@ -4,7 +4,7 @@ import { orders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
 import { restockOrder } from "@/lib/inventory";
-import { writeSheetTrackingUrlNote } from "@/lib/sync/write-back";
+import { writeSheetFields } from "@/lib/sync/write-back";
 
 const CANCEL_NOTE = "Hủy trước khi pick up";
 
@@ -68,7 +68,7 @@ export const POST = withAuth(
             updatedAt: new Date(),
           })
           .where(eq(orders.uniqueKey, uniqueKey));
-        sheet = await writeSheetTrackingUrlNote(uniqueKey, CANCEL_NOTE);
+        sheet = await writeSheetFields(uniqueKey, { trackingUrl: CANCEL_NOTE });
       }
 
       const parts: string[] = [];
