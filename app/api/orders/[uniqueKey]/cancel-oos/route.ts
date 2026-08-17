@@ -40,11 +40,11 @@ export const POST = withAuth(
         trackingUrl: OOS_NOTE,
       });
 
-      // 2) Chuyển đơn sang Thất bại.
+      // 2) Chuyển đơn sang Huỷ (CANCELLED — không phải FAILED; FAILED chỉ cho hàng return).
       await db
         .update(orders)
         .set({
-          status: "FAILED",
+          status: "CANCELLED",
           lastTrackingEvent: "Huỷ - hết hàng",
           lastTrackingAt: new Date(),
           errorNote: `Huỷ do hết hàng (${user.username})`,

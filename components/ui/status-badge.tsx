@@ -10,7 +10,8 @@ export type OrderStatus =
   | "IN_TRANSIT"
   | "DELIVERED"
   | "FAILED"
-  | "OUT_OF_STOCK";
+  | "OUT_OF_STOCK"
+  | "CANCELLED";
 
 export type AttentionReason =
   | "ADDRESS_ERROR"
@@ -32,6 +33,7 @@ const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   DELIVERED: "Delivered",
   FAILED: "Failed",
   OUT_OF_STOCK: "Out of Stock",
+  CANCELLED: "Cancelled",
 };
 
 const ATTENTION_LABEL: Record<AttentionReason, string> = {

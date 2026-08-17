@@ -27,6 +27,8 @@ export const orderStatusEnum = pgEnum("order_status", [
   "FAILED",
   // Thiếu tồn kho lúc tạo batch → tách khỏi luồng, chờ xử lý ở tab "Hết hàng".
   "OUT_OF_STOCK",
+  // Huỷ đơn (hết hàng / huỷ trước pickup). FAILED chỉ dành cho hàng bị RETURN.
+  "CANCELLED",
 ]);
 
 export const paymentMethodEnum = pgEnum("payment_method", ["PREPAID", "COD"]);

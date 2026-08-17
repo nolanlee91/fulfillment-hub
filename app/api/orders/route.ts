@@ -49,9 +49,11 @@ export const GET = withAuth(async (req, user) => {
       conditions.push(ne(orders.status, "FAILED"));
       // OUT_OF_STOCK có tab riêng "Hết hàng" — không lẫn vào danh sách xử lý.
       conditions.push(ne(orders.status, "OUT_OF_STOCK"));
+      // Đơn đã huỷ → terminal, ẩn khỏi danh sách xử lý.
+      conditions.push(ne(orders.status, "CANCELLED"));
     }
     if (status) {
-      const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED" | "LABEL_CREATED" | "OUT_OF_STOCK">;
+      const statusList = status.split(",") as Array<"READY" | "ERROR" | "ERROR_UPDATED" | "NEW" | "EXPORTED" | "LABEL_CREATED" | "OUT_OF_STOCK" | "CANCELLED">;
       if (statusList.length === 1) {
         conditions.push(eq(orders.status, statusList[0]));
       } else {

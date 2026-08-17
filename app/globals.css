@@ -140,6 +140,11 @@ body {
   color: #be185d;
   border: 1px solid rgba(190, 24, 93, 0.20);
 }
+.status-CANCELLED {
+  background: rgba(100, 116, 139, 0.10);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.20);
+}
 
 /* === Attention badges === */
 .attention-ADDRESS_ERROR {

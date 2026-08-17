@@ -62,7 +62,8 @@ export const POST = withAuth(
         await db
           .update(orders)
           .set({
-            status: "FAILED",
+            // CANCELLED (huỷ), KHÔNG phải FAILED — FAILED chỉ dành cho hàng bị return.
+            status: "CANCELLED",
             lastTrackingEvent: CANCEL_NOTE,
             lastTrackingAt: new Date(),
             updatedAt: new Date(),
