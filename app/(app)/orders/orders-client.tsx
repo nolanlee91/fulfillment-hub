@@ -150,7 +150,6 @@ function OrdersPageContent({ role }: { role: Role }) {
   const [drawerOrder, setDrawerOrder] = useState<DrawerOrder | null>(null);
   const [listKey, setListKey] = useState(0);
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Filters — initial từ URL search params (cho phép link từ dashboard)
@@ -331,49 +330,9 @@ function OrdersPageContent({ role }: { role: Role }) {
   // Nút "Export" (xuất danh sách Excel header tiếng Việt) tạm ẩn — không ai dùng và
   // dễ nhầm với template upload ở trang Batches. /api/orders/export vẫn còn; bật lại
   // bằng cách khôi phục nút + hàm này từ git history khi cần.
-
-  async function deleteSelected() {
-    if (selectedKeys.size === 0) return;
-
-    // Cảnh báo riêng nếu có đơn ĐÃ CÓ LABEL: Delete không ghi ngược sheet/không hoàn
-    // tồn — nên dùng "Huỷ trước pickup" thay vì xóa.
-    const selected = orders.filter((o) => selectedKeys.has(o.uniqueKey));
-    const labeled = selected.filter((o) => o.status === "LABEL_CREATED");
-    if (labeled.length > 0) {
-      const ids = labeled.slice(0, 5).map((o) => o.orderId).join(", ");
-      if (!confirm(
-        `⚠️ ${labeled.length} order(s) already have a label (${ids}${labeled.length > 5 ? "…" : ""}).\n\n` +
-          `Deleting does NOT write to the customer sheet or restore inventory. ` +
-          `To cancel a labeled order properly, open it and use "Huỷ trước pickup" instead.\n\n` +
-          `Delete anyway?`,
-      )) return;
-    } else if (!confirm(`Delete ${selectedKeys.size} orders? This action cannot be undone.`)) {
-      return;
-    }
-
-    setDeleting(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/orders", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uniqueKeys: Array.from(selectedKeys),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMessage(data.message);
-        setSelectedKeys(new Set());
-        await loadOrders();
-      } else {
-        setMessage("Error: " + data.error);
-      }
-    } finally {
-      setDeleting(false);
-      setTimeout(() => setMessage(null), 6000);
-    }
-  }
+  //
+  // Xóa đơn giờ nằm TRONG drawer từng đơn ("Hủy (chưa có label)") thay vì nút Delete
+  // hàng loạt ở ngoài — tránh lỡ tay xóa đơn đã có label. Xem components/order-drawer.
 
   const readyCount = orders.filter((o) => o.status === "READY").length;
   const attentionCount = orders.filter((o) => o.attentionReason !== null).length;
@@ -556,7 +515,7 @@ function OrdersPageContent({ role }: { role: Role }) {
             <Button
               icon="task_alt"
               onClick={bookAllFiltered}
-              disabled={bookingAll || creating || deleting}
+              disabled={bookingAll || creating}
             >
               {bookingAll ? "Booking..." : `Book all (${eligibleToBook.length})`}
             </Button>
@@ -565,24 +524,14 @@ function OrdersPageContent({ role }: { role: Role }) {
               dùng và dễ nhầm với template upload ở trang Batches. Logic exportFile
               giữ lại để bật lại nhanh khi cần. */}
           {!isCustomer && (
-            <>
-              <Button
-                variant="danger"
-                icon="delete"
-                onClick={deleteSelected}
-                disabled={selectedKeys.size === 0 || deleting || creating}
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
-              <Button
-                variant="primary"
-                icon="auto_awesome_motion"
-                onClick={createBatch}
-                disabled={selectedKeys.size === 0 || creating || deleting}
-              >
-                {creating ? "Creating..." : "Create Batch"}
-              </Button>
-            </>
+            <Button
+              variant="primary"
+              icon="auto_awesome_motion"
+              onClick={createBatch}
+              disabled={selectedKeys.size === 0 || creating}
+            >
+              {creating ? "Creating..." : "Create Batch"}
+            </Button>
           )}
         </div>
       </div>

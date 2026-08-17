@@ -467,7 +467,7 @@ export function OrderDrawer({
 }) {
   const isAdmin = role !== "CUSTOMER";
 
-  const [actionBusy, setActionBusy] = useState<null | "RETURN" | "CANCEL_PICKUP">(null);
+  const [actionBusy, setActionBusy] = useState<null | "RETURN" | "CANCEL_PICKUP" | "DELETE">(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -513,7 +513,44 @@ export function OrderDrawer({
     }
   }
 
+  // Xóa đơn CHƯA có label (nhập nhầm/trùng). Đơn đã có label phải dùng
+  // "Huỷ trước pickup" (ghi ngược sheet + hoàn tồn), không dùng nút này.
+  async function runDelete() {
+    if (!order) return;
+    if (!confirm(
+      `Huỷ đơn ${order.orderId}? (đơn chưa có label)\n\nĐơn sẽ bị xóa khỏi app. Không thể hoàn tác.`,
+    )) return;
+    setActionBusy("DELETE");
+    setActionMsg(null);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uniqueKeys: [order.uniqueKey] }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        onUpdate?.();
+        onClose();
+      } else {
+        setActionMsg(`Lỗi: ${data.error}`);
+      }
+    } catch (e) {
+      setActionMsg(`Lỗi: ${(e as Error).message}`);
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   if (!order) return null;
+
+  // Đơn chưa có label (được phép "Hủy (chưa có label)" = xóa).
+  const preLabel =
+    order.status === "NEW" ||
+    order.status === "READY" ||
+    order.status === "ERROR" ||
+    order.status === "ERROR_UPDATED" ||
+    order.status === "EXPORTED";
 
   const trackingUrl = buildTrackingUrl(order);
   const fullAddress = [
@@ -696,8 +733,8 @@ export function OrderDrawer({
               )}
             </>
           )}
-          {/* Hành động (admin/staff): cộng lại tồn khi hàng hoàn / huỷ trước pickup */}
-          {isAdmin && (order.status === "FAILED" || order.status === "LABEL_CREATED") && (
+          {/* Hành động (admin/staff): cộng lại tồn / huỷ trước pickup / huỷ đơn chưa label */}
+          {isAdmin && (order.status === "FAILED" || order.status === "LABEL_CREATED" || preLabel) && (
             <>
               <SectionLabel>Hành động</SectionLabel>
               <div className="flex flex-col gap-2 py-1">
@@ -721,6 +758,17 @@ export function OrderDrawer({
                   >
                     <span className="material-symbols-outlined text-[16px]">cancel</span>
                     {actionBusy === "CANCEL_PICKUP" ? "Đang huỷ..." : "Huỷ trước pickup (+cộng tồn)"}
+                  </button>
+                )}
+                {preLabel && (
+                  <button
+                    onClick={runDelete}
+                    disabled={actionBusy !== null}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: "rgba(220,38,38,0.08)", color: "#b91c1c" }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    {actionBusy === "DELETE" ? "Đang huỷ..." : "Huỷ (chưa có label)"}
                   </button>
                 )}
                 {actionMsg && (
