@@ -332,4 +332,78 @@ export async function syncTrackingBatch(
   return result;
 }
 
+/**
+ * Ghi 1 ghi chú (vd "Hủy trước khi pick up") vào cột Tracking URL của 1 đơn trên
+ * sheet nguồn — dùng khi huỷ đơn trước lúc carrier pickup. Chỉ đụng ô Tracking URL,
+ * giữ nguyên các cột khác. Trả về {ok, reason}.
+ */
+export async function writeSheetTrackingUrlNote(
+  uniqueKey: string,
+  noteText: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const [o] = await db
+    .select({
+      orderId: orders.orderId,
+      customerId: orders.customerId,
+      productId: orders.productId,
+    })
+    .from(orders)
+    .where(eq(orders.uniqueKey, uniqueKey));
+  if (!o) return { ok: false, reason: "Order not found" };
+
+  const cfgs = await db
+    .select({
+      spreadsheetId: sourceSheets.spreadsheetId,
+      sheetName: sourceSheets.sheetName,
+    })
+    .from(sourceSheets)
+    .where(
+      and(
+        eq(sourceSheets.customerId, o.customerId),
+        eq(sourceSheets.productId, o.productId),
+        eq(sourceSheets.active, true),
+      ),
+    );
+  if (cfgs.length === 0) return { ok: false, reason: "Không có source_sheet" };
+
+  let lastReason = "Không tìm thấy row";
+  for (const cfg of cfgs) {
+    let data: string[][];
+    try {
+      data = await readSheet(cfg.spreadsheetId, cfg.sheetName);
+    } catch (e) {
+      lastReason = `read ${cfg.sheetName}: ${e instanceof Error ? e.message : String(e)}`;
+      continue;
+    }
+    if (data.length < 2) continue;
+    const hdr = detectHeaders(data[0], cfg.sheetName);
+    if (hdr.missingReason) {
+      lastReason = hdr.missingReason;
+      continue;
+    }
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][hdr.colOrderId] || "").trim() === o.orderId) {
+        rowIndex = i;
+        break;
+      }
+    }
+    if (rowIndex === -1) continue;
+
+    const rowNum = rowIndex + 1;
+    try {
+      await writeBatch(cfg.spreadsheetId, [
+        {
+          range: `'${cfg.sheetName}'!${colLetter(hdr.colTrackingUrl)}${rowNum}`,
+          value: noteText,
+        },
+      ]);
+      return { ok: true };
+    } catch (e) {
+      lastReason = e instanceof Error ? e.message : String(e);
+    }
+  }
+  return { ok: false, reason: lastReason };
+}
+
 export { REQUIRED_HEADERS };

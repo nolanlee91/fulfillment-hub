@@ -10,7 +10,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { inventoryTracking, inventoryMovements, orders } from "@/lib/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, like, or, sql } from "drizzle-orm";
 import { provinceToRegion, type Region } from "@/lib/geo/province";
 
 export type WarehouseCode = "WEST" | "EAST";
@@ -198,4 +198,60 @@ export async function deductOrdersInventory(
   }
 
   return deducted;
+}
+
+/**
+ * Cộng LẠI tồn kho cho 1 đơn đã từng bị trừ (hàng hoàn về / huỷ trước pickup).
+ * Đảo đúng những dòng ORDER_OUT đã ghi (đúng kho + product + variant), nên:
+ *   - Đơn CHƯA từng trừ (vd ship trước mốc theo dõi) → không cộng gì (tránh tồn ảo).
+ *   - Đơn breakdown → cộng lại từng loại.
+ * Idempotent: refOrderKey đảo = `${refGốc}::RESTOCK` (unique index chặn cộng 2 lần).
+ */
+export async function restockOrder(
+  uniqueKey: string,
+  note: string,
+  createdBy?: string | null,
+): Promise<{ restocked: number; addedBack: number; alreadyDone: boolean }> {
+  const outs = await db
+    .select({
+      warehouseCode: inventoryMovements.warehouseCode,
+      productId: inventoryMovements.productId,
+      delta: inventoryMovements.delta,
+      refOrderKey: inventoryMovements.refOrderKey,
+    })
+    .from(inventoryMovements)
+    .where(
+      and(
+        eq(inventoryMovements.type, "ORDER_OUT"),
+        or(
+          eq(inventoryMovements.refOrderKey, uniqueKey),
+          like(inventoryMovements.refOrderKey, `${uniqueKey}::%`),
+        ),
+      ),
+    );
+
+  if (outs.length === 0) return { restocked: 0, addedBack: 0, alreadyDone: false };
+
+  let restocked = 0;
+  let addedBack = 0;
+  let skipped = 0;
+  for (const m of outs) {
+    const ok = await recordMovement({
+      warehouseCode: m.warehouseCode,
+      productId: m.productId,
+      delta: -m.delta, // ORDER_OUT delta âm → cộng lại dương
+      type: "ADJUST",
+      refOrderKey: `${m.refOrderKey}::RESTOCK`,
+      note,
+      createdBy,
+    });
+    if (ok) {
+      restocked++;
+      addedBack += -m.delta;
+    } else {
+      skipped++;
+    }
+  }
+
+  return { restocked, addedBack, alreadyDone: restocked === 0 && skipped > 0 };
 }

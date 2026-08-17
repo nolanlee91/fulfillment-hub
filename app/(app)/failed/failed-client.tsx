@@ -263,7 +263,7 @@ export default function FailedClient({ role }: { role: Role }) {
                     key={o.uniqueKey}
                     className="row-animate"
                     style={{ cursor: "pointer", animationDelay: `${Math.min(index, 12) * 25}ms` }}
-                    onClick={() => setDrawerOrder(o)}
+                    onClick={() => setDrawerOrder({ ...o, status: "FAILED" })}
                   >
                     <td className="px-3 py-2 font-mono" style={{ color: "var(--text-primary)" }}>{o.orderId}</td>
                     {!isCustomer && (

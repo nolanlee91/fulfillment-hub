@@ -467,6 +467,9 @@ export function OrderDrawer({
 }) {
   const isAdmin = role !== "CUSTOMER";
 
+  const [actionBusy, setActionBusy] = useState<null | "RETURN" | "CANCEL_PICKUP">(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+
   useEffect(() => {
     if (!order) return;
     function onKey(e: KeyboardEvent) {
@@ -475,6 +478,40 @@ export function OrderDrawer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [order, onClose]);
+
+  // Reset thông báo khi đổi đơn.
+  useEffect(() => {
+    setActionMsg(null);
+    setActionBusy(null);
+  }, [order?.uniqueKey]);
+
+  async function runRestock(mode: "RETURN" | "CANCEL_PICKUP") {
+    if (!order) return;
+    const confirmText =
+      mode === "RETURN"
+        ? "Cộng lại tồn kho cho đơn hàng hoàn này?"
+        : 'Huỷ đơn trước khi pickup?\n\n• Cộng lại tồn kho\n• Ghi "Hủy trước khi pick up" lên sheet khách\n• Chuyển đơn sang Thất bại';
+    if (!confirm(confirmText)) return;
+    setActionBusy(mode);
+    setActionMsg(null);
+    try {
+      const res = await fetch(
+        `/api/orders/${encodeURIComponent(order.uniqueKey)}/restock`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode }),
+        },
+      );
+      const data = await res.json();
+      setActionMsg(data.success ? data.message : `Lỗi: ${data.error}`);
+      if (data.success) onUpdate?.();
+    } catch (e) {
+      setActionMsg(`Lỗi: ${(e as Error).message}`);
+    } finally {
+      setActionBusy(null);
+    }
+  }
 
   if (!order) return null;
 
@@ -657,6 +694,44 @@ export function OrderDrawer({
                   Flagged at {fmtDate(order.attentionAt)}
                 </p>
               )}
+            </>
+          )}
+          {/* Hành động (admin/staff): cộng lại tồn khi hàng hoàn / huỷ trước pickup */}
+          {isAdmin && (order.status === "FAILED" || order.status === "LABEL_CREATED") && (
+            <>
+              <SectionLabel>Hành động</SectionLabel>
+              <div className="flex flex-col gap-2 py-1">
+                {order.status === "FAILED" && (
+                  <button
+                    onClick={() => runRestock("RETURN")}
+                    disabled={actionBusy !== null}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                    {actionBusy === "RETURN" ? "Đang cộng..." : "Cộng lại tồn (hàng hoàn)"}
+                  </button>
+                )}
+                {order.status === "LABEL_CREATED" && (
+                  <button
+                    onClick={() => runRestock("CANCEL_PICKUP")}
+                    disabled={actionBusy !== null}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: "rgba(249,115,22,0.1)", color: "#c2410c" }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                    {actionBusy === "CANCEL_PICKUP" ? "Đang huỷ..." : "Huỷ trước pickup (+cộng tồn)"}
+                  </button>
+                )}
+                {actionMsg && (
+                  <p
+                    className="text-[11px] leading-relaxed rounded p-2"
+                    style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
+                  >
+                    {actionMsg}
+                  </p>
+                )}
+              </div>
             </>
           )}
         </div>
