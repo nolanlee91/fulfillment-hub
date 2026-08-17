@@ -290,26 +290,26 @@ function OrdersPageContent({ role }: { role: Role }) {
       });
       const data = await res.json();
 
-      // Có đơn thiếu tồn → hỏi trước khi tách sang "Hết hàng".
+      // Some orders short on stock → confirm before splitting them to "Out of Stock".
       if (data.needsConfirm) {
         const lines = Array.isArray(data.shortSummary)
           ? data.shortSummary
               .map(
                 (s: { productName: string; shortOrders: number }) =>
-                  `• ${s.productName}: ${s.shortOrders} đơn thiếu`,
+                  `• ${s.productName}: ${s.shortOrders} order(s) short`,
               )
               .join("\n")
           : "";
         const ok = confirm(
-          `⚠️ Thiếu tồn kho.\n\n` +
-            `${data.okCount ?? 0} đơn đủ hàng → tạo batch\n` +
-            `${data.shortCount ?? 0} đơn thiếu hàng → chuyển sang "Hết hàng"\n\n` +
-            `${lines}\n\nTiếp tục?`,
+          `⚠️ Insufficient stock.\n\n` +
+            `${data.okCount ?? 0} order(s) in stock → create batch\n` +
+            `${data.shortCount ?? 0} order(s) short → move to "Out of Stock"\n\n` +
+            `${lines}\n\nContinue?`,
         );
         if (ok) {
           await postCreateBatch(true);
         } else {
-          setMessage("Đã huỷ.");
+          setMessage("Cancelled.");
           setTimeout(() => setMessage(null), 6000);
         }
         return;

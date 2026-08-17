@@ -31,7 +31,7 @@ const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   IN_TRANSIT: "In Transit",
   DELIVERED: "Delivered",
   FAILED: "Failed",
-  OUT_OF_STOCK: "Hết hàng",
+  OUT_OF_STOCK: "Out of Stock",
 };
 
 const ATTENTION_LABEL: Record<AttentionReason, string> = {

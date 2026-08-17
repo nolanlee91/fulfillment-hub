@@ -136,7 +136,7 @@ export const POST = withAuth(
         okCount: alloc.okKeys.length,
         shortCount: alloc.shortKeys.length,
         shortSummary: alloc.shortSummary,
-        message: `${alloc.shortKeys.length} đơn thiếu tồn kho sẽ chuyển sang "Hết hàng".`,
+        message: `${alloc.shortKeys.length} đơn thiếu tồn kho sẽ chuyển sang "Out of Stock".`,
       });
     }
 
@@ -212,7 +212,7 @@ export const POST = withAuth(
     const parts: string[] = [];
     if (created.length > 0) parts.push(`Đã tạo ${created.length} batch: ${summary}`);
     else parts.push("Không tạo batch (không đơn nào đủ hàng)");
-    if (alloc.shortKeys.length > 0) parts.push(`${alloc.shortKeys.length} đơn thiếu hàng → Hết hàng`);
+    if (alloc.shortKeys.length > 0) parts.push(`${alloc.shortKeys.length} đơn thiếu hàng → Out of Stock`);
     if (skipped > 0) parts.push(`bỏ qua ${skipped} đơn không READY`);
 
     return NextResponse.json({

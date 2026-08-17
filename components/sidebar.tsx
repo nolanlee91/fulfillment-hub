@@ -47,7 +47,7 @@ const sections: NavSection[] = [
       {
         href: "/out-of-stock",
         icon: "production_quantity_limits",
-        label: "Hết hàng",
+        label: "Out of Stock",
         roles: ["SUPER_ADMIN", "STAFF"],
       },
       {
