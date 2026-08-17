@@ -334,7 +334,22 @@ function OrdersPageContent({ role }: { role: Role }) {
 
   async function deleteSelected() {
     if (selectedKeys.size === 0) return;
-    if (!confirm(`Delete ${selectedKeys.size} orders? This action cannot be undone.`)) return;
+
+    // Cảnh báo riêng nếu có đơn ĐÃ CÓ LABEL: Delete không ghi ngược sheet/không hoàn
+    // tồn — nên dùng "Huỷ trước pickup" thay vì xóa.
+    const selected = orders.filter((o) => selectedKeys.has(o.uniqueKey));
+    const labeled = selected.filter((o) => o.status === "LABEL_CREATED");
+    if (labeled.length > 0) {
+      const ids = labeled.slice(0, 5).map((o) => o.orderId).join(", ");
+      if (!confirm(
+        `⚠️ ${labeled.length} order(s) already have a label (${ids}${labeled.length > 5 ? "…" : ""}).\n\n` +
+          `Deleting does NOT write to the customer sheet or restore inventory. ` +
+          `To cancel a labeled order properly, open it and use "Huỷ trước pickup" instead.\n\n` +
+          `Delete anyway?`,
+      )) return;
+    } else if (!confirm(`Delete ${selectedKeys.size} orders? This action cannot be undone.`)) {
+      return;
+    }
 
     setDeleting(true);
     setMessage(null);
