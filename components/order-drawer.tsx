@@ -44,6 +44,7 @@ export interface DrawerOrder {
   // Failed-specific
   lastTrackingEvent?: string | null;
   lastTrackingAt?: string | null;
+  restockedAt?: string | null;
   // Đối soát (kế toán)
   paymentType?: string | null;
   refNumber?: string | null;
@@ -469,6 +470,8 @@ export function OrderDrawer({
 
   const [actionBusy, setActionBusy] = useState<null | "RETURN" | "CANCEL_PICKUP" | "DELETE">(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  // Cờ tạm: vừa cộng tồn return xong trong phiên này (order prop chưa refresh kịp).
+  const [restockedLocal, setRestockedLocal] = useState(false);
 
   useEffect(() => {
     if (!order) return;
@@ -479,10 +482,11 @@ export function OrderDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [order, onClose]);
 
-  // Reset thông báo khi đổi đơn.
+  // Reset trạng thái khi đổi đơn.
   useEffect(() => {
     setActionMsg(null);
     setActionBusy(null);
+    setRestockedLocal(false);
   }, [order?.uniqueKey]);
 
   async function runRestock(mode: "RETURN" | "CANCEL_PICKUP") {
@@ -505,7 +509,10 @@ export function OrderDrawer({
       );
       const data = await res.json();
       setActionMsg(data.success ? data.message : `Lỗi: ${data.error}`);
-      if (data.success) onUpdate?.();
+      if (data.success) {
+        if (mode === "RETURN") setRestockedLocal(true);
+        onUpdate?.();
+      }
     } catch (e) {
       setActionMsg(`Lỗi: ${(e as Error).message}`);
     } finally {
@@ -739,15 +746,25 @@ export function OrderDrawer({
               <SectionLabel>Hành động</SectionLabel>
               <div className="flex flex-col gap-2 py-1">
                 {order.status === "FAILED" && (
-                  <button
-                    onClick={() => runRestock("RETURN")}
-                    disabled={actionBusy !== null}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
-                    style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-                    {actionBusy === "RETURN" ? "Đang cộng..." : "Cộng lại tồn (hàng hoàn)"}
-                  </button>
+                  (order.restockedAt || restockedLocal) ? (
+                    <div
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded text-[12px] font-semibold"
+                      style={{ background: "rgba(22,163,74,0.08)", color: "#15803d", border: "1px solid rgba(22,163,74,0.18)" }}
+                    >
+                      <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
+                      Đơn return đã cộng vào tồn kho
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => runRestock("RETURN")}
+                      disabled={actionBusy !== null}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[12px] font-semibold transition-colors disabled:opacity-50"
+                      style={{ backgroundColor: "var(--accent-bg)", color: "var(--accent)" }}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                      {actionBusy === "RETURN" ? "Đang cộng..." : "Cộng lại tồn (hàng hoàn)"}
+                    </button>
+                  )
                 )}
                 {order.status === "LABEL_CREATED" && (
                   <button

@@ -251,6 +251,8 @@ export const orders = pgTable(
     lastTrackingEvent: text("last_tracking_event"),
     lastTrackingAt: timestamp("last_tracking_at"),
     deliveredAt: timestamp("delivered_at"),
+    // Đơn RETURN đã cộng hàng lại vào tồn kho (đánh dấu để không cộng lại + hiện UI).
+    restockedAt: timestamp("restocked_at"),
 
     attentionReason: attentionReasonEnum("attention_reason"),
     attentionAt: timestamp("attention_at"),

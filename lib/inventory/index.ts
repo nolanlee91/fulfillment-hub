@@ -255,3 +255,84 @@ export async function restockOrder(
 
   return { restocked, addedBack, alreadyDone: restocked === 0 && skipped > 0 };
 }
+
+/**
+ * Nhập LẠI hàng của 1 đơn RETURN (hàng bị trả về đã nhận lại kho) → LUÔN cộng +qty
+ * theo số lượng đơn/breakdown, BẤT KỂ trước đó có bị trừ hay không (hàng vật lý về
+ * kho thì phải tăng tồn). Khác `restockOrder` (đảo đúng phần đã trừ — dùng cho huỷ
+ * trước pickup, hàng chưa rời kho).
+ *
+ * Chỉ cộng cho product đang được track ở kho nhận. Idempotent qua ref `::RETURN`.
+ */
+export async function receiveReturnedOrder(
+  uniqueKey: string,
+  note: string,
+  createdBy?: string | null,
+): Promise<{ added: number; addedQty: number; alreadyDone: boolean }> {
+  const [o] = await db
+    .select({
+      uniqueKey: orders.uniqueKey,
+      productId: orders.productId,
+      quantity: orders.quantity,
+      itemBreakdown: orders.itemBreakdown,
+      province: orders.province,
+      country: orders.country,
+      warehouseCode: orders.warehouseCode,
+    })
+    .from(orders)
+    .where(eq(orders.uniqueKey, uniqueKey));
+  if (!o || o.quantity <= 0) return { added: 0, addedQty: 0, alreadyDone: false };
+
+  const warehouseCode =
+    o.warehouseCode === "EAST" || o.warehouseCode === "WEST"
+      ? o.warehouseCode
+      : orderWarehouse(o.province, o.country);
+
+  const breakdown = o.itemBreakdown;
+  const targets =
+    breakdown && Object.keys(breakdown).length > 0
+      ? Object.entries(breakdown)
+          .filter(([, q]) => q > 0)
+          .map(([variantId, q]) => ({
+            productId: variantId,
+            qty: q,
+            refKey: `${o.uniqueKey}::RETURN::${variantId}`,
+          }))
+      : [{ productId: o.productId, qty: o.quantity, refKey: `${o.uniqueKey}::RETURN` }];
+
+  let added = 0;
+  let addedQty = 0;
+  let conflictSkips = 0;
+  for (const t of targets) {
+    // Chỉ nhập lại nếu product đang được theo dõi ở kho nhận.
+    const [cfg] = await db
+      .select({ tracked: inventoryTracking.tracked })
+      .from(inventoryTracking)
+      .where(
+        and(
+          eq(inventoryTracking.warehouseCode, warehouseCode),
+          eq(inventoryTracking.productId, t.productId),
+        ),
+      );
+    if (!cfg || !cfg.tracked) continue; // không track → bỏ qua
+
+    const ok = await recordMovement({
+      warehouseCode,
+      productId: t.productId,
+      delta: t.qty, // hàng return về → cộng dương
+      type: "ADJUST",
+      refOrderKey: t.refKey,
+      note,
+      createdBy,
+      defaultTracked: true,
+    });
+    if (ok) {
+      added++;
+      addedQty += t.qty;
+    } else {
+      conflictSkips++;
+    }
+  }
+
+  return { added, addedQty, alreadyDone: added === 0 && conflictSkips > 0 };
+}

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/api-guard";
-import { restockOrder } from "@/lib/inventory";
+import { restockOrder, receiveReturnedOrder } from "@/lib/inventory";
 import { writeSheetFields } from "@/lib/sync/write-back";
 
 const CANCEL_NOTE = "Hủy trước khi pick up";
@@ -14,7 +14,8 @@ const CANCEL_NOTE = "Hủy trước khi pick up";
  *
  * Cộng LẠI tồn kho cho đơn không giao được (đảo đúng phần đã trừ; đơn chưa từng
  * trừ thì không cộng gì → không tạo tồn ảo).
- *   - RETURN        : hàng hoàn về (đơn FAILED). Chỉ cộng lại tồn.
+ *   - RETURN        : hàng hoàn về (đơn FAILED). LUÔN cộng +qty (hàng vật lý về kho),
+ *                     kể cả đơn chưa từng bị trừ; đánh dấu restockedAt.
  *   - CANCEL_PICKUP : huỷ trước khi carrier pickup (đơn LABEL_CREATED). Cộng lại
  *                     tồn + đổi status FAILED + ghi "Hủy trước khi pick up" vào cột
  *                     Tracking URL trên sheet khách.
@@ -48,17 +49,39 @@ export const POST = withAuth(
         );
       }
 
-      const note =
-        mode === "RETURN"
-          ? `Hoàn kho: hàng trả về (${user.username})`
-          : `Hoàn kho: huỷ trước pickup (${user.username})`;
-
-      // 1) Cộng lại tồn (đảo ORDER_OUT). Idempotent.
-      const res = await restockOrder(uniqueKey, note, user.username);
-
-      // 2) CANCEL_PICKUP: đổi trạng thái + ghi ngược sheet.
+      const parts: string[] = [];
       let sheet: { ok: boolean; reason?: string } | null = null;
-      if (mode === "CANCEL_PICKUP") {
+      let added = 0;
+      let alreadyDone = false;
+
+      if (mode === "RETURN") {
+        // Hàng trả về đã nhận lại kho → LUÔN cộng +qty (kể cả đơn tạo trước mốc
+        // theo dõi, chưa từng bị trừ). Đánh dấu restockedAt để UI biết đã cộng.
+        const res = await receiveReturnedOrder(
+          uniqueKey,
+          `Nhập lại: hàng trả về (${user.username})`,
+          user.username,
+        );
+        added = res.added;
+        alreadyDone = res.alreadyDone;
+        if (res.added > 0 || res.alreadyDone) {
+          await db
+            .update(orders)
+            .set({ restockedAt: new Date(), updatedAt: new Date() })
+            .where(eq(orders.uniqueKey, uniqueKey));
+        }
+        if (res.added > 0) parts.push(`đã cộng ${res.addedQty} vào tồn kho`);
+        else if (res.alreadyDone) parts.push("đơn này đã cộng vào tồn trước đó");
+        else parts.push("không có mặt hàng nào đang theo dõi tồn ở kho này");
+      } else {
+        // CANCEL_PICKUP: hàng chưa rời kho → đảo đúng phần đã trừ + huỷ + ghi sheet.
+        const res = await restockOrder(
+          uniqueKey,
+          `Hoàn kho: huỷ trước pickup (${user.username})`,
+          user.username,
+        );
+        added = res.restocked;
+        alreadyDone = res.alreadyDone;
         await db
           .update(orders)
           .set({
@@ -70,13 +93,10 @@ export const POST = withAuth(
           })
           .where(eq(orders.uniqueKey, uniqueKey));
         sheet = await writeSheetFields(uniqueKey, { trackingUrl: CANCEL_NOTE });
-      }
 
-      const parts: string[] = [];
-      if (res.restocked > 0) parts.push(`cộng lại ${res.addedBack} vào tồn kho`);
-      else if (res.alreadyDone) parts.push("đã cộng lại tồn trước đó");
-      else parts.push("đơn chưa từng bị trừ tồn nên không cộng lại");
-      if (mode === "CANCEL_PICKUP") {
+        if (res.restocked > 0) parts.push(`cộng lại ${res.addedBack} vào tồn kho`);
+        else if (res.alreadyDone) parts.push("đã cộng lại tồn trước đó");
+        else parts.push("đơn chưa từng bị trừ tồn nên không cộng lại");
         parts.push(
           sheet?.ok
             ? 'đã ghi "Hủy trước khi pick up" lên sheet'
@@ -87,9 +107,8 @@ export const POST = withAuth(
       return NextResponse.json({
         success: true,
         mode,
-        restocked: res.restocked,
-        addedBack: res.addedBack,
-        alreadyDone: res.alreadyDone,
+        added,
+        alreadyDone,
         sheetOk: sheet?.ok ?? null,
         message: `${o.orderId}: ${parts.join("; ")}.`,
       });

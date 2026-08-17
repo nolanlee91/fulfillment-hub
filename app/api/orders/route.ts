@@ -139,6 +139,7 @@ export const GET = withAuth(async (req, user) => {
         deliveredAt: orders.deliveredAt,
         lastTrackingEvent: orders.lastTrackingEvent,
         lastTrackingAt: orders.lastTrackingAt,
+        restockedAt: orders.restockedAt,
         attentionReason: orders.attentionReason,
         attentionAt: orders.attentionAt,
         attentionNote: orders.attentionNote,

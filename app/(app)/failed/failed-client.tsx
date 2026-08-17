@@ -36,6 +36,7 @@ interface Order {
   trackingUrl: string | null;
   lastTrackingEvent: string | null;
   lastTrackingAt: string | null;
+  restockedAt: string | null;
   paymentType: string | null;
   refNumber: string | null;
   paymentProofUrl: string | null;
