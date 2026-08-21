@@ -24,6 +24,22 @@ export const ITEM_SPLIT: Record<string, ItemSplitColumn[]> = {
   ],
 };
 
+// Product mà ô số lượng ghi kiểu "N <mô tả combo>" thay vì số thuần — vd THC bán
+// theo combo: ô ghi "1 TMS + 1 X2" (= 1 THC), "2 TMS + 2 X2" (= 2 THC). Parser lấy
+// SỐ ĐẦU TIÊN làm số lượng thay vì Number(ô) (sẽ ra NaN).
+export const QTY_LEADING_NUMBER = new Set<string>(["thc"]);
+
+/** Số lượng từ 1 ô: product combo → lấy số đầu; còn lại → Number thuần (>0). */
+export function parseQtyCell(productId: string | undefined, raw: unknown): number {
+  const s = String(raw ?? "").trim();
+  if (productId && QTY_LEADING_NUMBER.has(productId)) {
+    const m = s.match(/\d+/);
+    return m ? Number(m[0]) : 0;
+  }
+  const v = Number(s);
+  return !isNaN(v) && v > 0 ? v : 0;
+}
+
 /** Chuẩn hoá header giống parser (lowercase, bỏ \n, gộp khoảng trắng). */
 export function normSplitHeader(v: string): string {
   return String(v || "")

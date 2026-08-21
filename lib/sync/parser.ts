@@ -1,5 +1,5 @@
 import { readSheet } from "../sheets/client";
-import { ITEM_SPLIT, normSplitHeader } from "./item-split";
+import { ITEM_SPLIT, normSplitHeader, parseQtyCell } from "./item-split";
 
 /**
  * Cấu trúc output sau khi parse 1 sheet.
@@ -172,7 +172,9 @@ export async function parseSheet(
   const ghiChuIdx = header.findIndex((h) => h.startsWith("ghi chú"));
   // Một số khách (vd nhiều mặt hàng / KDE đóng hàng) đánh dấu COD ở cột riêng
   // "Payment Method" thay vì ghi trong Ghi chú. Khách cũ không có cột này → bỏ qua.
-  const paymentMethodIdx = header.findIndex((h) => h.startsWith("payment method"));
+  const paymentMethodIdx = header.findIndex(
+    (h) => h.startsWith("payment method") || h.startsWith("hình thức tt"),
+  );
   if (giaTienIdx > cols.phone) {
     for (let i = cols.phone + 1; i < giaTienIdx; i++) {
       qtyIndexes.push(i);
@@ -206,11 +208,10 @@ export async function parseSheet(
     const tracking = String(row[cols.tracking] || "").trim();
     if (tracking !== "") continue; // skip nếu đã có tracking
 
-    // Tính tổng quantity
+    // Tính tổng quantity (product combo như THC: lấy số đầu trong "N TMS + N X2")
     let totalQty = 0;
     for (const idx of qtyIndexes) {
-      const v = Number(row[idx]);
-      if (!isNaN(v) && v > 0) totalQty += v;
+      totalQty += parseQtyCell(productId, row[idx]);
     }
 
     // Chia số lượng từng loại (tab nhiều mặt hàng)
