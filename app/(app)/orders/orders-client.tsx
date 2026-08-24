@@ -295,20 +295,24 @@ function OrdersPageContent({ role }: { role: Role }) {
           ? data.shortSummary
               .map(
                 (s: { productName: string; shortOrders: number }) =>
-                  `• ${s.productName}: ${s.shortOrders} order(s) short`,
+                  `• ${s.productName}: ${s.shortOrders} đơn thiếu`,
               )
               .join("\n")
           : "";
         const ok = confirm(
-          `⚠️ Insufficient stock.\n\n` +
-            `${data.okCount ?? 0} order(s) in stock → create batch\n` +
-            `${data.shortCount ?? 0} order(s) short → move to "Out of Stock"\n\n` +
-            `${lines}\n\nContinue?`,
+          `⚠️ MỘT SỐ ĐƠN THIẾU TỒN KHO\n\n` +
+            `✅ ${data.okCount ?? 0} đơn đủ hàng\n` +
+            `📦 ${data.shortCount ?? 0} đơn thiếu hàng\n\n` +
+            `${lines}\n\n` +
+            `━━━━━━━━━━━━━━━\n` +
+            `• Bấm OK  → VẪN tạo batch cho ${data.okCount ?? 0} đơn đủ hàng, ` +
+            `tự tách ${data.shortCount ?? 0} đơn thiếu sang tab "Out of Stock".\n` +
+            `• Bấm Cancel → KHÔNG tạo gì, giữ nguyên tất cả đơn.`,
         );
         if (ok) {
           await postCreateBatch(true);
         } else {
-          setMessage("Cancelled.");
+          setMessage("Đã huỷ — chưa tạo batch.");
           setTimeout(() => setMessage(null), 6000);
         }
         return;
