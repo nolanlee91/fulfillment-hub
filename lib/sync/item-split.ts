@@ -25,9 +25,9 @@ export const ITEM_SPLIT: Record<string, ItemSplitColumn[]> = {
 };
 
 // Product mà ô số lượng ghi kiểu "N <mô tả combo>" thay vì số thuần — vd THC bán
-// theo combo: ô ghi "1 TMS + 1 X2" (= 1 THC), "2 TMS + 2 X2" (= 2 THC). Parser lấy
-// SỐ ĐẦU TIÊN làm số lượng thay vì Number(ô) (sẽ ra NaN).
-export const QTY_LEADING_NUMBER = new Set<string>(["thc"]);
+// theo combo: ô ghi "1 TMS + 1 X2" (= 1 THC), "2 TMS + 2 X2" (= 2 THC); Hoang Cung ghi
+// "1 HOANG CUNG". Parser lấy SỐ ĐẦU TIÊN làm số lượng thay vì Number(ô) (sẽ ra NaN).
+export const QTY_LEADING_NUMBER = new Set<string>(["thc", "hoangcung"]);
 
 /** Số lượng từ 1 ô: product combo → lấy số đầu; còn lại → Number thuần (>0). */
 export function parseQtyCell(productId: string | undefined, raw: unknown): number {
