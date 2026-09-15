@@ -262,6 +262,11 @@ export const orders = pgTable(
     guaranteedDeliveryDate: date("guaranteed_delivery_date"),
     eddCurrent: date("edd_current"),
     eddChangeCount: integer("edd_change_count").default(0).notNull(),
+    // Tiến trình nộp claim — NULL = chưa nộp (xem scripts/apply-claim-status.ts).
+    claimStatus: text("claim_status").$type<"FILED" | "APPROVED" | "REJECTED">(),
+    claimFiledAt: timestamp("claim_filed_at"),
+    claimAmount: numeric("claim_amount", { precision: 10, scale: 2 }),
+    claimNote: text("claim_note"),
 
     attentionReason: attentionReasonEnum("attention_reason"),
     attentionAt: timestamp("attention_at"),

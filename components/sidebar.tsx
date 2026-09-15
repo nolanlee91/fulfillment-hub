@@ -112,6 +112,17 @@ const sections: NavSection[] = [
     ],
   },
   {
+    label: "Claims",
+    items: [
+      {
+        href: "/claims/late",
+        icon: "schedule",
+        label: "Late Deliveries",
+        roles: ["SUPER_ADMIN", "STAFF"],
+      },
+    ],
+  },
+  {
     label: "Settings",
     items: [
       {
