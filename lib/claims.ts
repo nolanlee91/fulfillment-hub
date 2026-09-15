@@ -50,6 +50,28 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
 }
 
+/**
+ * Số ngày LÀM VIỆC từ a tới b (không tính ngày a, có tính ngày b). Âm nếu b < a.
+ * Nghịch đảo của addBusinessDays: businessDaysBetween(d, addBusinessDays(d, n)) === n.
+ *
+ * Cả hạn nộp lẫn chuẩn giao đều tính bằng ngày làm việc → đếm ngược cũng phải
+ * cùng đơn vị, nếu không sẽ ra cảnh "hạn 30 ngày mà còn 38 ngày".
+ */
+export function businessDaysBetween(a: string, b: string): number {
+  if (a === b) return 0;
+  const forward = a < b;
+  const from = new Date(`${forward ? a : b}T00:00:00Z`);
+  const to = new Date(`${forward ? b : a}T00:00:00Z`);
+  let count = 0;
+  const cur = new Date(from);
+  while (cur < to) {
+    cur.setUTCDate(cur.getUTCDate() + 1);
+    const w = cur.getUTCDay();
+    if (w !== 0 && w !== 6) count++;
+  }
+  return forward ? count : -count;
+}
+
 export interface ClaimableInput {
   serviceType: string | null;
   guaranteedDeliveryDate: string | null;
@@ -60,15 +82,21 @@ export interface ClaimAssessment {
   /** Đủ điều kiện xét: dịch vụ có bảo đảm + có mốc cam kết + đã giao. */
   eligible: boolean;
   deliveredDate: string | null;
-  /** Số ngày giao muộn hơn cam kết (>0 mới là trễ). */
+  /** Số ngày LỊCH giao muộn hơn cam kết (>0 mới là trễ) — cái người nhận cảm nhận. */
   daysLate: number;
+  /**
+   * Số ngày LÀM VIỆC trễ — dùng để xếp ưu tiên nộp. Đơn vắt qua cuối tuần trông
+   * nặng theo ngày lịch nhưng thực chất chỉ trễ 1 ngày làm việc, khả năng bị từ
+   * chối cao, không nên nộp trước mấy đơn trễ nặng.
+   */
+  businessDaysLate: number;
   isLate: boolean;
   /** Hạn chót nộp claim — quá ngày này thì mất quyền. */
   filingDeadline: string | null;
   /** Hôm nay đã quá hạn nộp chưa. */
   expired: boolean;
-  /** Còn mấy ngày lịch nữa tới hạn (âm = đã quá). */
-  daysUntilDeadline: number | null;
+  /** Còn mấy ngày LÀM VIỆC nữa tới hạn (âm = đã quá) — cùng đơn vị với quy định. */
+  businessDaysUntilDeadline: number | null;
 }
 
 export function assessClaim(
@@ -79,10 +107,11 @@ export function assessClaim(
     eligible: false,
     deliveredDate: null,
     daysLate: 0,
+    businessDaysLate: 0,
     isLate: false,
     filingDeadline: null,
     expired: false,
-    daysUntilDeadline: null,
+    businessDaysUntilDeadline: null,
   };
 
   if (o.serviceType !== GUARANTEED_SERVICE) return empty;
@@ -90,7 +119,8 @@ export function assessClaim(
 
   const guaranteed = String(o.guaranteedDeliveryDate).slice(0, 10);
   const filingDeadline = addBusinessDays(guaranteed, CLAIM_WINDOW_BUSINESS_DAYS);
-  const daysUntilDeadline = daysBetween(today, filingDeadline);
+  const businessDaysUntilDeadline = businessDaysBetween(today, filingDeadline);
+  const expired = today > filingDeadline;
 
   if (!o.deliveredAt) {
     // Chưa giao → chưa phát sinh quyền claim giao trễ (đơn thất lạc đi đường khác).
@@ -98,8 +128,8 @@ export function assessClaim(
       ...empty,
       eligible: false,
       filingDeadline,
-      expired: daysUntilDeadline < 0,
-      daysUntilDeadline,
+      expired,
+      businessDaysUntilDeadline,
     };
   }
 
@@ -110,9 +140,10 @@ export function assessClaim(
     eligible: true,
     deliveredDate,
     daysLate: Math.max(0, daysLate),
+    businessDaysLate: Math.max(0, businessDaysBetween(guaranteed, deliveredDate)),
     isLate: daysLate > 0,
     filingDeadline,
-    expired: daysUntilDeadline < 0,
-    daysUntilDeadline,
+    expired,
+    businessDaysUntilDeadline,
   };
 }

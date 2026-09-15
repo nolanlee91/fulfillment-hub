@@ -28,9 +28,10 @@ interface ClaimRow {
   claim: {
     deliveredDate: string | null;
     daysLate: number;
+    businessDaysLate: number;
     filingDeadline: string | null;
     expired: boolean;
-    daysUntilDeadline: number | null;
+    businessDaysUntilDeadline: number | null;
   };
 }
 
@@ -57,12 +58,12 @@ function trackingLink(o: ClaimRow): string | null {
   return null;
 }
 
-/** Hạn càng gần càng đỏ — quá hạn là mất trắng nên phải đập vào mắt. */
-function deadlineColor(days: number | null): string {
-  if (days === null) return "var(--text-secondary)";
-  if (days < 0) return "var(--text-muted)";
-  if (days <= 3) return "var(--color-red, #dc2626)";
-  if (days <= 7) return "var(--color-orange, #ea580c)";
+/** Hạn càng gần càng đỏ — quá hạn là mất trắng nên phải đập vào mắt. Đơn vị: ngày làm việc. */
+function deadlineColor(bizDays: number | null): string {
+  if (bizDays === null) return "var(--text-secondary)";
+  if (bizDays < 0) return "var(--text-muted)";
+  if (bizDays <= 3) return "var(--color-red, #dc2626)";
+  if (bizDays <= 7) return "var(--color-orange, #ea580c)";
   return "var(--text-secondary)";
 }
 
@@ -260,7 +261,7 @@ export default function LateClaimsClient() {
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Delivered</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Days late</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Date moved</th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">File by</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Claim deadline</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Claim</th>
                 </tr>
               </thead>
@@ -291,20 +292,26 @@ export default function LateClaimsClient() {
                       <td className="px-3 py-3 text-sm text-center">{o.guaranteedDeliveryDate}</td>
                       <td className="px-3 py-3 text-sm text-center">{o.claim.deliveredDate}</td>
                       <td className="px-3 py-3 text-center">
-                        <span className="text-sm font-bold" style={{ color: "var(--color-red, #dc2626)" }}>
+                        <div className="text-sm font-bold" style={{ color: "var(--color-red, #dc2626)" }}>
                           +{o.claim.daysLate}
-                        </span>
+                        </div>
+                        {/* Ngày làm việc mới là thước đo thật: đơn vắt cuối tuần trông
+                            nặng theo ngày lịch nhưng chỉ trễ 1 ngày làm việc. */}
+                        <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                          {o.claim.businessDaysLate} ngày làm việc
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-center text-xs" style={{ color: "var(--text-muted)" }}>
                         {o.eddChangeCount > 0 ? `${o.eddChangeCount}×` : "—"}
                       </td>
                       <td className="px-3 py-3 text-center text-xs">
-                        <div style={{ color: deadlineColor(o.claim.daysUntilDeadline) }}>
+                        <div style={{ color: deadlineColor(o.claim.businessDaysUntilDeadline) }}>
                           {o.claim.filingDeadline}
                         </div>
                         <div style={{ color: "var(--text-muted)" }}>
-                          {o.claim.daysUntilDeadline !== null && o.claim.daysUntilDeadline >= 0
-                            ? `còn ${o.claim.daysUntilDeadline} ngày`
+                          {o.claim.businessDaysUntilDeadline !== null &&
+                          o.claim.businessDaysUntilDeadline >= 0
+                            ? `còn ${o.claim.businessDaysUntilDeadline} ngày làm việc`
                             : "quá hạn"}
                         </div>
                       </td>
