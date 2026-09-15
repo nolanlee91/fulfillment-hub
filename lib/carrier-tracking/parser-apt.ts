@@ -13,8 +13,12 @@ export interface AptEvent {
   eventCode: string; // F12
   eventAt: Date; // F13 + F14 + F15 → UTC Date
   descriptionEn: string; // F24 — message tiếng Anh
-  returnFlag: string; // F40 — A/B/R/blank
+  returnFlag: string; // F41 (idx 40) — A/B/R/blank
   manifestNumber: string; // F18
+  serviceType: string; // F19 (idx 18) — vd "Expedited Parcels" / "Regular Parcels"
+  // F40 (idx 39) — ngày carrier cam kết giao, "YYYYMMDD" ("" nếu trống).
+  // Có mặt trên MỌI dòng event, và bị carrier dời khi họ trễ (event 1200/1203).
+  expectedDeliveryDate: string;
 }
 
 // Offset cố định (giờ trừ UTC). Bỏ qua DST cho gọn — lệch tối đa ~1h khi hiển thị,
@@ -81,6 +85,9 @@ export function parseAptFile(buffer: Buffer): AptEvent[] {
     const manifestNumber = (f[17] || "").trim();
     const descriptionEn = (f[23] || "").trim();
     const returnFlag = f.length > 40 ? (f[40] || "").trim() : "";
+    const serviceType = (f[18] || "").trim();
+    const eddRaw = (f[39] || "").trim();
+    const expectedDeliveryDate = /^20\d{6}$/.test(eddRaw) ? eddRaw : "";
 
     if (!trackingNumber || !eventCode) continue;
 
@@ -95,6 +102,8 @@ export function parseAptFile(buffer: Buffer): AptEvent[] {
       descriptionEn,
       returnFlag,
       manifestNumber,
+      serviceType,
+      expectedDeliveryDate,
     });
   }
 

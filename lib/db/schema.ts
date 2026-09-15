@@ -4,6 +4,7 @@ import {
   integer,
   numeric,
   timestamp,
+  date,
   boolean,
   uniqueIndex,
   index,
@@ -254,6 +255,14 @@ export const orders = pgTable(
     // Đơn RETURN đã cộng hàng lại vào tồn kho (đánh dấu để không cộng lại + hiện UI).
     restockedAt: timestamp("restocked_at"),
 
+    // Claim giao trễ — dữ liệu lấy từ feed carrier (xem scripts/apply-claim-fields.ts).
+    // guaranteedDeliveryDate GHI MỘT LẦN rồi khoá: carrier dời ngày dự kiến khi họ
+    // trễ, ghi đè là tự xoá bằng chứng của chính mình.
+    serviceType: text("service_type"),
+    guaranteedDeliveryDate: date("guaranteed_delivery_date"),
+    eddCurrent: date("edd_current"),
+    eddChangeCount: integer("edd_change_count").default(0).notNull(),
+
     attentionReason: attentionReasonEnum("attention_reason"),
     attentionAt: timestamp("attention_at"),
     attentionNote: text("attention_note"),
@@ -277,6 +286,7 @@ export const orders = pgTable(
     batchIdx: index("orders_batch_idx").on(t.batchId),
     attentionIdx: index("orders_attention_idx").on(t.attentionReason),
     unsyncedSheetIdx: index("orders_unsynced_sheet_idx").on(t.syncedToSheetAt),
+    guaranteedDateIdx: index("orders_guaranteed_date_idx").on(t.guaranteedDeliveryDate),
   }),
 );
 

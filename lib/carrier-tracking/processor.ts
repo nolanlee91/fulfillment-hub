@@ -29,6 +29,18 @@ interface PerTrackingSummary {
   statusAt: Date | null;
   deliveredAt: Date | null;
   newAttention: AttentionUpdate | null;
+  // Claim giao trễ — xem lib/carrier-tracking/parser-apt.ts (F19, F40).
+  serviceType: string | null;
+  // EDD của event CŨ NHẤT trong batch này (list đã sort tăng dần). Chỉ dùng để
+  // điền guaranteed_delivery_date khi đơn còn trống — không bao giờ ghi đè.
+  earliestEdd: string | null; // "YYYY-MM-DD"
+  latestEdd: string | null; // "YYYY-MM-DD"
+}
+
+/** "20260916" → "2026-09-16" (dạng cột DATE). "" → null. */
+function toIsoDate(yyyymmdd: string): string | null {
+  if (!/^20\d{6}$/.test(yyyymmdd)) return null;
+  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
 }
 
 /**
@@ -112,7 +124,30 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
       break;
     }
 
-    out.set(tn, { trackingNumber: tn, latestEvent, finalStatus, statusAt, deliveredAt, newAttention });
+    // list đã sort tăng dần theo eventAt → EDD đầu tiên bắt được là cam kết gốc.
+    let earliestEdd: string | null = null;
+    let latestEdd: string | null = null;
+    let serviceType: string | null = null;
+    for (const ev of list) {
+      const iso = toIsoDate(ev.expectedDeliveryDate);
+      if (iso) {
+        if (!earliestEdd) earliestEdd = iso;
+        latestEdd = iso;
+      }
+      if (ev.serviceType) serviceType = ev.serviceType;
+    }
+
+    out.set(tn, {
+      trackingNumber: tn,
+      latestEvent,
+      finalStatus,
+      statusAt,
+      deliveredAt,
+      newAttention,
+      serviceType,
+      earliestEdd,
+      latestEdd,
+    });
   }
   return out;
 }
@@ -169,6 +204,10 @@ export async function processAptEvents(
       lastTrackingAt: orders.lastTrackingAt,
       deliveredAt: orders.deliveredAt,
       attentionReason: orders.attentionReason,
+      serviceType: orders.serviceType,
+      guaranteedDeliveryDate: orders.guaranteedDeliveryDate,
+      eddCurrent: orders.eddCurrent,
+      eddChangeCount: orders.eddChangeCount,
     })
     .from(orders)
     .where(inArray(orders.trackingNumber, trackingNumbers));
@@ -298,6 +337,28 @@ export async function processAptEvents(
       update.attentionReason = null;
       update.attentionAt = null;
       update.attentionNote = null;
+    }
+
+    // ---- Claim giao trễ: loại dịch vụ + ngày cam kết giao ----
+    if (sum.serviceType && sum.serviceType !== ord.serviceType) {
+      update.serviceType = sum.serviceType;
+    }
+
+    // GHI MỘT LẦN. Carrier dời ngày dự kiến mỗi khi họ trễ (event 1200/1203) —
+    // ghi đè là tự tay biến đơn trễ thành đơn đúng hạn, danh sách claim sẽ rỗng
+    // vĩnh viễn. Đã có giá trị thì không bao giờ đụng vào nữa.
+    if (!ord.guaranteedDeliveryDate && sum.earliestEdd) {
+      update.guaranteedDeliveryDate = sum.earliestEdd;
+    }
+
+    // Ngày dự kiến hiện tại: chỉ nhận giá trị từ event MỚI HƠN cái đang có, để
+    // file đến lệch thứ tự không kéo ngược về giá trị cũ.
+    if (sum.latestEdd && (shouldUpdateLast || !ord.eddCurrent)) {
+      if (sum.latestEdd !== ord.eddCurrent) {
+        update.eddCurrent = sum.latestEdd;
+        // Lần đầu ghi nhận (chưa có eddCurrent) không tính là "bị dời".
+        if (ord.eddCurrent) update.eddChangeCount = (ord.eddChangeCount ?? 0) + 1;
+      }
     }
 
     // Skip nếu chỉ có updatedAt (không có thay đổi gì khác)
