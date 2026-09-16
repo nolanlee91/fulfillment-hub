@@ -50,6 +50,7 @@ export const GET = withAuth(
           guaranteedDeliveryDate: orders.guaranteedDeliveryDate,
           eddCurrent: orders.eddCurrent,
           eddChangeCount: orders.eddChangeCount,
+          firstAttemptDate: orders.firstAttemptDate,
           deliveredAt: orders.deliveredAt,
           claimStatus: orders.claimStatus,
           claimFiledAt: orders.claimFiledAt,
@@ -87,6 +88,9 @@ export const GET = withAuth(
         recovered: assessed
           .filter((o) => o.claimStatus === "APPROVED")
           .reduce((s, o) => s + Number(o.claimAmount ?? 0), 0),
+        // Đơn chưa có ngày giao đầu tiên → đang tạm đo bằng ngày hàng được nhận,
+        // có thể trễ oan. Phải soi tracking tay trước khi nộp.
+        unverified: assessed.filter((o) => o.claim.measuredFrom === "delivered").length,
       };
 
       return NextResponse.json({ success: true, orders: assessed, totals });

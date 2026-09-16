@@ -76,6 +76,12 @@ export interface ClaimableInput {
   serviceType: string | null;
   guaranteedDeliveryDate: string | null;
   deliveredAt: Date | string | null;
+  /**
+   * Ngày carrier mang hàng tới lần đầu — MỐC ĐO THẬT (chuẩn giao đo tới "first
+   * delivery attempt"). Thiếu thì tạm lùi về deliveredAt, nhưng khi đó kết quả
+   * KHÔNG đáng tin: xem `measuredFrom` trong kết quả.
+   */
+  firstAttemptDate?: string | null;
 }
 
 export interface ClaimAssessment {
@@ -97,6 +103,16 @@ export interface ClaimAssessment {
   expired: boolean;
   /** Còn mấy ngày LÀM VIỆC nữa tới hạn (âm = đã quá) — cùng đơn vị với quy định. */
   businessDaysUntilDeadline: number | null;
+  /**
+   * Mốc đã dùng để đo trễ:
+   *   "attempt"   — ngày carrier mang hàng tới. ĐÚNG, nộp claim được.
+   *   "delivered" — không có dữ liệu lần giao đầu, phải tạm lấy ngày hàng được
+   *                 nhận. CÓ THỂ TRỄ OAN nếu khách ra bưu cục lấy muộn → phải
+   *                 tự kiểm tra lịch sử tracking trước khi nộp.
+   */
+  measuredFrom: "attempt" | "delivered" | null;
+  /** Ngày dùng làm mốc đo (theo measuredFrom). */
+  measuredDate: string | null;
 }
 
 export function assessClaim(
@@ -112,6 +128,8 @@ export function assessClaim(
     filingDeadline: null,
     expired: false,
     businessDaysUntilDeadline: null,
+    measuredFrom: null,
+    measuredDate: null,
   };
 
   if (o.serviceType !== GUARANTEED_SERVICE) return empty;
@@ -134,16 +152,23 @@ export function assessClaim(
   }
 
   const deliveredDate = toLocalDateString(o.deliveredAt);
-  const daysLate = daysBetween(guaranteed, deliveredDate);
+
+  // Đo tới LẦN GIAO ĐẦU TIÊN, không phải lúc hàng được nhận. Carrier để giấy báo
+  // đúng hẹn rồi khách 5 ngày sau mới ra bưu cục lấy → carrier KHÔNG trễ.
+  const measuredFrom = o.firstAttemptDate ? "attempt" : "delivered";
+  const measuredDate = o.firstAttemptDate ?? deliveredDate;
+  const daysLate = daysBetween(guaranteed, measuredDate);
 
   return {
     eligible: true,
     deliveredDate,
     daysLate: Math.max(0, daysLate),
-    businessDaysLate: Math.max(0, businessDaysBetween(guaranteed, deliveredDate)),
+    businessDaysLate: Math.max(0, businessDaysBetween(guaranteed, measuredDate)),
     isLate: daysLate > 0,
     filingDeadline,
     expired,
     businessDaysUntilDeadline,
+    measuredFrom,
+    measuredDate,
   };
 }

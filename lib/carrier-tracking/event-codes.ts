@@ -12,7 +12,7 @@
  *   - Khi đó code "Delivered" nghĩa là "đã giao trả về sender" → FAILED
  */
 
-const DELIVERED_CODES = new Set<string>([
+export const DELIVERED_CODES = new Set<string>([
   "0610", "0611", "0612", "0613", "0614", "0615", "0616", "0617", "0618", "0619", "0620",
   "1405",
   "1408", "1409",
@@ -34,6 +34,22 @@ const RTS_TRIGGER_CODES = new Set<string>([
   "2600",
   "2802",
   "3001",
+]);
+
+/**
+ * Mã báo carrier ĐÃ MANG HÀNG TỚI — mốc đo chuẩn giao ("first delivery attempt").
+ *
+ * KHÔNG dùng ngày Delivered để đo trễ: đơn để giấy báo rồi khách mấy hôm sau mới
+ * ra bưu cục lấy vẫn ghi Delivered vào ngày khách lấy, trong khi carrier đã giao
+ * đúng hẹn. Đo nhầm làm 15/37 đơn bị tính trễ oan (đo thật 2026-09-15).
+ *
+ * Gồm: mang đi giao, để giấy báo (đã tới nhưng không có ai nhận), có hàng chờ ở
+ * bưu cục. Cộng thêm DELIVERED_CODES (giao thẳng thành công ngay lần đầu) lúc dùng.
+ */
+export const DELIVERY_ATTEMPT_CODES = new Set<string>([
+  "0174", "0500", // Item out for delivery
+  "1479", "1488", // Notice card left
+  "1701", // Item available for pickup at Post Office
 ]);
 
 const ADDRESS_ERROR_CODES = new Set<string>([

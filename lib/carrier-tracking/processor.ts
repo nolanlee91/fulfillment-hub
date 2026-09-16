@@ -4,9 +4,12 @@ import { eq, inArray } from "drizzle-orm";
 import { type AptEvent } from "./parser-apt";
 import {
   classifyEvent,
+  DELIVERY_ATTEMPT_CODES,
+  DELIVERED_CODES,
   type AttentionReason,
   type TrackingStatus,
 } from "./event-codes";
+import { toLocalDateString } from "../claims";
 
 interface AttentionUpdate {
   reason: AttentionReason;
@@ -35,6 +38,8 @@ interface PerTrackingSummary {
   // điền guaranteed_delivery_date khi đơn còn trống — không bao giờ ghi đè.
   earliestEdd: string | null; // "YYYY-MM-DD"
   latestEdd: string | null; // "YYYY-MM-DD"
+  /** Ngày sớm nhất carrier mang hàng tới (xem DELIVERY_ATTEMPT_CODES). */
+  firstAttemptDate: string | null; // "YYYY-MM-DD"
 }
 
 /** "20260916" → "2026-09-16" (dạng cột DATE). "" → null. */
@@ -128,6 +133,7 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
     let earliestEdd: string | null = null;
     let latestEdd: string | null = null;
     let serviceType: string | null = null;
+    let firstAttemptDate: string | null = null;
     for (const ev of list) {
       const iso = toIsoDate(ev.expectedDeliveryDate);
       if (iso) {
@@ -135,6 +141,15 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
         latestEdd = iso;
       }
       if (ev.serviceType) serviceType = ev.serviceType;
+
+      // Mang hàng đi giao / để giấy báo / có hàng chờ ở bưu cục / giao thẳng thành công
+      if (
+        DELIVERY_ATTEMPT_CODES.has(ev.eventCode) ||
+        DELIVERED_CODES.has(ev.eventCode)
+      ) {
+        const d = toLocalDateString(ev.eventAt);
+        if (!firstAttemptDate || d < firstAttemptDate) firstAttemptDate = d;
+      }
     }
 
     out.set(tn, {
@@ -147,6 +162,7 @@ function summarizePerTracking(events: AptEvent[]): Map<string, PerTrackingSummar
       serviceType,
       earliestEdd,
       latestEdd,
+      firstAttemptDate,
     });
   }
   return out;
@@ -208,6 +224,7 @@ export async function processAptEvents(
       guaranteedDeliveryDate: orders.guaranteedDeliveryDate,
       eddCurrent: orders.eddCurrent,
       eddChangeCount: orders.eddChangeCount,
+      firstAttemptDate: orders.firstAttemptDate,
     })
     .from(orders)
     .where(inArray(orders.trackingNumber, trackingNumbers));
@@ -349,6 +366,15 @@ export async function processAptEvents(
     // vĩnh viễn. Đã có giá trị thì không bao giờ đụng vào nữa.
     if (!ord.guaranteedDeliveryDate && sum.earliestEdd) {
       update.guaranteedDeliveryDate = sum.earliestEdd;
+    }
+
+    // Lần giao đầu tiên: luôn giữ ngày SỚM NHẤT (file có thể đến lệch thứ tự, và
+    // đây là mốc đo chuẩn giao nên lấy sớm nhất là hướng thận trọng).
+    if (
+      sum.firstAttemptDate &&
+      (!ord.firstAttemptDate || sum.firstAttemptDate < ord.firstAttemptDate)
+    ) {
+      update.firstAttemptDate = sum.firstAttemptDate;
     }
 
     // Ngày dự kiến hiện tại: chỉ nhận giá trị từ event MỚI HƠN cái đang có, để

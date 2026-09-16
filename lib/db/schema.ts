@@ -262,6 +262,10 @@ export const orders = pgTable(
     guaranteedDeliveryDate: date("guaranteed_delivery_date"),
     eddCurrent: date("edd_current"),
     eddChangeCount: integer("edd_change_count").default(0).notNull(),
+    // Ngày carrier MANG HÀNG TỚI lần đầu — mốc đo chuẩn giao. KHÔNG phải delivered_at:
+    // đơn để giấy báo rồi khách mấy hôm sau mới ra bưu cục lấy vẫn ghi Delivered vào
+    // ngày khách lấy, trong khi carrier đã giao đúng hẹn. Ghi một lần, giữ ngày sớm nhất.
+    firstAttemptDate: date("first_attempt_date"),
     // Tiến trình nộp claim — NULL = chưa nộp (xem scripts/apply-claim-status.ts).
     claimStatus: text("claim_status").$type<"FILED" | "APPROVED" | "REJECTED">(),
     claimFiledAt: timestamp("claim_filed_at"),

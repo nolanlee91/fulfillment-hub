@@ -21,6 +21,7 @@ interface ClaimRow {
   guaranteedDeliveryDate: string | null;
   eddCurrent: string | null;
   eddChangeCount: number;
+  firstAttemptDate: string | null;
   deliveredAt: string | null;
   claimStatus: ClaimStatus;
   claimAmount: string | null;
@@ -32,6 +33,8 @@ interface ClaimRow {
     filingDeadline: string | null;
     expired: boolean;
     businessDaysUntilDeadline: number | null;
+    measuredFrom: "attempt" | "delivered" | null;
+    measuredDate: string | null;
   };
 }
 
@@ -43,6 +46,7 @@ interface Totals {
   approved: number;
   rejected: number;
   recovered: number;
+  unverified: number;
 }
 
 interface FilterOption {
@@ -221,6 +225,11 @@ export default function LateClaimsClient() {
             <span>Đã nộp: <b>{totals.filed}</b></span>
             <span>Được duyệt: <b>{totals.approved}</b></span>
             <span>Từ chối: <b>{totals.rejected}</b></span>
+            {totals.unverified > 0 && (
+              <span style={{ color: "var(--color-orange, #ea580c)" }}>
+                Chưa xác minh: <b>{totals.unverified}</b>
+              </span>
+            )}
             {totals.recovered > 0 && (
               <span style={{ color: "var(--color-teal, #0f766e)" }}>
                 Đã đòi lại: <b>${totals.recovered.toFixed(2)}</b>
@@ -258,7 +267,7 @@ export default function LateClaimsClient() {
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Recipient</th>
                   <th className="text-left px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Tracking</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Promised</th>
-                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Delivered</th>
+                  <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Carrier attempted</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Days late</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Date moved</th>
                   <th className="text-center px-3 py-3 text-[11px] font-bold tracking-widest uppercase">Claim deadline</th>
@@ -290,7 +299,26 @@ export default function LateClaimsClient() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-sm text-center">{o.guaranteedDeliveryDate}</td>
-                      <td className="px-3 py-3 text-sm text-center">{o.claim.deliveredDate}</td>
+                      <td className="px-3 py-3 text-sm text-center">
+                        <div>{o.claim.measuredDate}</div>
+                        {o.claim.measuredFrom === "delivered" ? (
+                          // Không có dữ liệu lần giao đầu → đang tạm đo bằng ngày
+                          // hàng được nhận, có thể trễ oan nếu khách lấy muộn.
+                          <div
+                            className="text-[11px] font-bold"
+                            style={{ color: "var(--color-orange, #ea580c)" }}
+                            title="Thiếu dữ liệu lần giao đầu tiên — đang tạm đo bằng ngày hàng được nhận. Soi lịch sử tracking trước khi nộp."
+                          >
+                            chưa xác minh
+                          </div>
+                        ) : (
+                          o.claim.deliveredDate !== o.claim.measuredDate && (
+                            <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                              khách lấy {o.claim.deliveredDate}
+                            </div>
+                          )
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-center">
                         <div className="text-sm font-bold" style={{ color: "var(--color-red, #dc2626)" }}>
                           +{o.claim.daysLate}
